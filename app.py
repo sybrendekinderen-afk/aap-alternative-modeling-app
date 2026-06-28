@@ -1,6 +1,9 @@
 from flask import Flask, render_template, request, redirect
+import base64
 import json
 import os
+
+import requests as http_requests
 
 app = Flask(__name__)
 
@@ -12,13 +15,52 @@ DEFAULT_EVIDENCE_RIGOR_VALUES = [
     "momolitic application",
 ]
 
+_BLOB_STORE = "app-data"
+_BLOB_KEY = "store"
+
+
+def _get_blob_context():
+    """Parse the Netlify Blobs context injected at runtime."""
+    ctx_raw = os.environ.get("NETLIFY_BLOBS_CONTEXT", "")
+    if not ctx_raw:
+        return None
+    try:
+        padding = (4 - len(ctx_raw) % 4) % 4
+        return json.loads(base64.b64decode(ctx_raw + "=" * padding))
+    except Exception:
+        return None
+
+
+def _blob_url(ctx):
+    return f"{ctx['edgeURL']}/{ctx['siteID']}/{_BLOB_STORE}/{_BLOB_KEY}"
+
+
+def _load_raw_data():
+    """Return parsed JSON from Netlify Blobs or the local data file."""
+    ctx = _get_blob_context()
+    if ctx:
+        try:
+            resp = http_requests.get(
+                _blob_url(ctx),
+                headers={"Authorization": f"Bearer {ctx['token']}"},
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception:
+            pass
+        return None
+
+    if not os.path.exists(DATA_FILE):
+        return None
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
 
 def load_data():
-    if not os.path.exists(DATA_FILE):
+    data = _load_raw_data()
+    if data is None:
         return {"solutions": [], "model_types": [], "prompting_techniques": [], "modeling_purposes": [], "evidence_rigor_values": DEFAULT_EVIDENCE_RIGOR_VALUES}
-
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        data = json.load(f)
 
     if isinstance(data, dict):
         store = {
@@ -84,8 +126,20 @@ def load_data():
 
 
 def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    ctx = _get_blob_context()
+    if ctx:
+        http_requests.put(
+            _blob_url(ctx),
+            data=json.dumps(data),
+            headers={
+                "Authorization": f"Bearer {ctx['token']}",
+                "Content-Type": "application/json",
+            },
+            timeout=10,
+        )
+    else:
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
 
 
 def find_solution(solutions, solution_id):
