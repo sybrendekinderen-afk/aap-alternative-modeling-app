@@ -26,7 +26,8 @@
             }
           ]
         }
-      ]
+      ],
+      "other_technique_ids": []
     },
     {
       "id": 2,
@@ -52,6 +53,9 @@
             }
           ]
         }
+      ],
+      "other_technique_ids": [
+        1
       ]
     }
   ],
@@ -83,6 +87,12 @@
     {
       "id": 4,
       "name": "Output formatting"
+    }
+  ],
+  "other_techniques": [
+    {
+      "id": 1,
+      "name": "agentic"
     }
   ],
   "modeling_purposes": [

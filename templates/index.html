@@ -24,6 +24,12 @@
   <div class="container mt-4">
     <hr>
 
+    {% if request.args.get('save_conflict') == '1' %}
+      <div class="alert alert-warning border" role="alert">
+        Your changes were saved after a retry because the shared JSON blob had changed in the meantime.
+      </div>
+    {% endif %}
+
     <div class="card mb-4">
       <div class="card-header"><h3 class="h5 mb-0">Knowledge Base Navigation</h3></div>
       <div class="card-body">
@@ -179,6 +185,18 @@
                   <span class="text-muted">None</span>
                 {% endif %}
               </p>
+              <p><b>Other Techniques:</b>
+                {% if solution.other_technique_ids %}
+                  {% for tid in solution.other_technique_ids %}
+                    {% set technique = other_technique_lookup[tid] %}
+                    {% if technique %}
+                      <span class="badge bg-warning text-dark me-1">{{ technique.name }}</span>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </p>
               <p><b>Justification:</b> {{ solution.justification }}</p>
             </div>
             <div class="col-md-6">
@@ -309,6 +327,15 @@
                     {% endfor %}
                   </select>
                   <div class="form-text">Hold Ctrl/Cmd to select multiple techniques.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Other Techniques</label>
+                  <select class="form-select" name="other_technique_ids" multiple size="5">
+                    {% for technique in other_techniques %}
+                      <option value="{{ technique.id }}">{{ technique.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Select one or more other techniques linked to this solution.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Modeling Purposes</label>
@@ -497,6 +524,41 @@
                   </li>
                 {% else %}
                   <li class="list-group-item text-muted">No prompting techniques yet.</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-3 mb-0 subtle-panel">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="h6 mb-0 text-muted">Other Techniques</h4>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#other-techniques-panel" aria-expanded="false" aria-controls="other-techniques-panel">Show</button>
+          </div>
+          <div class="collapse" id="other-techniques-panel">
+            <div class="card-body">
+              <form method="post" action="/add_other_technique" class="row g-2 mb-3">
+                <div class="col-md-10">
+                  <input class="form-control" name="other_technique_name" placeholder="Other Technique Name">
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-outline-secondary w-100">Add</button>
+                </div>
+              </form>
+              <ul class="list-group">
+                {% for technique in other_techniques %}
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div><b>{{ technique.name }}</b></div>
+                    <div class="d-flex gap-2">
+                      <form method="post" action="/update_other_technique/{{ technique.id }}" class="d-flex gap-2">
+                        <input class="form-control form-control-sm" name="other_technique_name" value="{{ technique.name }}">
+                        <button class="btn btn-sm btn-outline-primary">Update</button>
+                      </form>
+                      <a href="/delete_other_technique/{{ technique.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </div>
+                  </li>
+                {% else %}
+                  <li class="list-group-item text-muted">No other techniques yet.</li>
                 {% endfor %}
               </ul>
             </div>

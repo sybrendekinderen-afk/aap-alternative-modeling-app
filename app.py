@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, g
 import base64
 import importlib
 import json
@@ -7,6 +7,15 @@ import os
 import requests as http_requests
 
 app = Flask(__name__)
+
+
+@app.after_request
+def add_save_conflict_hint(response):
+    if getattr(g, "save_conflict", False) and response.status_code in (301, 302, 303, 307, 308):
+        location = response.headers.get("Location", "")
+        if location == "/":
+            response.headers["Location"] = "/?save_conflict=1"
+    return response
 
 DATA_FILE = os.path.join(os.path.dirname(__file__), "data.json")
 DEFAULT_EVIDENCE_RIGOR_VALUES = [
@@ -20,6 +29,8 @@ _BLOB_STORE = "app-data"
 _BLOB_KEY = "store"
 _PG_TABLE = "app_data_store"
 _PG_KEY = "store"
+_VERCEL_BLOB_ROUTE = "/api/blob-store"
+_VERCEL_BLOB_ETAG = None
 
 
 def _get_database_url():
@@ -100,6 +111,64 @@ def _save_data_to_postgres(data):
         return False
 
 
+def _get_vercel_base_url():
+    base_url = os.environ.get("VERCEL_PROJECT_PRODUCTION_URL", "").strip()
+    if base_url:
+        return f"https://{base_url}"
+
+    base_url = os.environ.get("VERCEL_URL", "").strip()
+    if base_url:
+        return f"https://{base_url}"
+
+    return None
+
+
+def _load_data_from_vercel_blob():
+    base_url = _get_vercel_base_url()
+    if not base_url:
+        return None, None
+
+    try:
+        resp = http_requests.get(f"{base_url}{_VERCEL_BLOB_ROUTE}", timeout=10)
+        if resp.status_code == 200:
+            payload = resp.json()
+            if isinstance(payload, dict) and "data" in payload:
+                return payload.get("data"), payload.get("etag")
+            return payload, None
+    except Exception:
+        pass
+    return None, None
+
+
+def _save_data_to_vercel_blob(data, etag=None):
+    base_url = _get_vercel_base_url()
+    if not base_url:
+        return False
+
+    try:
+        headers = {"Content-Type": "application/json"}
+        if etag:
+            headers["If-Match"] = etag
+        resp = http_requests.put(
+            f"{base_url}{_VERCEL_BLOB_ROUTE}",
+            json=data,
+            headers=headers,
+            timeout=10,
+        )
+        if resp.status_code in [200, 201]:
+            try:
+                body = resp.json()
+                if isinstance(body, dict) and body.get("etag"):
+                    global _VERCEL_BLOB_ETAG
+                    _VERCEL_BLOB_ETAG = body.get("etag")
+            except Exception:
+                pass
+            return True
+    except Exception:
+        return False
+    return False
+
+
 def _get_blob_context():
     """Parse the Netlify Blobs context injected at runtime."""
     ctx_raw = os.environ.get("NETLIFY_BLOBS_CONTEXT", "")
@@ -117,7 +186,13 @@ def _blob_url(ctx):
 
 
 def _load_raw_data():
-    """Return parsed JSON from Netlify Blobs, Postgres, or the local data file."""
+    """Return parsed JSON from Vercel Blob, Netlify Blobs, Postgres, or the local data file."""
+    global _VERCEL_BLOB_ETAG
+    vercel_data, vercel_etag = _load_data_from_vercel_blob()
+    if vercel_data is not None:
+        _VERCEL_BLOB_ETAG = vercel_etag
+        return vercel_data
+
     ctx = _get_blob_context()
     if ctx:
         try:
@@ -145,13 +220,21 @@ def _load_raw_data():
 def load_data():
     data = _load_raw_data()
     if data is None:
-        return {"solutions": [], "model_types": [], "prompting_techniques": [], "modeling_purposes": [], "evidence_rigor_values": DEFAULT_EVIDENCE_RIGOR_VALUES}
+        return {
+            "solutions": [],
+            "model_types": [],
+            "prompting_techniques": [],
+            "other_techniques": [],
+            "modeling_purposes": [],
+            "evidence_rigor_values": DEFAULT_EVIDENCE_RIGOR_VALUES,
+        }
 
     if isinstance(data, dict):
         store = {
             "solutions": data.get("solutions", []),
             "model_types": data.get("model_types", []),
             "prompting_techniques": data.get("prompting_techniques", []),
+            "other_techniques": data.get("other_techniques", []),
             "modeling_purposes": data.get("modeling_purposes", []),
             "evidence_rigor_values": data.get("evidence_rigor_values", DEFAULT_EVIDENCE_RIGOR_VALUES)
         }
@@ -186,6 +269,14 @@ def load_data():
                 source.pop("effect_ids", None)
                 source.pop("link", None)
 
+            normalized_other_technique_ids = []
+            for technique_id in solution.get("other_technique_ids", []):
+                try:
+                    normalized_other_technique_ids.append(int(technique_id))
+                except (TypeError, ValueError):
+                    continue
+            solution["other_technique_ids"] = list(dict.fromkeys(normalized_other_technique_ids))
+
         for modeling_purpose in store.get("modeling_purposes", []):
             modeling_purpose.pop("description", None)
             parent_id = modeling_purpose.get("parent_id")
@@ -205,12 +296,38 @@ def load_data():
         return store
 
     if isinstance(data, list):
-        return {"solutions": data, "model_types": [], "prompting_techniques": [], "modeling_purposes": [], "evidence_rigor_values": DEFAULT_EVIDENCE_RIGOR_VALUES}
+        return {
+            "solutions": data,
+            "model_types": [],
+            "prompting_techniques": [],
+            "other_techniques": [],
+            "modeling_purposes": [],
+            "evidence_rigor_values": DEFAULT_EVIDENCE_RIGOR_VALUES,
+        }
 
-    return {"solutions": [], "model_types": [], "prompting_techniques": [], "modeling_purposes": [], "evidence_rigor_values": DEFAULT_EVIDENCE_RIGOR_VALUES}
+    return {
+        "solutions": [],
+        "model_types": [],
+        "prompting_techniques": [],
+        "other_techniques": [],
+        "modeling_purposes": [],
+        "evidence_rigor_values": DEFAULT_EVIDENCE_RIGOR_VALUES,
+    }
 
 
 def save_data(data):
+    global _VERCEL_BLOB_ETAG
+
+    if _save_data_to_vercel_blob(data, _VERCEL_BLOB_ETAG):
+        return
+
+    if _get_vercel_base_url():
+        _, refreshed_etag = _load_data_from_vercel_blob()
+        _VERCEL_BLOB_ETAG = refreshed_etag
+        if _save_data_to_vercel_blob(data, _VERCEL_BLOB_ETAG):
+            g.save_conflict = True
+            return
+
     ctx = _get_blob_context()
     if ctx:
         http_requests.put(
@@ -242,6 +359,10 @@ def get_model_type_lookup(model_types):
 
 def get_prompting_technique_lookup(prompting_techniques):
     return {technique["id"]: technique for technique in prompting_techniques}
+
+
+def get_other_technique_lookup(other_techniques):
+    return {technique["id"]: technique for technique in other_techniques}
 
 
 def get_modeling_purpose_lookup(modeling_purposes):
@@ -383,6 +504,7 @@ def home():
     solutions = store.get("solutions", [])
     model_types = store.get("model_types", [])
     prompting_techniques = store.get("prompting_techniques", [])
+    other_techniques = store.get("other_techniques", [])
     modeling_purposes = store.get("modeling_purposes", [])
     return render_template(
         "index.html",
@@ -392,6 +514,8 @@ def home():
         model_type_lookup=get_model_type_lookup(model_types),
         prompting_techniques=prompting_techniques,
         prompting_technique_lookup=get_prompting_technique_lookup(prompting_techniques),
+        other_techniques=other_techniques,
+        other_technique_lookup=get_other_technique_lookup(other_techniques),
         modeling_purposes=modeling_purposes,
         modeling_purpose_lookup=get_modeling_purpose_lookup(modeling_purposes),
         modeling_purpose_tree=build_modeling_purpose_tree(modeling_purposes),
@@ -408,12 +532,14 @@ def add_solution():
     next_id = max([s["id"] for s in solutions], default=0) + 1
 
     prompting_technique_ids = request.form.getlist("prompting_technique_ids")
+    other_technique_ids = request.form.getlist("other_technique_ids")
     modeling_purpose_ids = request.form.getlist("modeling_purpose_ids")
 
     solutions.append({
         "id": next_id,
         "name": request.form["name"],
         "prompting_technique_ids": [int(pid) for pid in prompting_technique_ids if pid],
+        "other_technique_ids": [int(tid) for tid in other_technique_ids if tid],
         "modeling_purpose_ids": [int(pid) for pid in modeling_purpose_ids if pid],
         "justification": request.form.get("justification", ""),
         "sources": []
@@ -622,6 +748,52 @@ def delete_prompting_technique(prompting_technique_id):
     return redirect("/")
 
 
+@app.route("/add_other_technique", methods=["POST"])
+def add_other_technique():
+    store = load_data()
+    name = request.form.get("other_technique_name", "").strip()
+    if name:
+        techniques = store.get("other_techniques", [])
+        existing = next((tech for tech in techniques if tech.get("name") == name), None)
+        if not existing:
+            techniques.append({
+                "id": max([tech["id"] for tech in techniques], default=0) + 1,
+                "name": name
+            })
+            store["other_techniques"] = techniques
+            save_data(store)
+    return redirect("/")
+
+
+@app.route("/update_other_technique/<int:other_technique_id>", methods=["POST"])
+def update_other_technique(other_technique_id):
+    store = load_data()
+    techniques = store.get("other_techniques", [])
+    for technique in techniques:
+        if technique["id"] == other_technique_id:
+            technique["name"] = request.form.get("other_technique_name", technique["name"]).strip()
+            break
+    store["other_techniques"] = techniques
+    save_data(store)
+    return redirect("/")
+
+
+@app.route("/delete_other_technique/<int:other_technique_id>")
+def delete_other_technique(other_technique_id):
+    store = load_data()
+    techniques = store.get("other_techniques", [])
+    store["other_techniques"] = [tech for tech in techniques if tech["id"] != other_technique_id]
+
+    for solution in store.get("solutions", []):
+        solution["other_technique_ids"] = [
+            tid for tid in solution.get("other_technique_ids", [])
+            if tid != other_technique_id
+        ]
+
+    save_data(store)
+    return redirect("/")
+
+
 @app.route("/edit_solution/<int:solution_id>")
 def edit_solution(solution_id):
     store = load_data()
@@ -633,6 +805,7 @@ def edit_solution(solution_id):
         solution=solution,
         mode="solution",
         prompting_techniques=store.get("prompting_techniques", []),
+        other_techniques=store.get("other_techniques", []),
         modeling_purposes=store.get("modeling_purposes", [])
     )
 
@@ -644,8 +817,10 @@ def update_solution(solution_id):
     if solution:
         solution["name"] = request.form.get("name", solution["name"])
         prompting_technique_ids = request.form.getlist("prompting_technique_ids")
+        other_technique_ids = request.form.getlist("other_technique_ids")
         modeling_purpose_ids = request.form.getlist("modeling_purpose_ids")
         solution["prompting_technique_ids"] = [int(pid) for pid in prompting_technique_ids if pid]
+        solution["other_technique_ids"] = [int(tid) for tid in other_technique_ids if tid]
         solution["modeling_purpose_ids"] = [int(pid) for pid in modeling_purpose_ids if pid]
         solution["justification"] = request.form.get("justification", solution["justification"])
         save_data(store)
