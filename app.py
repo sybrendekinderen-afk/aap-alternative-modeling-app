@@ -49,7 +49,7 @@ def _load_raw_data():
                 return resp.json()
         except Exception:
             pass
-        return None
+        # Fall through to data.json when blob not yet seeded (404) or on error
 
     if not os.path.exists(DATA_FILE):
         return None

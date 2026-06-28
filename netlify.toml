@@ -2,6 +2,9 @@
   publish = "static"
   functions = "netlify/functions"
 
+[functions.server]
+  included_files = ["templates/**", "app.py", "data.json"]
+
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/server"
