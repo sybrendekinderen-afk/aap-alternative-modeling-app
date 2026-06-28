@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect
 import base64
+import importlib
 import json
 import os
 
@@ -17,6 +18,86 @@ DEFAULT_EVIDENCE_RIGOR_VALUES = [
 
 _BLOB_STORE = "app-data"
 _BLOB_KEY = "store"
+_PG_TABLE = "app_data_store"
+_PG_KEY = "store"
+
+
+def _get_database_url():
+    url = os.environ.get("DATABASE_URL", "").strip()
+    return url or None
+
+
+def _get_psycopg_module():
+    try:
+        return importlib.import_module("psycopg")
+    except Exception:
+        return None
+
+
+def _load_data_from_postgres():
+    db_url = _get_database_url()
+    psycopg = _get_psycopg_module()
+    if not db_url or psycopg is None:
+        return None
+
+    try:
+        with psycopg.connect(db_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS {_PG_TABLE} (
+                        store_key TEXT PRIMARY KEY,
+                        data JSONB NOT NULL,
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                    """
+                )
+                cur.execute(
+                    f"SELECT data FROM {_PG_TABLE} WHERE store_key = %s",
+                    (_PG_KEY,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                payload = row[0]
+                if isinstance(payload, str):
+                    return json.loads(payload)
+                return payload
+    except Exception:
+        return None
+
+
+def _save_data_to_postgres(data):
+    db_url = _get_database_url()
+    psycopg = _get_psycopg_module()
+    if not db_url or psycopg is None:
+        return False
+
+    try:
+        with psycopg.connect(db_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS {_PG_TABLE} (
+                        store_key TEXT PRIMARY KEY,
+                        data JSONB NOT NULL,
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                    """
+                )
+                cur.execute(
+                    f"""
+                    INSERT INTO {_PG_TABLE} (store_key, data)
+                    VALUES (%s, %s::jsonb)
+                    ON CONFLICT (store_key)
+                    DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()
+                    """,
+                    (_PG_KEY, json.dumps(data)),
+                )
+            conn.commit()
+        return True
+    except Exception:
+        return False
 
 
 def _get_blob_context():
@@ -36,7 +117,7 @@ def _blob_url(ctx):
 
 
 def _load_raw_data():
-    """Return parsed JSON from Netlify Blobs or the local data file."""
+    """Return parsed JSON from Netlify Blobs, Postgres, or the local data file."""
     ctx = _get_blob_context()
     if ctx:
         try:
@@ -50,6 +131,10 @@ def _load_raw_data():
         except Exception:
             pass
         return None
+
+    pg_data = _load_data_from_postgres()
+    if pg_data is not None:
+        return pg_data
 
     if not os.path.exists(DATA_FILE):
         return None
@@ -137,6 +222,8 @@ def save_data(data):
             },
             timeout=10,
         )
+    elif _save_data_to_postgres(data):
+        return
     else:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
