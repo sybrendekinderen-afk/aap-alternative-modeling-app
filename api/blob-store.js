@@ -1,6 +1,8 @@
 import { head, list, put } from '@vercel/blob';
 
 const BLOB_PATH = 'app-data/data.json';
+const BLOB_ACCESS = 'public';
+const HANDLER_VERSION = '2026-06-29-public-access-v2';
 
 function classifyBlobToken(token) {
   if (!token) return 'missing';
@@ -14,6 +16,8 @@ function buildDiagnostics(req) {
   return {
     method: req.method,
     blobPath: BLOB_PATH,
+    blobAccess: BLOB_ACCESS,
+    handlerVersion: HANDLER_VERSION,
     hasBlobToken: Boolean(token),
     blobTokenType: classifyBlobToken(token),
   };
@@ -91,31 +95,6 @@ async function parseBody(req) {
   }
 }
 
-async function putWithCompatibleAccess(pathname, body) {
-  const baseOptions = {
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: 'application/json',
-  };
-
-  try {
-    return await put(pathname, body, {
-      ...baseOptions,
-      access: 'private',
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes('access must be "public"')) {
-      throw error;
-    }
-
-    return await put(pathname, body, {
-      ...baseOptions,
-      access: 'public',
-    });
-  }
-}
-
 export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
@@ -136,7 +115,12 @@ export default async function handler(req, res) {
     if (req.method === 'PUT') {
       const { data } = await parseBody(req);
 
-      const blob = await putWithCompatibleAccess(BLOB_PATH, JSON.stringify(data));
+      const blob = await put(BLOB_PATH, JSON.stringify(data), {
+        access: BLOB_ACCESS,
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType: 'application/json',
+      });
 
       res.setHeader('Cache-Control', 'no-store, max-age=0');
 
@@ -144,6 +128,7 @@ export default async function handler(req, res) {
         url: blob.url,
         pathname: blob.pathname,
         etag: blob.etag,
+        handlerVersion: HANDLER_VERSION,
       });
     }
 
