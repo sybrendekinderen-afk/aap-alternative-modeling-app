@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, g
+from flask import Flask, render_template, request, redirect, g, has_request_context
 import base64
 import importlib
 import json
@@ -11,10 +11,13 @@ app = Flask(__name__)
 
 @app.after_request
 def add_save_conflict_hint(response):
-    if getattr(g, "save_conflict", False) and response.status_code in (301, 302, 303, 307, 308):
+    if response.status_code in (301, 302, 303, 307, 308):
         location = response.headers.get("Location", "")
         if location == "/":
-            response.headers["Location"] = "/?save_conflict=1"
+            if getattr(g, "save_blocked", False):
+                response.headers["Location"] = "/?save_blocked=1"
+            elif getattr(g, "save_conflict", False):
+                response.headers["Location"] = "/?save_conflict=1"
     return response
 
 DATA_FILE = os.path.join(os.path.dirname(__file__), "data.json")
@@ -36,6 +39,10 @@ _VERCEL_BLOB_ETAG = None
 def _get_database_url():
     url = os.environ.get("DATABASE_URL", "").strip()
     return url or None
+
+
+def _is_vercel_runtime():
+    return bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
 
 
 def _get_psycopg_module():
@@ -112,15 +119,29 @@ def _save_data_to_postgres(data):
 
 
 def _get_vercel_base_url():
-    base_url = os.environ.get("VERCEL_PROJECT_PRODUCTION_URL", "").strip()
-    if base_url:
-        return f"https://{base_url}"
+    if has_request_context():
+        host = request.headers.get("x-forwarded-host") or request.host
+        if host:
+            proto = request.headers.get("x-forwarded-proto", "https")
+            return f"{proto}://{host}"
 
     base_url = os.environ.get("VERCEL_URL", "").strip()
     if base_url:
         return f"https://{base_url}"
 
+    base_url = os.environ.get("VERCEL_PROJECT_PRODUCTION_URL", "").strip()
+    if base_url:
+        return f"https://{base_url}"
+
     return None
+
+
+def _get_vercel_internal_request_headers():
+    headers = {}
+    bypass_secret = os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET", "").strip()
+    if bypass_secret:
+        headers["x-vercel-protection-bypass"] = bypass_secret
+    return headers
 
 
 def _load_data_from_vercel_blob():
@@ -129,12 +150,25 @@ def _load_data_from_vercel_blob():
         return None, None
 
     try:
-        resp = http_requests.get(f"{base_url}{_VERCEL_BLOB_ROUTE}", timeout=10)
+        resp = http_requests.get(
+            f"{base_url}{_VERCEL_BLOB_ROUTE}",
+            headers=_get_vercel_internal_request_headers(),
+            timeout=10,
+            allow_redirects=False,
+        )
         if resp.status_code == 200:
             payload = resp.json()
             if isinstance(payload, dict) and "data" in payload:
                 return payload.get("data"), payload.get("etag")
             return payload, None
+        if resp.status_code in [401, 403]:
+            print(
+                "Vercel Blob read blocked by deployment protection: "
+                f"status={resp.status_code}, has_bypass={bool(os.environ.get('VERCEL_AUTOMATION_BYPASS_SECRET', '').strip())}"
+            )
+        if resp.status_code in [301, 302, 303, 307, 308]:
+            location = resp.headers.get("Location", "")
+            print(f"Vercel Blob read blocked by redirect: status={resp.status_code}, location={location}")
     except Exception:
         pass
     return None, None
@@ -146,14 +180,16 @@ def _save_data_to_vercel_blob(data, etag=None):
         return False
 
     try:
-        headers = {"Content-Type": "application/json"}
-        if etag:
-            headers["If-Match"] = etag
+        headers = {
+            "Content-Type": "application/json",
+            **_get_vercel_internal_request_headers(),
+        }
         resp = http_requests.put(
             f"{base_url}{_VERCEL_BLOB_ROUTE}",
             json=data,
             headers=headers,
             timeout=10,
+            allow_redirects=False,
         )
         if resp.status_code in [200, 201]:
             try:
@@ -164,6 +200,20 @@ def _save_data_to_vercel_blob(data, etag=None):
             except Exception:
                 pass
             return True
+        if resp.status_code in [401, 403]:
+            print(
+                "Vercel Blob save blocked by deployment protection: "
+                f"status={resp.status_code}, has_bypass={bool(os.environ.get('VERCEL_AUTOMATION_BYPASS_SECRET', '').strip())}"
+            )
+            return False
+        if resp.status_code in [301, 302, 303, 307, 308]:
+            location = resp.headers.get("Location", "")
+            print(f"Vercel Blob save blocked by redirect: status={resp.status_code}, location={location}")
+            return False
+        try:
+            print(f"Vercel Blob save failed: status={resp.status_code}, body={resp.text[:300]}")
+        except Exception:
+            pass
     except Exception:
         return False
     return False
@@ -330,20 +380,33 @@ def save_data(data):
 
     ctx = _get_blob_context()
     if ctx:
-        http_requests.put(
-            _blob_url(ctx),
-            data=json.dumps(data),
-            headers={
-                "Authorization": f"Bearer {ctx['token']}",
-                "Content-Type": "application/json",
-            },
-            timeout=10,
-        )
+        try:
+            http_requests.put(
+                _blob_url(ctx),
+                data=json.dumps(data),
+                headers={
+                    "Authorization": f"Bearer {ctx['token']}",
+                    "Content-Type": "application/json",
+                },
+                timeout=10,
+            )
+            return
+        except Exception:
+            pass
     elif _save_data_to_postgres(data):
         return
-    else:
+
+    # On Vercel, filesystem writes are ephemeral and can fail. Avoid surfacing a 500
+    # if remote persistence had a transient failure.
+    if _is_vercel_runtime():
+        g.save_blocked = True
+        return
+
+    try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+    except Exception:
+        pass
 
 
 def find_solution(solutions, solution_id):

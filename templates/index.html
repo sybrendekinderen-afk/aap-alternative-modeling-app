@@ -24,7 +24,11 @@
   <div class="container mt-4">
     <hr>
 
-    {% if request.args.get('save_conflict') == '1' %}
+    {% if request.args.get('save_blocked') == '1' %}
+      <div class="alert alert-danger border" role="alert">
+        Save was blocked by deployment authentication/protection, so your changes were not persisted to Vercel Blob.
+      </div>
+    {% elif request.args.get('save_conflict') == '1' %}
       <div class="alert alert-warning border" role="alert">
         Your changes were saved after a retry because the shared JSON blob had changed in the meantime.
       </div>

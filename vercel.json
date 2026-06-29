@@ -13,7 +13,7 @@
   "routes": [
     {
       "src": "/api/blob-store",
-      "dest": "/api/blob-store"
+      "dest": "/api/blob-store.js"
     },
     {
       "src": "/(.*)",
