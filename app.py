@@ -35,8 +35,12 @@ _PG_KEY = "store"
 
 
 def _get_database_url():
-    url = os.environ.get("DATABASE_URL", "").strip()
-    return url or None
+    # Prefer explicit app-level URL, then provider-specific defaults.
+    for env_name in ["DATABASE_URL", "POSTGRES_URL", "SUPABASE_URL"]:
+        url = os.environ.get(env_name, "").strip()
+        if url:
+            return url
+    return None
 
 
 def _is_vercel_runtime():
