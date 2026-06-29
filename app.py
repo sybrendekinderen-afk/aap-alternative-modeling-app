@@ -3,7 +3,7 @@ import base64
 import importlib
 import json
 import os
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import requests as http_requests
 
@@ -42,7 +42,21 @@ def _is_postgres_dsn(url):
     return scheme.startswith("postgres")
 
 
-def _get_database_url():
+def _normalize_postgres_dsn(url):
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if host in ["", "localhost", "127.0.0.1"]:
+        return url
+
+    query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    query = {key: value for key, value in query_pairs}
+    if "sslmode" not in query:
+        query_pairs.append(("sslmode", "require"))
+        return urlunparse(parsed._replace(query=urlencode(query_pairs)))
+    return url
+
+
+def _get_database_url_details():
     # Prefer explicit app-level URL, then provider-specific defaults.
     for env_name in [
         "DATABASE_URL",
@@ -57,10 +71,15 @@ def _get_database_url():
         if not url:
             continue
         if _is_postgres_dsn(url):
-            return url
+            return env_name, _normalize_postgres_dsn(url)
         # Helpful in Vercel logs when SUPABASE_URL is set to an HTTPS project URL.
         print(f"Ignoring non-Postgres URL from {env_name}: scheme={urlparse(url).scheme}")
-    return None
+    return None, None
+
+
+def _get_database_url():
+    _, url = _get_database_url_details()
+    return url
 
 
 def _is_vercel_runtime():
@@ -910,6 +929,37 @@ def delete_source(solution_id, source_id):
     store["solutions"] = solutions
     save_data(store)
     return redirect("/")
+
+
+@app.route("/debug/db")
+def debug_db():
+    selected_env, db_url = _get_database_url_details()
+    psycopg = _get_psycopg_module()
+    parsed = urlparse(db_url) if db_url else None
+    diagnostics = {
+        "runtime": "vercel" if _is_vercel_runtime() else "local",
+        "selected_env": selected_env,
+        "db_url_present": bool(db_url),
+        "db_scheme": (parsed.scheme if parsed else None),
+        "db_host": (parsed.hostname if parsed else None),
+        "db_name": ((parsed.path or "").lstrip("/") if parsed else None),
+        "db_has_sslmode": ("sslmode=" in ((parsed.query or "") if parsed else "")),
+        "has_psycopg": psycopg is not None,
+        "connect_ok": False,
+        "error": None,
+    }
+
+    if db_url and psycopg is not None:
+        try:
+            with psycopg.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+                    cur.fetchone()
+            diagnostics["connect_ok"] = True
+        except Exception as exc:
+            diagnostics["error"] = f"{type(exc).__name__}: {exc}"
+
+    return diagnostics, 200
 
 
 if __name__ == "__main__":
