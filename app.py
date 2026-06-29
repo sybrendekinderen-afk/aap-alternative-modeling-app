@@ -142,7 +142,6 @@ def _get_vercel_internal_request_headers():
     bypass_secret = os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET", "").strip()
     if bypass_secret:
         headers["x-vercel-protection-bypass"] = bypass_secret
-        headers["x-vercel-set-bypass-cookie"] = "true"
     return headers
 
 
