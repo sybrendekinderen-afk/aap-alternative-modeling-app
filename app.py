@@ -3,6 +3,7 @@ import base64
 import importlib
 import json
 import os
+from urllib.parse import urlencode
 
 import requests as http_requests
 
@@ -141,7 +142,17 @@ def _get_vercel_internal_request_headers():
     bypass_secret = os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET", "").strip()
     if bypass_secret:
         headers["x-vercel-protection-bypass"] = bypass_secret
+        headers["x-vercel-set-bypass-cookie"] = "true"
     return headers
+
+
+def _get_vercel_blob_route_url(base_url):
+    route_url = f"{base_url}{_VERCEL_BLOB_ROUTE}"
+    bypass_secret = os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET", "").strip()
+    if not bypass_secret:
+        return route_url
+    query = urlencode({"x-vercel-protection-bypass": bypass_secret})
+    return f"{route_url}?{query}"
 
 
 def _load_data_from_vercel_blob():
@@ -150,8 +161,9 @@ def _load_data_from_vercel_blob():
         return None, None
 
     try:
+        url = _get_vercel_blob_route_url(base_url)
         resp = http_requests.get(
-            f"{base_url}{_VERCEL_BLOB_ROUTE}",
+            url,
             headers=_get_vercel_internal_request_headers(),
             timeout=10,
             allow_redirects=False,
@@ -164,11 +176,14 @@ def _load_data_from_vercel_blob():
         if resp.status_code in [401, 403]:
             print(
                 "Vercel Blob read blocked by deployment protection: "
-                f"status={resp.status_code}, has_bypass={bool(os.environ.get('VERCEL_AUTOMATION_BYPASS_SECRET', '').strip())}"
+                f"status={resp.status_code}, has_bypass={bool(os.environ.get('VERCEL_AUTOMATION_BYPASS_SECRET', '').strip())}, body={resp.text[:180]}"
             )
         if resp.status_code in [301, 302, 303, 307, 308]:
             location = resp.headers.get("Location", "")
-            print(f"Vercel Blob read blocked by redirect: status={resp.status_code}, location={location}")
+            print(
+                "Vercel Blob read blocked by redirect: "
+                f"status={resp.status_code}, location={location}, body={resp.text[:180]}"
+            )
     except Exception:
         pass
     return None, None
@@ -180,12 +195,13 @@ def _save_data_to_vercel_blob(data, etag=None):
         return False
 
     try:
+        url = _get_vercel_blob_route_url(base_url)
         headers = {
             "Content-Type": "application/json",
             **_get_vercel_internal_request_headers(),
         }
         resp = http_requests.put(
-            f"{base_url}{_VERCEL_BLOB_ROUTE}",
+            url,
             json=data,
             headers=headers,
             timeout=10,
@@ -203,12 +219,15 @@ def _save_data_to_vercel_blob(data, etag=None):
         if resp.status_code in [401, 403]:
             print(
                 "Vercel Blob save blocked by deployment protection: "
-                f"status={resp.status_code}, has_bypass={bool(os.environ.get('VERCEL_AUTOMATION_BYPASS_SECRET', '').strip())}"
+                f"status={resp.status_code}, has_bypass={bool(os.environ.get('VERCEL_AUTOMATION_BYPASS_SECRET', '').strip())}, body={resp.text[:180]}"
             )
             return False
         if resp.status_code in [301, 302, 303, 307, 308]:
             location = resp.headers.get("Location", "")
-            print(f"Vercel Blob save blocked by redirect: status={resp.status_code}, location={location}")
+            print(
+                "Vercel Blob save blocked by redirect: "
+                f"status={resp.status_code}, location={location}, body={resp.text[:180]}"
+            )
             return False
         try:
             print(f"Vercel Blob save failed: status={resp.status_code}, body={resp.text[:300]}")
