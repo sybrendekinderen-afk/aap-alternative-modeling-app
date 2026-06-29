@@ -3,7 +3,6 @@ import base64
 import importlib
 import json
 import os
-from urllib.parse import urlencode
 
 import requests as http_requests
 
@@ -146,12 +145,7 @@ def _get_vercel_internal_request_headers():
 
 
 def _get_vercel_blob_route_url(base_url):
-    route_url = f"{base_url}{_VERCEL_BLOB_ROUTE}"
-    bypass_secret = os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET", "").strip()
-    if not bypass_secret:
-        return route_url
-    query = urlencode({"x-vercel-protection-bypass": bypass_secret})
-    return f"{route_url}?{query}"
+    return f"{base_url}{_VERCEL_BLOB_ROUTE}"
 
 
 def _load_data_from_vercel_blob():
