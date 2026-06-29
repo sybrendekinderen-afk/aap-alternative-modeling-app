@@ -3,6 +3,7 @@ import base64
 import importlib
 import json
 import os
+from urllib.parse import urlparse
 
 import requests as http_requests
 
@@ -34,12 +35,31 @@ _PG_TABLE = "app_data_store"
 _PG_KEY = "store"
 
 
+def _is_postgres_dsn(url):
+    if not url:
+        return False
+    scheme = (urlparse(url).scheme or "").lower()
+    return scheme.startswith("postgres")
+
+
 def _get_database_url():
     # Prefer explicit app-level URL, then provider-specific defaults.
-    for env_name in ["DATABASE_URL", "POSTGRES_URL", "SUPABASE_URL"]:
+    for env_name in [
+        "DATABASE_URL",
+        "POSTGRES_URL",
+        "POSTGRES_URL_NON_POOLING",
+        "POSTGRES_PRISMA_URL",
+        "SUPABASE_DB_URL",
+        "SUPABASE_DATABASE_URL",
+        "SUPABASE_URL",
+    ]:
         url = os.environ.get(env_name, "").strip()
-        if url:
+        if not url:
+            continue
+        if _is_postgres_dsn(url):
             return url
+        # Helpful in Vercel logs when SUPABASE_URL is set to an HTTPS project URL.
+        print(f"Ignoring non-Postgres URL from {env_name}: scheme={urlparse(url).scheme}")
     return None
 
 
@@ -58,6 +78,11 @@ def _load_data_from_postgres():
     db_url = _get_database_url()
     psycopg = _get_psycopg_module()
     if not db_url or psycopg is None:
+        if _is_vercel_runtime():
+            print(
+                "Postgres load skipped: "
+                f"has_db_url={bool(db_url)} has_psycopg={psycopg is not None}"
+            )
         return None
 
     try:
@@ -83,7 +108,8 @@ def _load_data_from_postgres():
                 if isinstance(payload, str):
                     return json.loads(payload)
                 return payload
-    except Exception:
+    except Exception as exc:
+        print(f"Postgres load failed: {type(exc).__name__}: {exc}")
         return None
 
 
@@ -91,6 +117,11 @@ def _save_data_to_postgres(data):
     db_url = _get_database_url()
     psycopg = _get_psycopg_module()
     if not db_url or psycopg is None:
+        if _is_vercel_runtime():
+            print(
+                "Postgres save skipped: "
+                f"has_db_url={bool(db_url)} has_psycopg={psycopg is not None}"
+            )
         return False
 
     try:
@@ -116,7 +147,8 @@ def _save_data_to_postgres(data):
                 )
             conn.commit()
         return True
-    except Exception:
+    except Exception as exc:
+        print(f"Postgres save failed: {type(exc).__name__}: {exc}")
         return False
 
 
