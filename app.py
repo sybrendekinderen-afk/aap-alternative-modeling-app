@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, g, has_request_context
+from flask import Flask, render_template, request, redirect, g
 import base64
 import importlib
 import json
@@ -32,8 +32,6 @@ _BLOB_STORE = "app-data"
 _BLOB_KEY = "store"
 _PG_TABLE = "app_data_store"
 _PG_KEY = "store"
-_VERCEL_BLOB_ROUTE = "/api/blob-store"
-_VERCEL_BLOB_ETAG = None
 
 
 def _get_database_url():
@@ -118,119 +116,6 @@ def _save_data_to_postgres(data):
         return False
 
 
-def _get_vercel_base_url():
-    if has_request_context():
-        host = request.headers.get("x-forwarded-host") or request.host
-        if host:
-            proto = request.headers.get("x-forwarded-proto", "https")
-            return f"{proto}://{host}"
-
-    base_url = os.environ.get("VERCEL_URL", "").strip()
-    if base_url:
-        return f"https://{base_url}"
-
-    base_url = os.environ.get("VERCEL_PROJECT_PRODUCTION_URL", "").strip()
-    if base_url:
-        return f"https://{base_url}"
-
-    return None
-
-
-def _get_vercel_internal_request_headers():
-    headers = {}
-    bypass_secret = os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET", "").strip()
-    if bypass_secret:
-        headers["x-vercel-protection-bypass"] = bypass_secret
-    return headers
-
-
-def _get_vercel_blob_route_url(base_url):
-    return f"{base_url}{_VERCEL_BLOB_ROUTE}"
-
-
-def _load_data_from_vercel_blob():
-    base_url = _get_vercel_base_url()
-    if not base_url:
-        return None, None
-
-    try:
-        url = _get_vercel_blob_route_url(base_url)
-        resp = http_requests.get(
-            url,
-            headers=_get_vercel_internal_request_headers(),
-            timeout=10,
-            allow_redirects=False,
-        )
-        if resp.status_code == 200:
-            payload = resp.json()
-            if isinstance(payload, dict) and "data" in payload:
-                return payload.get("data"), payload.get("etag")
-            return payload, None
-        if resp.status_code in [401, 403]:
-            print(
-                "Vercel Blob read blocked by deployment protection: "
-                f"status={resp.status_code}, has_bypass={bool(os.environ.get('VERCEL_AUTOMATION_BYPASS_SECRET', '').strip())}, body={resp.text[:180]}"
-            )
-        if resp.status_code in [301, 302, 303, 307, 308]:
-            location = resp.headers.get("Location", "")
-            print(
-                "Vercel Blob read blocked by redirect: "
-                f"status={resp.status_code}, location={location}, body={resp.text[:180]}"
-            )
-    except Exception:
-        pass
-    return None, None
-
-
-def _save_data_to_vercel_blob(data, etag=None):
-    base_url = _get_vercel_base_url()
-    if not base_url:
-        return False
-
-    try:
-        url = _get_vercel_blob_route_url(base_url)
-        headers = {
-            "Content-Type": "application/json",
-            **_get_vercel_internal_request_headers(),
-        }
-        resp = http_requests.put(
-            url,
-            json=data,
-            headers=headers,
-            timeout=10,
-            allow_redirects=False,
-        )
-        if resp.status_code in [200, 201]:
-            try:
-                body = resp.json()
-                if isinstance(body, dict) and body.get("etag"):
-                    global _VERCEL_BLOB_ETAG
-                    _VERCEL_BLOB_ETAG = body.get("etag")
-            except Exception:
-                pass
-            return True
-        if resp.status_code in [401, 403]:
-            print(
-                "Vercel Blob save blocked by deployment protection: "
-                f"status={resp.status_code}, has_bypass={bool(os.environ.get('VERCEL_AUTOMATION_BYPASS_SECRET', '').strip())}, body={resp.text[:180]}"
-            )
-            return False
-        if resp.status_code in [301, 302, 303, 307, 308]:
-            location = resp.headers.get("Location", "")
-            print(
-                "Vercel Blob save blocked by redirect: "
-                f"status={resp.status_code}, location={location}, body={resp.text[:180]}"
-            )
-            return False
-        try:
-            print(f"Vercel Blob save failed: status={resp.status_code}, body={resp.text[:300]}")
-        except Exception:
-            pass
-    except Exception:
-        return False
-    return False
-
-
 def _get_blob_context():
     """Parse the Netlify Blobs context injected at runtime."""
     ctx_raw = os.environ.get("NETLIFY_BLOBS_CONTEXT", "")
@@ -248,12 +133,11 @@ def _blob_url(ctx):
 
 
 def _load_raw_data():
-    """Return parsed JSON from Vercel Blob, Netlify Blobs, Postgres, or the local data file."""
-    global _VERCEL_BLOB_ETAG
-    vercel_data, vercel_etag = _load_data_from_vercel_blob()
-    if vercel_data is not None:
-        _VERCEL_BLOB_ETAG = vercel_etag
-        return vercel_data
+    """Return parsed JSON from Postgres, Netlify Blobs, or the local data file."""
+
+    pg_data = _load_data_from_postgres()
+    if pg_data is not None:
+        return pg_data
 
     ctx = _get_blob_context()
     if ctx:
@@ -268,10 +152,6 @@ def _load_raw_data():
         except Exception:
             pass
         return None
-
-    pg_data = _load_data_from_postgres()
-    if pg_data is not None:
-        return pg_data
 
     if not os.path.exists(DATA_FILE):
         return None
@@ -378,17 +258,8 @@ def load_data():
 
 
 def save_data(data):
-    global _VERCEL_BLOB_ETAG
-
-    if _save_data_to_vercel_blob(data, _VERCEL_BLOB_ETAG):
+    if _save_data_to_postgres(data):
         return
-
-    if _get_vercel_base_url():
-        _, refreshed_etag = _load_data_from_vercel_blob()
-        _VERCEL_BLOB_ETAG = refreshed_etag
-        if _save_data_to_vercel_blob(data, _VERCEL_BLOB_ETAG):
-            g.save_conflict = True
-            return
 
     ctx = _get_blob_context()
     if ctx:
@@ -405,9 +276,6 @@ def save_data(data):
             return
         except Exception:
             pass
-    elif _save_data_to_postgres(data):
-        return
-
     # On Vercel, filesystem writes are ephemeral and can fail. Avoid surfacing a 500
     # if remote persistence had a transient failure.
     if _is_vercel_runtime():
