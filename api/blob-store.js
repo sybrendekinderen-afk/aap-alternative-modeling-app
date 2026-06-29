@@ -91,6 +91,31 @@ async function parseBody(req) {
   }
 }
 
+async function putWithCompatibleAccess(pathname, body) {
+  const baseOptions = {
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: 'application/json',
+  };
+
+  try {
+    return await put(pathname, body, {
+      ...baseOptions,
+      access: 'private',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes('access must be "public"')) {
+      throw error;
+    }
+
+    return await put(pathname, body, {
+      ...baseOptions,
+      access: 'public',
+    });
+  }
+}
+
 export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
@@ -111,12 +136,7 @@ export default async function handler(req, res) {
     if (req.method === 'PUT') {
       const { data } = await parseBody(req);
 
-      const blob = await put(BLOB_PATH, JSON.stringify(data), {
-        access: 'private',
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        contentType: 'application/json',
-      });
+      const blob = await putWithCompatibleAccess(BLOB_PATH, JSON.stringify(data));
 
       res.setHeader('Cache-Control', 'no-store, max-age=0');
 
