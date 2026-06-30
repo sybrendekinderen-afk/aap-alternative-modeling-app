@@ -12,22 +12,10 @@
         1
       ],
       "justification": "Make the model machine readable.",
-      "sources": [
-        {
-          "id": 1,
-          "title": "Automated Domain Modeling with Large Language Models: A Comparative Study",
-          "author": "Chen et al",
-          "doi": "https://doi.org/10.1109/MODELS58315.2023.00037",
-          "model_type_id": 2,
-          "effects": [
-            {
-              "description": "Whole approach quantitatively, but effect of model solution is not isolated",
-              "evidence_rigor": "momolitic application"
-            }
-          ]
-        }
-      ],
-      "other_technique_ids": []
+      "other_technique_ids": [],
+      "source_ids": [
+        1
+      ]
     },
     {
       "id": 2,
@@ -39,24 +27,42 @@
         8
       ],
       "justification": "Supposed increase in quality of output ",
-      "sources": [
-        {
-          "id": 1,
-          "title": "Leveraging machines to derive domain models from user stories",
-          "author": "Bragilovski et al.",
-          "doi": "https://doi.org/10.1007/s00766-025-00442-9",
-          "model_type_id": 2,
-          "effects": [
-            {
-              "description": "Whole approach quantitatively evaluated with IR metrics, effect not isolated to model solution",
-              "evidence_rigor": "momolitic application"
-            }
-          ]
-        }
-      ],
       "other_technique_ids": [
         1
+      ],
+      "source_ids": [
+        2
       ]
+    }
+  ],
+  "sources": [
+    {
+      "id": 1,
+      "title": "Automated Domain Modeling with Large Language Models: A Comparative Study",
+      "author": "Chen et al",
+      "doi": "https://doi.org/10.1109/MODELS58315.2023.00037",
+      "model_type_id": 2,
+      "effects": [
+        {
+          "description": "Whole approach quantitatively, but effect of model solution is not isolated",
+          "evidence_rigor": "momolitic application"
+        }
+      ],
+      "year": "2024"
+    },
+    {
+      "id": 2,
+      "title": "Leveraging machines to derive domain models from user stories",
+      "author": "Bragilovski et al.",
+      "doi": "https://doi.org/10.1007/s00766-025-00442-9",
+      "model_type_id": 2,
+      "effects": [
+        {
+          "description": "Whole approach quantitatively evaluated with IR metrics, effect not isolated to model solution",
+          "evidence_rigor": "momolitic application"
+        }
+      ],
+      "year": ""
     }
   ],
   "model_types": [
@@ -138,12 +144,6 @@
       "id": 8,
       "name": "Explicate LLM reasoning",
       "parent_id": 7
-    },
-    {
-      "id": 9,
-      "name": "tesdt",
-      "parent_id": null,
-      "root_order": 3
     }
   ],
   "evidence_rigor_values": [

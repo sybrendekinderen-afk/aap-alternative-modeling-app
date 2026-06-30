@@ -124,7 +124,7 @@
                     <li class="list-group-item kb-solution-list-item" data-solution-id="{{ solution.id }}" data-purpose-ids="{{ solution.modeling_purpose_ids|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-technique-ids="{{ solution.prompting_technique_ids|join(',') }}">
                       <div class="d-flex justify-content-between align-items-center gap-2">
                         <a href="#solution-{{ solution.id }}" class="fw-semibold text-decoration-none solution-select-link" data-solution-id="{{ solution.id }}">{{ solution.name }}</a>
-                        <span class="badge bg-secondary-subtle text-secondary-emphasis">{{ solution.sources|length }} source{% if solution.sources|length != 1 %}s{% endif %}</span>
+                        <span class="badge bg-secondary-subtle text-secondary-emphasis">{{ solution_source_lookup.get(solution.id, [])|length }} source{% if solution_source_lookup.get(solution.id, [])|length != 1 %}s{% endif %}</span>
                       </div>
                       {% if solution.modeling_purpose_ids %}
                         <div class="small text-muted mt-1">
@@ -206,11 +206,11 @@
             <div class="col-md-6">
               <h5 class="h6">Sources</h5>
               <ul class="list-group mb-3">
-                {% for source in solution.sources %}
+                {% for source in solution_source_lookup.get(solution.id, []) %}
                   <li class="list-group-item">
                     <div class="d-flex justify-content-between align-items-start">
                       <div>
-                        <b>{{ source.title }}</b> — {{ source.author }}
+                        <b>{{ source.title }}</b> — {{ source.author }}{% if source.year %} ({{ source.year }}){% endif %}
                         {% if source.model_type_id == 'agnostic' %}
                           <br><b>Model Type:</b> Model Type Agnostic
                         {% elif source.model_type_id %}
@@ -232,8 +232,8 @@
                         {% endif %}
                       </div>
                       <div>
-                        <a href="/edit_source/{{ solution.id }}/{{ source.id }}" class="btn btn-sm btn-outline-warning">Edit</a>
-                        <a href="/delete_source/{{ solution.id }}/{{ source.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                        <a href="/edit_source/{{ source.id }}" class="btn btn-sm btn-outline-warning">Edit</a>
+                        <a href="/delete_source/{{ source.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
                       </div>
                     </div>
                   </li>
@@ -241,66 +241,6 @@
                   <li class="list-group-item text-muted">No sources yet.</li>
                 {% endfor %}
               </ul>
-
-              <div class="mt-3 card subtle-panel">
-                <div class="card-header d-flex justify-content-between align-items-center py-2">
-                  <h6 class="mb-0">Add Source</h6>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#add-source-{{ solution.id }}" aria-expanded="false" aria-controls="add-source-{{ solution.id }}">Show</button>
-                </div>
-                <div class="collapse" id="add-source-{{ solution.id }}">
-                  <div class="card-body">
-                    <form method="post" action="/add_source/{{ solution.id }}">
-                      <input class="form-control mb-2" name="title" placeholder="Title" required>
-                      <input class="form-control mb-2" name="author" placeholder="Author">
-                      <select class="form-select mb-2" name="model_type_id">
-                        <option value="">-- Select shared model type --</option>
-                        <option value="agnostic">Model Type Agnostic</option>
-                        {% for model_type in model_types %}
-                          <option value="{{ model_type.id }}">{{ model_type.name }} ({{ model_type.notation }})</option>
-                        {% endfor %}
-                      </select>
-                      <div class="mb-2">
-                        <label class="form-label">Effects</label>
-                        <div id="effects-list-{{ solution.id }}"></div>
-                        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#effectModal-{{ solution.id }}">Add effect</button>
-                        <textarea class="form-control d-none" name="effects_text" id="effects-text-{{ solution.id }}"></textarea>
-                      </div>
-                      <input class="form-control mb-2" name="doi" placeholder="DOI">
-                      <button class="btn btn-success btn-sm">Add Source</button>
-                    </form>
-                  </div>
-                </div>
-              </div>
-
-              <div class="modal fade" id="effectModal-{{ solution.id }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog">
-                  <div class="modal-content">
-                    <div class="modal-header">
-                      <h5 class="modal-title">Add Effect</h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                      <div class="mb-3">
-                        <label class="form-label">Description</label>
-                        <input class="form-control" id="effect-description-{{ solution.id }}">
-                      </div>
-                      <div class="mb-3">
-                        <label class="form-label">Evidence Rigor</label>
-                        <input class="form-control" id="effect-evidence-{{ solution.id }}" list="evidence-rigor-options-{{ solution.id }}" autocomplete="off">
-                        <datalist id="evidence-rigor-options-{{ solution.id }}">
-                          {% for value in evidence_rigor_values %}
-                            <option value="{{ value }}"></option>
-                          {% endfor %}
-                        </datalist>
-                      </div>
-                    </div>
-                    <div class="modal-footer">
-                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                      <button type="button" class="btn btn-primary" onclick="addEffectToSource('{{ solution.id }}')">Add effect</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
             </div>
           </div>
@@ -356,6 +296,152 @@
                 </div>
                 <button class="btn btn-primary">Add Solution</button>
               </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4 primary-surface">
+          <div class="card-header d-flex justify-content-between align-items-center bg-primary text-white">
+            <h4 class="h6 mb-0">Sources</h4>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#add-source-panel" aria-expanded="false" aria-controls="add-source-panel">Show</button>
+          </div>
+          <div class="collapse" id="add-source-panel">
+            <div class="card-body">
+              <div class="card subtle-panel">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h4 class="h6 mb-0 text-muted">Add Source</h4>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#add-source-fields-panel" aria-expanded="false" aria-controls="add-source-fields-panel">Show</button>
+                </div>
+                <div class="collapse" id="add-source-fields-panel">
+                  <div class="card-body">
+                    <form method="post" action="/add_source">
+                      <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input class="form-control" name="title" placeholder="Source title" required>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Author</label>
+                        <input class="form-control" name="author" placeholder="Author">
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Year</label>
+                        <input class="form-control" name="year" placeholder="Year" inputmode="numeric" type="number" min="0" step="1">
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Related Modeling Solutions</label>
+                        <select class="form-select" name="solution_ids" multiple size="6" required>
+                          {% for solution in solutions %}
+                            <option value="{{ solution.id }}">{{ solution.name }}</option>
+                          {% endfor %}
+                        </select>
+                        <div class="form-text">Select one or more modeling solutions to link this source to.</div>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Model Type</label>
+                        <select class="form-select" name="model_type_id">
+                          <option value="">-- Select shared model type --</option>
+                          <option value="agnostic">Model Type Agnostic</option>
+                          {% for model_type in model_types %}
+                            <option value="{{ model_type.id }}">{{ model_type.name }}{% if model_type.notation %} ({{ model_type.notation }}){% endif %}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Effects</label>
+                        <div id="effects-list-kb-source"></div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#effectModal-kb-source">Add effect</button>
+                        <textarea class="form-control d-none" name="effects_text" id="effects-text-kb-source"></textarea>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">DOI</label>
+                        <input class="form-control" name="doi" placeholder="DOI">
+                      </div>
+                      <button class="btn btn-success">Add to Sources</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card mt-4 subtle-panel">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h4 class="h6 mb-0 text-muted">Manage Sources</h4>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#manage-sources-panel" aria-expanded="false" aria-controls="manage-sources-panel">Show</button>
+                </div>
+                <div class="collapse" id="manage-sources-panel">
+                  <div class="card-body">
+                  <ul class="list-group">
+                    {% for source in sources %}
+                      <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                          <div class="flex-grow-1">
+                            <div><b>{{ source.title }}</b> — {{ source.author }}{% if source.year %} ({{ source.year }}){% endif %}</div>
+                            {% if source.model_type_id == 'agnostic' %}
+                              <div class="small"><b>Model Type:</b> Model Type Agnostic</div>
+                            {% elif source.model_type_id %}
+                              {% set model_type = model_type_lookup[source.model_type_id] %}
+                              {% if model_type %}
+                                <div class="small"><b>Model Type:</b> {{ model_type.name }}{% if model_type.notation %} ({{ model_type.notation }}){% endif %}</div>
+                              {% endif %}
+                            {% endif %}
+                            {% if source.doi %}
+                              {% set doi_value = source.doi %}
+                              {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
+                              <div class="small">DOI: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a></div>
+                            {% endif %}
+                            <div class="small mt-1">
+                              <b>Linked Modeling Solutions:</b>
+                              {% if source_solution_lookup.get(source.id, []) %}
+                                {% for solution in source_solution_lookup.get(source.id, []) %}
+                                  <a href="#solution-{{ solution.id }}" class="badge bg-primary-subtle text-primary-emphasis text-decoration-none me-1">{{ solution.name }}</a>
+                                {% endfor %}
+                              {% else %}
+                                <span class="text-muted">None</span>
+                              {% endif %}
+                            </div>
+                          </div>
+                          <div class="d-flex gap-2">
+                            <a href="/edit_source/{{ source.id }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                            <a href="/delete_source/{{ source.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                          </div>
+                        </div>
+                      </li>
+                    {% else %}
+                      <li class="list-group-item text-muted">No sources yet.</li>
+                    {% endfor %}
+                  </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal fade" id="effectModal-kb-source" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Add Effect</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <input class="form-control" id="effect-description-kb-source">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Evidence Rigor</label>
+                  <input class="form-control" id="effect-evidence-kb-source" list="evidence-rigor-options-kb-source" autocomplete="off">
+                  <datalist id="evidence-rigor-options-kb-source">
+                    {% for value in evidence_rigor_values %}
+                      <option value="{{ value }}"></option>
+                    {% endfor %}
+                  </datalist>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addEffectToSource('kb-source')">Add effect</button>
+              </div>
             </div>
           </div>
         </div>

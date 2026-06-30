@@ -35,9 +35,15 @@
       </form>
     {% else %}
       <h2>Edit Source</h2>
-      <form method="post" action="/update_source/{{ solution.id }}/{{ source.id }}" id="edit-source-form">
+      <form method="post" action="/update_source/{{ source.id }}" id="edit-source-form">
         <input class="form-control mb-2" name="title" value="{{ source.title }}">
         <input class="form-control mb-2" name="author" value="{{ source.author }}">
+        <input class="form-control mb-2" name="year" value="{{ source.year }}" placeholder="Year" inputmode="numeric" type="number" min="0" step="1">
+        <select class="form-select mb-2" name="solution_ids" multiple size="6" required>
+          {% for solution in solutions %}
+            <option value="{{ solution.id }}" {% if solution.id in selected_solution_ids %}selected{% endif %}>{{ solution.name }}</option>
+          {% endfor %}
+        </select>
         <select class="form-select mb-2" name="model_type_id">
           <option value="">-- Select shared model type --</option>
           <option value="agnostic" {% if source.model_type_id == 'agnostic' %}selected{% endif %}>Model Type Agnostic</option>
