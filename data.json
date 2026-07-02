@@ -13,9 +13,7 @@
       ],
       "justification": "Make the model machine readable.",
       "other_technique_ids": [],
-      "source_ids": [
-        1
-      ]
+      "source_id": 1
     },
     {
       "id": 2,
@@ -30,9 +28,7 @@
       "other_technique_ids": [
         1
       ],
-      "source_ids": [
-        2
-      ]
+      "source_id": 2
     }
   ],
   "sources": [
@@ -41,13 +37,6 @@
       "title": "Automated Domain Modeling with Large Language Models: A Comparative Study",
       "author": "Chen et al",
       "doi": "https://doi.org/10.1109/MODELS58315.2023.00037",
-      "model_type_id": 2,
-      "effects": [
-        {
-          "description": "Whole approach quantitatively, but effect of model solution is not isolated",
-          "evidence_rigor": "momolitic application"
-        }
-      ],
       "year": "2024"
     },
     {
@@ -55,16 +44,11 @@
       "title": "Leveraging machines to derive domain models from user stories",
       "author": "Bragilovski et al.",
       "doi": "https://doi.org/10.1007/s00766-025-00442-9",
-      "model_type_id": 2,
-      "effects": [
-        {
-          "description": "Whole approach quantitatively evaluated with IR metrics, effect not isolated to model solution",
-          "evidence_rigor": "momolitic application"
-        }
-      ],
       "year": ""
     }
   ],
+  "effects": [],
+  "underlying_llms": [],
   "model_types": [
     {
       "id": 1,
@@ -105,45 +89,53 @@
     {
       "id": 1,
       "name": "Use machine readable models, for computer aided analysis",
-      "parent_id": 2
+      "parent_id": 2,
+      "model_type_id": null
     },
     {
       "id": 2,
       "name": "Establish desired model output format",
       "parent_id": null,
-      "root_order": 2
+      "root_order": 2,
+      "model_type_id": null
     },
     {
       "id": 3,
       "name": "Explore LLM modeling capabilities",
       "parent_id": null,
-      "root_order": 0
+      "root_order": 0,
+      "model_type_id": null
     },
     {
       "id": 4,
       "name": "Gain insight into modeling language familiarity",
-      "parent_id": 3
+      "parent_id": 3,
+      "model_type_id": null
     },
     {
       "id": 5,
       "name": "Gain insight into domain familiarity",
-      "parent_id": 3
+      "parent_id": 3,
+      "model_type_id": null
     },
     {
       "id": 6,
       "name": "Use models for human communication",
-      "parent_id": 2
+      "parent_id": 2,
+      "model_type_id": null
     },
     {
       "id": 7,
       "name": "Tweak quality of LLM output",
       "parent_id": null,
-      "root_order": 1
+      "root_order": 1,
+      "model_type_id": null
     },
     {
       "id": 8,
       "name": "Explicate LLM reasoning",
-      "parent_id": 7
+      "parent_id": 7,
+      "model_type_id": null
     }
   ],
   "evidence_rigor_values": [

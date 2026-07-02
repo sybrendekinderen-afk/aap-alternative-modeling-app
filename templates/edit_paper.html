@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <title>Edit Record</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    .effect-row { border: 1px solid #dee2e6; border-radius: .5rem; padding: .75rem; margin-bottom: .5rem; }
-  </style>
 </head>
 <body>
   <div class="container mt-4">
@@ -14,6 +11,11 @@
       <h2>Edit</h2>
       <form method="post" action="/update_solution/{{ solution.id }}">
         <input class="form-control mb-2" name="name" value="{{ solution.name }}">
+        <select class="form-select mb-2" name="source_id" required>
+          {% for source in sources %}
+            <option value="{{ source.id }}" {% if source.id == solution.source_id %}selected{% endif %}>{{ source.title }}{% if source.author %} - {{ source.author }}{% endif %}</option>
+          {% endfor %}
+        </select>
         <select class="form-select mb-2" name="prompting_technique_ids" multiple size="5">
           {% for technique in prompting_techniques %}
             <option value="{{ technique.id }}" {% if technique.id in solution.prompting_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
@@ -33,137 +35,58 @@
         <button class="btn btn-primary">Save</button>
         <a href="/" class="btn btn-secondary">Cancel</a>
       </form>
-    {% else %}
+    {% elif mode == "source" %}
       <h2>Edit Source</h2>
-      <form method="post" action="/update_source/{{ source.id }}" id="edit-source-form">
+      <form method="post" action="/update_source/{{ source.id }}">
         <input class="form-control mb-2" name="title" value="{{ source.title }}">
         <input class="form-control mb-2" name="author" value="{{ source.author }}">
         <input class="form-control mb-2" name="year" value="{{ source.year }}" placeholder="Year" inputmode="numeric" type="number" min="0" step="1">
-        <select class="form-select mb-2" name="solution_ids" multiple size="6" required>
-          {% for solution in solutions %}
-            <option value="{{ solution.id }}" {% if solution.id in selected_solution_ids %}selected{% endif %}>{{ solution.name }}</option>
-          {% endfor %}
-        </select>
-        <select class="form-select mb-2" name="model_type_id">
-          <option value="">-- Select shared model type --</option>
-          <option value="agnostic" {% if source.model_type_id == 'agnostic' %}selected{% endif %}>Model Type Agnostic</option>
-          {% for model_type in model_types %}
-            <option value="{{ model_type.id }}" {% if source.model_type_id == model_type.id %}selected{% endif %}>{{ model_type.name }} ({{ model_type.notation }})</option>
-          {% endfor %}
-        </select>
-        <div class="mb-2">
-          <label class="form-label">Effects</label>
-          <div id="effects-list-edit" class="d-flex flex-column gap-2 mb-2">
-            {% for effect in source.effects %}
-              <div class="effect-row effect-row-edit">
-                <div class="row g-2 align-items-end">
-                  <div class="col-md-8">
-                    <label class="form-label form-label-sm mb-1">Description</label>
-                    <input type="text" class="form-control form-control-sm effect-description" value="{{ effect.description }}">
-                  </div>
-                  <div class="col-md-3">
-                    <label class="form-label form-label-sm mb-1">Evidence Rigor</label>
-                    <input type="text" class="form-control form-control-sm effect-evidence" list="evidence-rigor-options-edit" value="{{ effect.evidence_rigor }}" autocomplete="off">
-                  </div>
-                  <div class="col-md-1 d-grid">
-                    <button type="button" class="btn btn-sm btn-outline-danger remove-effect-row" title="Remove effect">X</button>
-                  </div>
-                </div>
-              </div>
-            {% endfor %}
-          </div>
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="add-effect-row-edit">Add effect</button>
-          <textarea class="form-control d-none" name="effects_text" id="effects-text-edit"></textarea>
-        </div>
-        <input class="form-control mb-2" name="doi" value="{{ source.doi }}">
+        <input class="form-control mb-2" name="doi" value="{{ source.doi }}" placeholder="DOI">
         <button class="btn btn-primary">Save</button>
         <a href="/" class="btn btn-secondary">Cancel</a>
       </form>
-      <datalist id="evidence-rigor-options-edit">
+    {% elif mode == "effect" %}
+      <h2>Edit Effect</h2>
+      <form method="post" action="/update_effect/{{ effect.id }}">
+        <textarea class="form-control mb-2" name="description" rows="3" required>{{ effect.description }}</textarea>
+        <input class="form-control mb-2" name="evidence_rigor" value="{{ effect.evidence_rigor }}" list="evidence-rigor-options" autocomplete="off" placeholder="Evidence rigor">
+        <select class="form-select mb-2" name="solution_id">
+          <option value="">No linked solution</option>
+          {% for solution in solutions %}
+            <option value="{{ solution.id }}" {% if effect.solution_id == solution.id %}selected{% endif %}>{{ solution.name }}</option>
+          {% endfor %}
+        </select>
+        <select class="form-select mb-2" name="prompting_technique_id">
+          <option value="">No prompting technique</option>
+          {% for technique in prompting_techniques %}
+            <option value="{{ technique.id }}" {% if effect.prompting_technique_id == technique.id %}selected{% endif %}>{{ technique.name }}</option>
+          {% endfor %}
+        </select>
+        <select class="form-select mb-2" name="other_technique_id">
+          <option value="">No other technique</option>
+          {% for technique in other_techniques %}
+            <option value="{{ technique.id }}" {% if effect.other_technique_id == technique.id %}selected{% endif %}>{{ technique.name }}</option>
+          {% endfor %}
+        </select>
+        <select class="form-select mb-2" name="underlying_llm_id">
+          <option value="">No underlying LLM</option>
+          {% for llm in underlying_llms %}
+            <option value="{{ llm.id }}" {% if effect.underlying_llm_id == llm.id %}selected{% endif %}>{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-primary">Save</button>
+        <a href="/" class="btn btn-secondary">Cancel</a>
+      </form>
+      <datalist id="evidence-rigor-options">
         {% for value in evidence_rigor_values %}
           <option value="{{ value }}"></option>
         {% endfor %}
       </datalist>
+    {% else %}
+      <p class="text-muted">Unknown edit mode.</p>
+      <a href="/" class="btn btn-secondary">Back</a>
     {% endif %}
   </div>
-
-  <script>
-    function createEditEffectRow(descriptionValue, evidenceValue) {
-      const row = document.createElement('div');
-      row.className = 'effect-row effect-row-edit';
-      row.innerHTML =
-        '<div class="row g-2 align-items-end">' +
-          '<div class="col-md-8">' +
-            '<label class="form-label form-label-sm mb-1">Description</label>' +
-            '<input type="text" class="form-control form-control-sm effect-description">' +
-          '</div>' +
-          '<div class="col-md-3">' +
-            '<label class="form-label form-label-sm mb-1">Evidence Rigor</label>' +
-            '<input type="text" class="form-control form-control-sm effect-evidence" list="evidence-rigor-options-edit" autocomplete="off">' +
-          '</div>' +
-          '<div class="col-md-1 d-grid">' +
-            '<button type="button" class="btn btn-sm btn-outline-danger remove-effect-row" title="Remove effect">X</button>' +
-          '</div>' +
-        '</div>';
-
-      row.querySelector('.effect-description').value = descriptionValue || '';
-      row.querySelector('.effect-evidence').value = evidenceValue || '';
-      return row;
-    }
-
-    function syncEditEffectsTextarea() {
-      const hidden = document.getElementById('effects-text-edit');
-      const list = document.getElementById('effects-list-edit');
-      if (!hidden || !list) return;
-
-      const lines = [];
-      list.querySelectorAll('.effect-row-edit').forEach(function (row) {
-        const description = (row.querySelector('.effect-description') || {}).value;
-        const evidence = (row.querySelector('.effect-evidence') || {}).value;
-        const d = (description || '').trim();
-        const e = (evidence || '').trim();
-        if (d || e) {
-          lines.push(d + ' | ' + e);
-        }
-      });
-
-      hidden.value = lines.join('\n');
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-      const list = document.getElementById('effects-list-edit');
-      const addButton = document.getElementById('add-effect-row-edit');
-      const form = document.getElementById('edit-source-form');
-      if (!list || !addButton || !form) return;
-
-      addButton.addEventListener('click', function () {
-        list.appendChild(createEditEffectRow('', ''));
-        syncEditEffectsTextarea();
-      });
-
-      list.addEventListener('click', function (event) {
-        if (event.target.classList.contains('remove-effect-row')) {
-          const row = event.target.closest('.effect-row-edit');
-          if (row) {
-            row.remove();
-            syncEditEffectsTextarea();
-          }
-        }
-      });
-
-      list.addEventListener('input', function (event) {
-        if (event.target.classList.contains('effect-description') || event.target.classList.contains('effect-evidence')) {
-          syncEditEffectsTextarea();
-        }
-      });
-
-      form.addEventListener('submit', function () {
-        syncEditEffectsTextarea();
-      });
-
-      syncEditEffectsTextarea();
-    });
-  </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -220,6 +220,8 @@ def load_data():
         return {
             "solutions": [],
             "sources": [],
+            "effects": [],
+            "underlying_llms": [],
             "model_types": [],
             "prompting_techniques": [],
             "other_techniques": [],
@@ -231,12 +233,26 @@ def load_data():
         store = {
             "solutions": data.get("solutions", []),
             "sources": data.get("sources", []),
+            "effects": data.get("effects", []),
+            "underlying_llms": data.get("underlying_llms", []),
             "model_types": data.get("model_types", []),
             "prompting_techniques": data.get("prompting_techniques", []),
             "other_techniques": data.get("other_techniques", []),
             "modeling_purposes": data.get("modeling_purposes", []),
             "evidence_rigor_values": data.get("evidence_rigor_values", DEFAULT_EVIDENCE_RIGOR_VALUES)
         }
+
+        normalized_underlying_llms = []
+        for llm in store.get("underlying_llms", []):
+            if not isinstance(llm, dict):
+                continue
+            try:
+                llm_id = int(llm.get("id"))
+            except (TypeError, ValueError):
+                llm_id = get_next_underlying_llm_id(normalized_underlying_llms)
+            llm["id"] = llm_id
+            normalized_underlying_llms.append(normalize_underlying_llm_record(llm))
+        store["underlying_llms"] = normalized_underlying_llms
 
         normalized_sources = []
         for source in store.get("sources", []):
@@ -266,7 +282,14 @@ def load_data():
                 store["sources"].append(migrated_source)
                 normalized_source_ids.append(migrated_source["id"])
 
-            solution["source_ids"] = list(dict.fromkeys(normalized_source_ids))
+            unique_source_ids = list(dict.fromkeys(normalized_source_ids))
+            existing_source_id = solution.get("source_id")
+            try:
+                existing_source_id = int(existing_source_id)
+            except (TypeError, ValueError):
+                existing_source_id = None
+            solution["source_id"] = existing_source_id if existing_source_id is not None else (unique_source_ids[0] if unique_source_ids else None)
+            solution.pop("source_ids", None)
             solution.pop("sources", None)
 
             normalized_other_technique_ids = []
@@ -277,19 +300,109 @@ def load_data():
                     continue
             solution["other_technique_ids"] = list(dict.fromkeys(normalized_other_technique_ids))
 
+        valid_source_ids = {source.get("id") for source in store.get("sources", [])}
+        fallback_source_id = next(iter(valid_source_ids), None)
+        for solution in store.get("solutions", []):
+            if solution.get("source_id") not in valid_source_ids:
+                solution["source_id"] = fallback_source_id
+
         for modeling_purpose in store.get("modeling_purposes", []):
             modeling_purpose.pop("description", None)
             parent_id = modeling_purpose.get("parent_id")
             modeling_purpose["parent_id"] = int(parent_id) if parent_id not in [None, ""] else None
+            model_type_id = modeling_purpose.get("model_type_id")
+            try:
+                modeling_purpose["model_type_id"] = int(model_type_id)
+            except (TypeError, ValueError):
+                modeling_purpose["model_type_id"] = None
+
+        normalized_effects = []
+        for effect in store.get("effects", []):
+            if not isinstance(effect, dict):
+                continue
+            normalized_effects.append(normalize_effect_record(effect))
+
+        next_effect_id = get_next_effect_id(normalized_effects)
+        for source in store.get("sources", []):
+            for effect in source.pop("effects", []):
+                if not isinstance(effect, dict):
+                    continue
+                effect_payload = normalize_effect_record({
+                    "id": next_effect_id,
+                    "description": effect.get("description", ""),
+                    "evidence_rigor": effect.get("evidence_rigor", ""),
+                    "solution_id": None,
+                    "prompting_technique_id": None,
+                    "other_technique_id": None,
+                    "underlying_llm_id": None,
+                })
+                normalized_effects.append(effect_payload)
+                next_effect_id += 1
+
+        store["effects"] = normalized_effects
+
+        removed_prompting_ids = {
+            tech.get("id")
+            for tech in store.get("prompting_techniques", [])
+            if str(tech.get("name", "")).strip().lower() == "unspecified"
+        }
+        removed_other_ids = {
+            tech.get("id")
+            for tech in store.get("other_techniques", [])
+            if str(tech.get("name", "")).strip().lower() == "unspecified"
+        }
+
+        store["prompting_techniques"] = [
+            tech for tech in store.get("prompting_techniques", [])
+            if tech.get("id") not in removed_prompting_ids
+        ]
+        store["other_techniques"] = [
+            tech for tech in store.get("other_techniques", [])
+            if tech.get("id") not in removed_other_ids
+        ]
+
+        for solution in store.get("solutions", []):
+            solution["prompting_technique_ids"] = [
+                tid for tid in solution.get("prompting_technique_ids", [])
+                if tid not in removed_prompting_ids
+            ]
+            solution["other_technique_ids"] = [
+                tid for tid in solution.get("other_technique_ids", [])
+                if tid not in removed_other_ids
+            ]
+
+        for effect in store.get("effects", []):
+            if effect.get("prompting_technique_id") in removed_prompting_ids:
+                effect["prompting_technique_id"] = None
+            if effect.get("other_technique_id") in removed_other_ids:
+                effect["other_technique_id"] = None
+
+        valid_model_type_ids = {model_type.get("id") for model_type in store.get("model_types", [])}
+        for modeling_purpose in store.get("modeling_purposes", []):
+            if modeling_purpose.get("model_type_id") not in valid_model_type_ids:
+                modeling_purpose["model_type_id"] = None
+
+        valid_solution_ids = {solution.get("id") for solution in store.get("solutions", [])}
+        valid_prompting_ids = {tech.get("id") for tech in store.get("prompting_techniques", [])}
+        valid_other_ids = {tech.get("id") for tech in store.get("other_techniques", [])}
+        valid_underlying_llm_ids = {llm.get("id") for llm in store.get("underlying_llms", [])}
+        for effect in store.get("effects", []):
+            if effect.get("solution_id") not in valid_solution_ids:
+                effect["solution_id"] = None
+            if effect.get("prompting_technique_id") not in valid_prompting_ids:
+                effect["prompting_technique_id"] = None
+            if effect.get("other_technique_id") not in valid_other_ids:
+                effect["other_technique_id"] = None
+            if effect.get("underlying_llm_id") not in valid_underlying_llm_ids:
+                effect["underlying_llm_id"] = None
 
         normalize_root_purpose_order(store.get("modeling_purposes", []))
 
         evidence_values = list(store.get("evidence_rigor_values", []))
-        for source in store.get("sources", []):
-            for effect in source.get("effects", []):
-                value = effect.get("evidence_rigor", "").strip()
-                if value:
-                    evidence_values.append(value)
+        for effect in store.get("effects", []):
+            value = effect.get("evidence_rigor", "").strip()
+            if value:
+                evidence_values.append(value)
         store["evidence_rigor_values"] = list(dict.fromkeys([value for value in evidence_values if value]))
 
         return store
@@ -298,6 +411,8 @@ def load_data():
         return {
             "solutions": data,
             "sources": [],
+            "effects": [],
+            "underlying_llms": [],
             "model_types": [],
             "prompting_techniques": [],
             "other_techniques": [],
@@ -308,6 +423,8 @@ def load_data():
     return {
         "solutions": [],
         "sources": [],
+        "effects": [],
+        "underlying_llms": [],
         "model_types": [],
         "prompting_techniques": [],
         "other_techniques": [],
@@ -367,6 +484,10 @@ def get_other_technique_lookup(other_techniques):
     return {technique["id"]: technique for technique in other_techniques}
 
 
+def get_underlying_llm_lookup(underlying_llms):
+    return {llm["id"]: llm for llm in underlying_llms}
+
+
 def get_modeling_purpose_lookup(modeling_purposes):
     return {purpose["id"]: purpose for purpose in modeling_purposes}
 
@@ -384,36 +505,20 @@ def get_next_source_id(sources):
     return max([source.get("id", 0) for source in sources], default=0) + 1
 
 
+def get_next_effect_id(effects):
+    return max([effect.get("id", 0) for effect in effects], default=0) + 1
+
+
+def get_next_underlying_llm_id(underlying_llms):
+    return max([llm.get("id", 0) for llm in underlying_llms], default=0) + 1
+
+
 def normalize_source_record(source):
-    if "effects" not in source:
-        old_effect = source.get("effect")
-        if isinstance(old_effect, dict):
-            source["effects"] = [{
-                "description": old_effect.get("description", ""),
-                "evidence_rigor": old_effect.get("evidence_rigor", "")
-            }]
-        else:
-            source["effects"] = []
-
-    normalized_effects = []
-    for effect in source.get("effects", []):
-        if not isinstance(effect, dict):
-            continue
-        description = str(effect.get("description", "") or "").strip()
-        legacy_name = str(effect.get("name", "") or "").strip()
-        evidence_rigor = str(effect.get("evidence_rigor", "") or "").strip()
-        if not description and legacy_name:
-            description = legacy_name
-        if description or evidence_rigor:
-            normalized_effects.append({
-                "description": description,
-                "evidence_rigor": evidence_rigor
-            })
-
-    source["effects"] = normalized_effects
+    source.pop("effects", None)
     source.pop("effect", None)
     source.pop("effect_ids", None)
     source.pop("link", None)
+    source.pop("model_type_id", None)
     source["title"] = str(source.get("title", "") or "")
     source["author"] = str(source.get("author", "") or "")
     source["year"] = normalize_source_year(source.get("year", ""))
@@ -421,16 +526,68 @@ def normalize_source_record(source):
     return source
 
 
+def normalize_effect_record(effect):
+    try:
+        effect_id = int(effect.get("id"))
+    except (TypeError, ValueError):
+        effect_id = 0
+
+    solution_id = effect.get("solution_id")
+    try:
+        solution_id = int(solution_id)
+    except (TypeError, ValueError):
+        solution_id = None
+
+    prompting_technique_id = effect.get("prompting_technique_id")
+    try:
+        prompting_technique_id = int(prompting_technique_id)
+    except (TypeError, ValueError):
+        prompting_technique_id = None
+
+    other_technique_id = effect.get("other_technique_id")
+    try:
+        other_technique_id = int(other_technique_id)
+    except (TypeError, ValueError):
+        other_technique_id = None
+
+    underlying_llm_id = effect.get("underlying_llm_id")
+    try:
+        underlying_llm_id = int(underlying_llm_id)
+    except (TypeError, ValueError):
+        underlying_llm_id = None
+
+    return {
+        "id": effect_id,
+        "description": str(effect.get("description", "") or "").strip(),
+        "evidence_rigor": str(effect.get("evidence_rigor", "") or "").strip(),
+        "solution_id": solution_id,
+        "prompting_technique_id": prompting_technique_id,
+        "other_technique_id": other_technique_id,
+        "underlying_llm_id": underlying_llm_id,
+    }
+
+
+def normalize_underlying_llm_record(llm):
+    return {
+        "id": int(llm.get("id", 0)),
+        "name": str(llm.get("name", "") or "").strip(),
+        "version": str(llm.get("version", "") or "").strip(),
+    }
+
+
+def ensure_default_techniques(store):
+    return store
+
+
 def get_solution_source_lookup(solutions, sources):
     source_lookup = {source["id"]: source for source in sources}
     lookup = {}
     for solution in solutions:
-        resolved_sources = []
-        for source_id in solution.get("source_ids", []):
-            source = source_lookup.get(source_id)
-            if source:
-                resolved_sources.append(source)
-        lookup[solution.get("id")] = resolved_sources
+        resolved_source = None
+        source_id = solution.get("source_id")
+        if source_id is not None:
+            resolved_source = source_lookup.get(source_id)
+        lookup[solution.get("id")] = resolved_source
     return lookup
 
 
@@ -441,7 +598,7 @@ def get_source_solution_lookup(solutions, sources):
         linked_solutions = []
         source_id = source.get("id")
         for solution in solutions:
-            if source_id in solution.get("source_ids", []):
+            if source_id == solution.get("source_id"):
                 resolved = solution_lookup.get(solution.get("id"))
                 if resolved:
                     linked_solutions.append(resolved)
@@ -449,20 +606,30 @@ def get_source_solution_lookup(solutions, sources):
     return lookup
 
 
-def get_solution_model_type_lookup(solutions, sources):
-    source_lookup = {source["id"]: source for source in sources}
+def get_solution_model_type_lookup(solutions, modeling_purposes):
+    purpose_lookup = {purpose["id"]: purpose for purpose in modeling_purposes}
     lookup = {}
     for solution in solutions:
         model_type_ids = []
-        for source_id in solution.get("source_ids", []):
-            source = source_lookup.get(source_id)
-            if not source:
+        for purpose_id in solution.get("modeling_purpose_ids", []):
+            purpose = purpose_lookup.get(purpose_id)
+            if not purpose:
                 continue
-            model_type_id = source.get("model_type_id")
+            model_type_id = purpose.get("model_type_id")
             if model_type_id in [None, ""]:
                 continue
             model_type_ids.append(str(model_type_id))
         lookup[solution.get("id")] = list(dict.fromkeys(model_type_ids))
+    return lookup
+
+
+def get_solution_effect_lookup(effects):
+    lookup = {}
+    for effect in effects:
+        solution_id = effect.get("solution_id")
+        if solution_id is None:
+            continue
+        lookup.setdefault(solution_id, []).append(effect)
     return lookup
 
 
@@ -554,23 +721,46 @@ def normalize_source_year(raw_year):
     return ""
 
 
-def parse_effects(raw_text):
-    effects = []
-    for line in raw_text.splitlines():
-        line = line.strip()
-        if not line:
+def parse_optional_int(raw_value):
+    if raw_value is None:
+        return None
+    text = str(raw_value).strip()
+    if not text:
+        return None
+    try:
+        return int(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_int_list(raw_values):
+    values = []
+    for raw in raw_values:
+        parsed = parse_optional_int(raw)
+        if parsed is not None:
+            values.append(parsed)
+    return values
+
+
+def parse_effects_payload(raw_payload):
+    if not raw_payload:
+        return []
+    try:
+        payload = json.loads(raw_payload)
+    except Exception:
+        return []
+
+    parsed_effects = []
+    if not isinstance(payload, list):
+        return parsed_effects
+
+    for item in payload:
+        if not isinstance(item, dict):
             continue
-        parts = [part.strip() for part in line.split("|")]
-        if len(parts) == 1:
-            description, evidence_rigor = parts[0], ""
-        else:
-            description, evidence_rigor = parts[0], parts[1]
-        if description or evidence_rigor:
-            effects.append({
-                "description": description,
-                "evidence_rigor": evidence_rigor
-            })
-    return effects
+        normalized = normalize_effect_record(item)
+        if normalized.get("description"):
+            parsed_effects.append(normalized)
+    return parsed_effects
 
 
 def update_evidence_rigor_values(store, effects):
@@ -587,6 +777,8 @@ def home():
     store = load_data()
     solutions = store.get("solutions", [])
     sources = store.get("sources", [])
+    effects = store.get("effects", [])
+    underlying_llms = store.get("underlying_llms", [])
     model_types = store.get("model_types", [])
     prompting_techniques = store.get("prompting_techniques", [])
     other_techniques = store.get("other_techniques", [])
@@ -595,15 +787,19 @@ def home():
         "index.html",
         solutions=solutions,
         sources=sources,
+        effects=effects,
+        underlying_llms=underlying_llms,
         solution_source_lookup=get_solution_source_lookup(solutions, sources),
+        solution_effect_lookup=get_solution_effect_lookup(effects),
         source_solution_lookup=get_source_solution_lookup(solutions, sources),
-        solution_model_type_lookup=get_solution_model_type_lookup(solutions, sources),
+        solution_model_type_lookup=get_solution_model_type_lookup(solutions, modeling_purposes),
         model_types=model_types,
         model_type_lookup=get_model_type_lookup(model_types),
         prompting_techniques=prompting_techniques,
         prompting_technique_lookup=get_prompting_technique_lookup(prompting_techniques),
         other_techniques=other_techniques,
         other_technique_lookup=get_other_technique_lookup(other_techniques),
+        underlying_llm_lookup=get_underlying_llm_lookup(underlying_llms),
         modeling_purposes=modeling_purposes,
         modeling_purpose_lookup=get_modeling_purpose_lookup(modeling_purposes),
         modeling_purpose_tree=build_modeling_purpose_tree(modeling_purposes),
@@ -616,21 +812,29 @@ def home():
 def add_solution():
     store = load_data()
     solutions = store.get("solutions", [])
+    sources = store.get("sources", [])
 
     next_id = max([s["id"] for s in solutions], default=0) + 1
 
-    prompting_technique_ids = request.form.getlist("prompting_technique_ids")
-    other_technique_ids = request.form.getlist("other_technique_ids")
-    modeling_purpose_ids = request.form.getlist("modeling_purpose_ids")
+    source_id = parse_optional_int(request.form.get("source_id", ""))
+    if source_id is None:
+        return redirect("/")
+
+    if not any(source.get("id") == source_id for source in sources):
+        return redirect("/")
+
+    prompting_technique_ids = parse_int_list(request.form.getlist("prompting_technique_ids"))
+    other_technique_ids = parse_int_list(request.form.getlist("other_technique_ids"))
+    modeling_purpose_ids = parse_int_list(request.form.getlist("modeling_purpose_ids"))
 
     solutions.append({
         "id": next_id,
         "name": request.form["name"],
-        "prompting_technique_ids": [int(pid) for pid in prompting_technique_ids if pid],
-        "other_technique_ids": [int(tid) for tid in other_technique_ids if tid],
-        "modeling_purpose_ids": [int(pid) for pid in modeling_purpose_ids if pid],
+        "prompting_technique_ids": prompting_technique_ids,
+        "other_technique_ids": other_technique_ids,
+        "modeling_purpose_ids": modeling_purpose_ids,
         "justification": request.form.get("justification", ""),
-        "source_ids": []
+        "source_id": source_id
     })
 
     store["solutions"] = solutions
@@ -642,17 +846,20 @@ def add_solution():
 def add_modeling_purpose():
     store = load_data()
     name = request.form.get("modeling_purpose_name", "").strip()
-    parent_id = request.form.get("parent_id", "").strip()
+    parent_id = parse_optional_int(request.form.get("parent_id", ""))
+    model_type_id = parse_optional_int(request.form.get("model_type_id", ""))
 
     if name:
         modeling_purposes = store.get("modeling_purposes", [])
-        parent_value = int(parent_id) if parent_id else None
+        parent_value = parent_id
+        model_type_value = model_type_id
         if is_valid_modeling_purpose_parent(None, parent_value, modeling_purposes):
             new_root_order = len([mp for mp in modeling_purposes if mp.get("parent_id") is None]) if parent_value is None else None
             modeling_purposes.append({
                 "id": max([mp["id"] for mp in modeling_purposes], default=0) + 1,
                 "name": name,
                 "parent_id": parent_value,
+                "model_type_id": model_type_value,
                 "root_order": new_root_order
             })
             normalize_root_purpose_order(modeling_purposes)
@@ -666,13 +873,14 @@ def add_modeling_purpose():
 def update_modeling_purpose(modeling_purpose_id):
     store = load_data()
     modeling_purposes = store.get("modeling_purposes", [])
-    parent_id = request.form.get("parent_id", "").strip()
-    parent_value = int(parent_id) if parent_id else None
+    parent_value = parse_optional_int(request.form.get("parent_id", ""))
+    model_type_value = parse_optional_int(request.form.get("model_type_id", ""))
 
     for modeling_purpose in modeling_purposes:
         if modeling_purpose["id"] == modeling_purpose_id:
             previous_parent_id = modeling_purpose.get("parent_id")
             modeling_purpose["name"] = request.form.get("modeling_purpose_name", modeling_purpose["name"]).strip()
+            modeling_purpose["model_type_id"] = model_type_value
             if is_valid_modeling_purpose_parent(modeling_purpose_id, parent_value, modeling_purposes):
                 modeling_purpose["parent_id"] = parent_value
                 if previous_parent_id is None and parent_value is not None:
@@ -779,15 +987,9 @@ def delete_model_type(model_type_id):
     store = load_data()
     model_types = store.get("model_types", [])
     store["model_types"] = [mt for mt in model_types if mt["id"] != model_type_id]
-    sources = store.get("sources", [])
-    removed_source_ids = {source["id"] for source in sources if source.get("model_type_id") == model_type_id}
-    store["sources"] = [source for source in sources if source.get("model_type_id") != model_type_id]
-
-    for solution in store.get("solutions", []):
-        solution["source_ids"] = [
-            source_id for source_id in solution.get("source_ids", [])
-            if source_id not in removed_source_ids
-        ]
+    for modeling_purpose in store.get("modeling_purposes", []):
+        if modeling_purpose.get("model_type_id") == model_type_id:
+            modeling_purpose["model_type_id"] = None
 
     save_data(store)
     return redirect("/")
@@ -835,6 +1037,10 @@ def delete_prompting_technique(prompting_technique_id):
             if pid != prompting_technique_id
         ]
 
+    for effect in store.get("effects", []):
+        if effect.get("prompting_technique_id") == prompting_technique_id:
+            effect["prompting_technique_id"] = None
+
     save_data(store)
     return redirect("/")
 
@@ -881,6 +1087,64 @@ def delete_other_technique(other_technique_id):
             if tid != other_technique_id
         ]
 
+    for effect in store.get("effects", []):
+        if effect.get("other_technique_id") == other_technique_id:
+            effect["other_technique_id"] = None
+
+    save_data(store)
+    return redirect("/")
+
+
+@app.route("/add_underlying_llm", methods=["POST"])
+def add_underlying_llm():
+    store = load_data()
+    underlying_llms = store.get("underlying_llms", [])
+    name = request.form.get("underlying_llm_name", "").strip()
+    version = request.form.get("underlying_llm_version", "").strip()
+    if name:
+        existing = next(
+            (
+                llm for llm in underlying_llms
+                if llm.get("name", "").strip().lower() == name.lower()
+                and llm.get("version", "").strip() == version
+            ),
+            None,
+        )
+        if not existing:
+            underlying_llms.append({
+                "id": get_next_underlying_llm_id(underlying_llms),
+                "name": name,
+                "version": version,
+            })
+            store["underlying_llms"] = underlying_llms
+            save_data(store)
+    return redirect("/")
+
+
+@app.route("/update_underlying_llm/<int:underlying_llm_id>", methods=["POST"])
+def update_underlying_llm(underlying_llm_id):
+    store = load_data()
+    underlying_llms = store.get("underlying_llms", [])
+    for llm in underlying_llms:
+        if llm.get("id") == underlying_llm_id:
+            llm["name"] = request.form.get("underlying_llm_name", llm.get("name", "")).strip()
+            llm["version"] = request.form.get("underlying_llm_version", llm.get("version", "")).strip()
+            break
+    store["underlying_llms"] = underlying_llms
+    save_data(store)
+    return redirect("/")
+
+
+@app.route("/delete_underlying_llm/<int:underlying_llm_id>")
+def delete_underlying_llm(underlying_llm_id):
+    store = load_data()
+    store["underlying_llms"] = [
+        llm for llm in store.get("underlying_llms", [])
+        if llm.get("id") != underlying_llm_id
+    ]
+    for effect in store.get("effects", []):
+        if effect.get("underlying_llm_id") == underlying_llm_id:
+            effect["underlying_llm_id"] = None
     save_data(store)
     return redirect("/")
 
@@ -895,6 +1159,7 @@ def edit_solution(solution_id):
         "edit_paper.html",
         solution=solution,
         mode="solution",
+        sources=store.get("sources", []),
         prompting_techniques=store.get("prompting_techniques", []),
         other_techniques=store.get("other_techniques", []),
         modeling_purposes=store.get("modeling_purposes", [])
@@ -907,12 +1172,16 @@ def update_solution(solution_id):
     solution = find_solution(store.get("solutions", []), solution_id)
     if solution:
         solution["name"] = request.form.get("name", solution["name"])
-        prompting_technique_ids = request.form.getlist("prompting_technique_ids")
-        other_technique_ids = request.form.getlist("other_technique_ids")
-        modeling_purpose_ids = request.form.getlist("modeling_purpose_ids")
-        solution["prompting_technique_ids"] = [int(pid) for pid in prompting_technique_ids if pid]
-        solution["other_technique_ids"] = [int(tid) for tid in other_technique_ids if tid]
-        solution["modeling_purpose_ids"] = [int(pid) for pid in modeling_purpose_ids if pid]
+        source_id = parse_optional_int(request.form.get("source_id", ""))
+        source_exists = any(source.get("id") == source_id for source in store.get("sources", []))
+        prompting_technique_ids = parse_int_list(request.form.getlist("prompting_technique_ids"))
+        other_technique_ids = parse_int_list(request.form.getlist("other_technique_ids"))
+        modeling_purpose_ids = parse_int_list(request.form.getlist("modeling_purpose_ids"))
+        if source_exists:
+            solution["source_id"] = source_id
+        solution["prompting_technique_ids"] = prompting_technique_ids
+        solution["other_technique_ids"] = other_technique_ids
+        solution["modeling_purpose_ids"] = modeling_purpose_ids
         solution["justification"] = request.form.get("justification", solution["justification"])
         save_data(store)
     return redirect("/")
@@ -921,45 +1190,18 @@ def update_solution(solution_id):
 @app.route("/add_source", methods=["POST"])
 def add_source():
     store = load_data()
-    solutions = store.get("solutions", [])
     sources = store.get("sources", [])
-    model_types = store.get("model_types", [])
-
-    selected_solution_ids = []
-    for raw_solution_id in request.form.getlist("solution_ids"):
-        try:
-            selected_solution_ids.append(int(raw_solution_id))
-        except (TypeError, ValueError):
-            continue
-    selected_solution_ids = list(dict.fromkeys(selected_solution_ids))
-
-    model_type_id = request.form.get("model_type_id", "").strip()
-    effects_text = request.form.get("effects_text", "")
-
-    resolved_model_type_value = resolve_model_type_value(model_type_id, model_types)
-    parsed_effects = parse_effects(effects_text)
-    update_evidence_rigor_values(store, parsed_effects)
 
     new_source = {
         "id": get_next_source_id(sources),
         "title": request.form.get("title", ""),
         "author": request.form.get("author", ""),
         "year": normalize_source_year(request.form.get("year", "")),
-        "doi": request.form.get("doi", ""),
-        "model_type_id": resolved_model_type_value,
-        "effects": parsed_effects
+        "doi": request.form.get("doi", "")
     }
     sources.append(new_source)
 
-    for solution in solutions:
-        if solution["id"] in selected_solution_ids:
-            source_ids = solution.get("source_ids", [])
-            source_ids.append(new_source["id"])
-            solution["source_ids"] = list(dict.fromkeys(source_ids))
-
-    store["solutions"] = solutions
     store["sources"] = sources
-    store["model_types"] = model_types
     save_data(store)
     return redirect("/")
 
@@ -968,25 +1210,14 @@ def add_source():
 @app.route("/edit_source/<int:solution_id>/<int:source_id>")
 def edit_source(source_id, solution_id=None):
     store = load_data()
-    solutions = store.get("solutions", [])
     source = next((s for s in store.get("sources", []) if s["id"] == source_id), None)
     if not source:
         return redirect("/")
-
-    selected_solution_ids = [
-        solution["id"] for solution in solutions
-        if source_id in solution.get("source_ids", [])
-    ]
 
     return render_template(
         "edit_paper.html",
         source=source,
         mode="source",
-        solutions=solutions,
-        selected_solution_ids=selected_solution_ids,
-        model_types=store.get("model_types", []),
-        model_type_lookup=get_model_type_lookup(store.get("model_types", [])),
-        evidence_rigor_values=store.get("evidence_rigor_values", DEFAULT_EVIDENCE_RIGOR_VALUES)
     )
 
 
@@ -994,9 +1225,7 @@ def edit_source(source_id, solution_id=None):
 @app.route("/update_source/<int:solution_id>/<int:source_id>", methods=["POST"])
 def update_source(source_id, solution_id=None):
     store = load_data()
-    solutions = store.get("solutions", [])
     sources = store.get("sources", [])
-    model_types = store.get("model_types", [])
 
     source = next((entry for entry in sources if entry["id"] == source_id), None)
     if source:
@@ -1005,32 +1234,113 @@ def update_source(source_id, solution_id=None):
         source["year"] = normalize_source_year(request.form.get("year", source.get("year", "")))
         source["doi"] = request.form.get("doi", source["doi"])
         source.pop("link", None)
-
-        model_type_id = request.form.get("model_type_id", "").strip()
-        resolved_model_type_value = resolve_model_type_value(model_type_id, model_types)
-        source["model_type_id"] = resolved_model_type_value
-
-        parsed_effects = parse_effects(request.form.get("effects_text", ""))
-        update_evidence_rigor_values(store, parsed_effects)
-        source["effects"] = parsed_effects
-
-        selected_solution_ids = set()
-        for raw_solution_id in request.form.getlist("solution_ids"):
-            try:
-                selected_solution_ids.add(int(raw_solution_id))
-            except (TypeError, ValueError):
-                continue
-
-        for solution in solutions:
-            source_ids = [sid for sid in solution.get("source_ids", []) if sid != source_id]
-            if solution["id"] in selected_solution_ids:
-                source_ids.append(source_id)
-            solution["source_ids"] = list(dict.fromkeys(source_ids))
-
-        store["solutions"] = solutions
         store["sources"] = sources
-        store["model_types"] = model_types
         save_data(store)
+    return redirect("/")
+
+
+@app.route("/add_effect", methods=["POST"])
+def add_effect():
+    store = load_data()
+    effects = store.get("effects", [])
+
+    solution_id = parse_optional_int(request.form.get("solution_id", ""))
+    if solution_id is not None and not any(solution.get("id") == solution_id for solution in store.get("solutions", [])):
+        solution_id = None
+
+    prompting_technique_id = parse_optional_int(request.form.get("prompting_technique_id", ""))
+    other_technique_id = parse_optional_int(request.form.get("other_technique_id", ""))
+    underlying_llm_id = parse_optional_int(request.form.get("underlying_llm_id", ""))
+    if prompting_technique_id is not None and not any(tech.get("id") == prompting_technique_id for tech in store.get("prompting_techniques", [])):
+        return redirect("/")
+    if other_technique_id is not None and not any(tech.get("id") == other_technique_id for tech in store.get("other_techniques", [])):
+        return redirect("/")
+    if underlying_llm_id is not None and not any(llm.get("id") == underlying_llm_id for llm in store.get("underlying_llms", [])):
+        return redirect("/")
+
+    new_effect = normalize_effect_record({
+        "id": get_next_effect_id(effects),
+        "description": request.form.get("description", ""),
+        "evidence_rigor": request.form.get("evidence_rigor", ""),
+        "solution_id": solution_id,
+        "prompting_technique_id": prompting_technique_id,
+        "other_technique_id": other_technique_id,
+        "underlying_llm_id": underlying_llm_id,
+    })
+    if not new_effect.get("description"):
+        return redirect("/")
+
+    effects.append(new_effect)
+    update_evidence_rigor_values(store, [new_effect])
+    store["effects"] = effects
+    save_data(store)
+    return redirect("/")
+
+
+@app.route("/edit_effect/<int:effect_id>")
+def edit_effect(effect_id):
+    store = load_data()
+    effect = next((entry for entry in store.get("effects", []) if entry.get("id") == effect_id), None)
+    if not effect:
+        return redirect("/")
+    return render_template(
+        "edit_paper.html",
+        mode="effect",
+        effect=effect,
+        solutions=store.get("solutions", []),
+        prompting_techniques=store.get("prompting_techniques", []),
+        other_techniques=store.get("other_techniques", []),
+        underlying_llms=store.get("underlying_llms", []),
+        evidence_rigor_values=store.get("evidence_rigor_values", DEFAULT_EVIDENCE_RIGOR_VALUES),
+    )
+
+
+@app.route("/update_effect/<int:effect_id>", methods=["POST"])
+def update_effect(effect_id):
+    store = load_data()
+    effects = store.get("effects", [])
+    effect = next((entry for entry in effects if entry.get("id") == effect_id), None)
+    if not effect:
+        return redirect("/")
+
+    solution_id = parse_optional_int(request.form.get("solution_id", ""))
+    if solution_id is not None and not any(solution.get("id") == solution_id for solution in store.get("solutions", [])):
+        solution_id = None
+
+    prompting_technique_id = parse_optional_int(request.form.get("prompting_technique_id", ""))
+    other_technique_id = parse_optional_int(request.form.get("other_technique_id", ""))
+    underlying_llm_id = parse_optional_int(request.form.get("underlying_llm_id", ""))
+    if prompting_technique_id is not None and not any(tech.get("id") == prompting_technique_id for tech in store.get("prompting_techniques", [])):
+        return redirect("/")
+    if other_technique_id is not None and not any(tech.get("id") == other_technique_id for tech in store.get("other_techniques", [])):
+        return redirect("/")
+    if underlying_llm_id is not None and not any(llm.get("id") == underlying_llm_id for llm in store.get("underlying_llms", [])):
+        return redirect("/")
+
+    updated = normalize_effect_record({
+        "id": effect_id,
+        "description": request.form.get("description", effect.get("description", "")),
+        "evidence_rigor": request.form.get("evidence_rigor", effect.get("evidence_rigor", "")),
+        "solution_id": solution_id,
+        "prompting_technique_id": prompting_technique_id,
+        "other_technique_id": other_technique_id,
+        "underlying_llm_id": underlying_llm_id,
+    })
+    if not updated.get("description"):
+        return redirect("/")
+
+    effect.update(updated)
+    update_evidence_rigor_values(store, [effect])
+    store["effects"] = effects
+    save_data(store)
+    return redirect("/")
+
+
+@app.route("/delete_effect/<int:effect_id>")
+def delete_effect(effect_id):
+    store = load_data()
+    store["effects"] = [effect for effect in store.get("effects", []) if effect.get("id") != effect_id]
+    save_data(store)
     return redirect("/")
 
 
@@ -1039,6 +1349,9 @@ def delete_solution(solution_id):
     store = load_data()
     solutions = store.get("solutions", [])
     store["solutions"] = [s for s in solutions if s["id"] != solution_id]
+    for effect in store.get("effects", []):
+        if effect.get("solution_id") == solution_id:
+            effect["solution_id"] = None
     save_data(store)
     return redirect("/")
 
@@ -1047,13 +1360,10 @@ def delete_solution(solution_id):
 @app.route("/delete_source/<int:solution_id>/<int:source_id>")
 def delete_source(source_id, solution_id=None):
     store = load_data()
-    solutions = store.get("solutions", [])
+    linked_solutions = [solution for solution in store.get("solutions", []) if solution.get("source_id") == source_id]
+    if linked_solutions:
+        return redirect("/")
     store["sources"] = [source for source in store.get("sources", []) if source.get("id") != source_id]
-
-    for solution in solutions:
-        solution["source_ids"] = [sid for sid in solution.get("source_ids", []) if sid != source_id]
-
-    store["solutions"] = solutions
     save_data(store)
     return redirect("/")
 
