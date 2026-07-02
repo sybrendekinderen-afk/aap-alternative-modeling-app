@@ -395,6 +395,7 @@ def load_data():
                 effect["other_technique_id"] = None
             if effect.get("underlying_llm_id") not in valid_underlying_llm_ids:
                 effect["underlying_llm_id"] = None
+            enforce_effect_binding_precedence(effect)
 
         normalize_root_purpose_order(store.get("modeling_purposes", []))
 
@@ -565,6 +566,34 @@ def normalize_effect_record(effect):
         "other_technique_id": other_technique_id,
         "underlying_llm_id": underlying_llm_id,
     }
+
+
+def has_exclusive_effect_binding(solution_id, prompting_technique_id, other_technique_id):
+    selected_count = sum(
+        1 for value in [solution_id, prompting_technique_id, other_technique_id]
+        if value is not None
+    )
+    return selected_count <= 1
+
+
+def enforce_effect_binding_precedence(effect):
+    solution_id = effect.get("solution_id")
+    prompting_technique_id = effect.get("prompting_technique_id")
+    other_technique_id = effect.get("other_technique_id")
+
+    if has_exclusive_effect_binding(solution_id, prompting_technique_id, other_technique_id):
+        return
+
+    # Keep only one selected binding in precedence order.
+    if solution_id is not None:
+        effect["prompting_technique_id"] = None
+        effect["other_technique_id"] = None
+    elif prompting_technique_id is not None:
+        effect["solution_id"] = None
+        effect["other_technique_id"] = None
+    else:
+        effect["solution_id"] = None
+        effect["prompting_technique_id"] = None
 
 
 def normalize_underlying_llm_record(llm):
@@ -1284,6 +1313,8 @@ def add_effect():
         return redirect("/")
     if underlying_llm_id is not None and not any(llm.get("id") == underlying_llm_id for llm in store.get("underlying_llms", [])):
         return redirect("/")
+    if not has_exclusive_effect_binding(solution_id, prompting_technique_id, other_technique_id):
+        return redirect("/")
 
     new_effect = normalize_effect_record({
         "id": get_next_effect_id(effects),
@@ -1342,6 +1373,8 @@ def update_effect(effect_id):
     if other_technique_id is not None and not any(tech.get("id") == other_technique_id for tech in store.get("other_techniques", [])):
         return redirect("/")
     if underlying_llm_id is not None and not any(llm.get("id") == underlying_llm_id for llm in store.get("underlying_llms", [])):
+        return redirect("/")
+    if not has_exclusive_effect_binding(solution_id, prompting_technique_id, other_technique_id):
         return redirect("/")
 
     updated = normalize_effect_record({

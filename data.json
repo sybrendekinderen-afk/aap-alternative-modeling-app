@@ -56,6 +56,15 @@
       "prompting_technique_id": null,
       "other_technique_id": null,
       "underlying_llm_id": 1
+    },
+    {
+      "id": 2,
+      "description": "test",
+      "evidence_rigor": "test",
+      "solution_id": 1,
+      "prompting_technique_id": null,
+      "other_technique_id": null,
+      "underlying_llm_id": 1
     }
   ],
   "underlying_llms": [
@@ -159,6 +168,7 @@
     "case based isolation",
     "bundled comparison",
     "momolitic application",
-    "informal qualitative sensibility check"
+    "informal qualitative sensibility check",
+    "test"
   ]
 }
