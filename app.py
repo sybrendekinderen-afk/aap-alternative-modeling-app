@@ -608,17 +608,29 @@ def get_source_solution_lookup(solutions, sources):
 
 def get_solution_model_type_lookup(solutions, modeling_purposes):
     purpose_lookup = {purpose["id"]: purpose for purpose in modeling_purposes}
+
+    def collect_model_type_ids_with_root_ancestors(purpose_id):
+        model_type_ids = []
+        visited = set()
+        current = purpose_lookup.get(purpose_id)
+
+        # Include current purpose and walk to root to inherit root-associated model types.
+        while current and current.get("id") not in visited:
+            visited.add(current.get("id"))
+            model_type_id = current.get("model_type_id")
+            if model_type_id not in [None, ""]:
+                model_type_ids.append(str(model_type_id))
+
+            parent_id = current.get("parent_id")
+            current = purpose_lookup.get(parent_id) if parent_id is not None else None
+
+        return model_type_ids
+
     lookup = {}
     for solution in solutions:
         model_type_ids = []
         for purpose_id in solution.get("modeling_purpose_ids", []):
-            purpose = purpose_lookup.get(purpose_id)
-            if not purpose:
-                continue
-            model_type_id = purpose.get("model_type_id")
-            if model_type_id in [None, ""]:
-                continue
-            model_type_ids.append(str(model_type_id))
+            model_type_ids.extend(collect_model_type_ids_with_root_ancestors(purpose_id))
         lookup[solution.get("id")] = list(dict.fromkeys(model_type_ids))
     return lookup
 
@@ -630,6 +642,20 @@ def get_solution_effect_lookup(effects):
         if solution_id is None:
             continue
         lookup.setdefault(solution_id, []).append(effect)
+    return lookup
+
+
+def get_solution_underlying_llm_lookup(solutions, effects):
+    lookup = {solution.get("id"): [] for solution in solutions}
+    for effect in effects:
+        solution_id = effect.get("solution_id")
+        underlying_llm_id = effect.get("underlying_llm_id")
+        if solution_id is None or underlying_llm_id in [None, ""]:
+            continue
+        lookup.setdefault(solution_id, []).append(str(underlying_llm_id))
+
+    for solution_id, llm_ids in lookup.items():
+        lookup[solution_id] = list(dict.fromkeys(llm_ids))
     return lookup
 
 
@@ -791,6 +817,7 @@ def home():
         underlying_llms=underlying_llms,
         solution_source_lookup=get_solution_source_lookup(solutions, sources),
         solution_effect_lookup=get_solution_effect_lookup(effects),
+        solution_underlying_llm_lookup=get_solution_underlying_llm_lookup(solutions, effects),
         source_solution_lookup=get_source_solution_lookup(solutions, sources),
         solution_model_type_lookup=get_solution_model_type_lookup(solutions, modeling_purposes),
         model_types=model_types,

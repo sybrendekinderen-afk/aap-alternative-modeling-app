@@ -40,7 +40,7 @@
         <div class="row g-4">
           <div class="col-lg-7">
             <div class="card h-100 primary-surface">
-              <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Purposes</h4></div>
+              <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Purpose</h4></div>
               <div class="card-body">
                 <p class="text-muted small mb-3">Browse the purpose tree and jump to the solutions linked to each purpose.</p>
                 <ul class="list-group">
@@ -99,7 +99,7 @@
                       {% endif %}
                     </li>
                   {% else %}
-                    <li class="list-group-item text-muted">No modeling purposes yet.</li>
+                    <li class="list-group-item text-muted">No Modeling Purpose yet.</li>
                   {% endfor %}
                 </ul>
               </div>
@@ -110,29 +110,53 @@
               <div class="card-header"><h4 class="h6 mb-0">Modeling Solutions Already Added</h4></div>
               <div class="card-body">
                 <p class="text-muted small mb-3">Jump straight to the detailed solution cards and their sources.</p>
-                <div class="row g-2 mb-3">
-                  <div class="col-12">
-                    <label for="nav-filter-model-type" class="form-label form-label-sm mb-1">Filter by Model Type</label>
-                    <select id="nav-filter-model-type" class="form-select form-select-sm">
-                      <option value="">All Model Types</option>
-                      {% for model_type in model_types %}
-                        <option value="{{ model_type.id }}">{{ model_type.name }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div class="col-12">
-                    <label for="nav-filter-technique" class="form-label form-label-sm mb-1">Filter by Prompting Technique</label>
-                    <select id="nav-filter-technique" class="form-select form-select-sm">
-                      <option value="">All Prompting Techniques</option>
-                      {% for technique in prompting_techniques %}
-                        <option value="{{ technique.id }}">{{ technique.name }}</option>
-                      {% endfor %}
-                    </select>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h5 class="h6 mb-0">Filters</h5>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#solution-filters-panel" aria-expanded="false" aria-controls="solution-filters-panel">Show</button>
+                </div>
+                <div class="collapse mb-3" id="solution-filters-panel">
+                  <div class="row g-2">
+                    <div class="col-12">
+                      <label for="nav-filter-technique" class="form-label form-label-sm mb-1">Filter by Prompting Technique</label>
+                      <select id="nav-filter-technique" class="form-select form-select-sm">
+                        <option value="">All Prompting Techniques</option>
+                        {% for technique in prompting_techniques %}
+                          <option value="{{ technique.id }}">{{ technique.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="nav-filter-other-technique" class="form-label form-label-sm mb-1">Filter by Other Technique</label>
+                      <select id="nav-filter-other-technique" class="form-select form-select-sm">
+                        <option value="">All Other Techniques</option>
+                        {% for technique in other_techniques %}
+                          <option value="{{ technique.id }}">{{ technique.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="nav-filter-model-type" class="form-label form-label-sm mb-1">Model Type (via Modeling Purpose)</label>
+                      <select id="nav-filter-model-type" class="form-select form-select-sm">
+                        <option value="">All Model Types</option>
+                        {% for model_type in model_types %}
+                          <option value="{{ model_type.id }}">{{ model_type.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="nav-filter-underlying-llm" class="form-label form-label-sm mb-1">Underlying LLM (via Effect)</label>
+                      <select id="nav-filter-underlying-llm" class="form-select form-select-sm">
+                        <option value="">All Underlying LLMs</option>
+                        {% for llm in underlying_llms %}
+                          <option value="{{ llm.id }}">{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
                   </div>
                 </div>
                 <ul class="list-group">
                   {% for solution in solutions %}
-                    <li class="list-group-item kb-solution-list-item" data-solution-id="{{ solution.id }}" data-purpose-ids="{{ solution.modeling_purpose_ids|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-technique-ids="{{ solution.prompting_technique_ids|join(',') }}">
+                    <li class="list-group-item kb-solution-list-item" data-solution-id="{{ solution.id }}" data-purpose-ids="{{ solution.modeling_purpose_ids|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}">
                       <div class="d-flex justify-content-between align-items-center gap-2">
                         <a href="#solution-{{ solution.id }}" class="fw-semibold text-decoration-none solution-select-link" data-solution-id="{{ solution.id }}">{{ solution.name }}</a>
                         <span class="badge bg-secondary-subtle text-secondary-emphasis">{% if solution_source_lookup.get(solution.id) %}1 source{% else %}0 sources{% endif %}</span>
@@ -164,7 +188,7 @@
     </div>
 
     {% for solution in solutions %}
-      <div class="card mb-3 solution-card kb-solution-detail" id="solution-{{ solution.id }}" data-solution-id="{{ solution.id }}" data-purpose-ids="{{ solution.modeling_purpose_ids|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-technique-ids="{{ solution.prompting_technique_ids|join(',') }}">
+      <div class="card mb-3 solution-card kb-solution-detail" id="solution-{{ solution.id }}" data-solution-id="{{ solution.id }}" data-purpose-ids="{{ solution.modeling_purpose_ids|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}">
         <div class="card-header d-flex justify-content-between align-items-center">
           <strong>{{ solution.name }}</strong>
           <div>
@@ -176,7 +200,7 @@
           <div class="row">
             <div class="col-md-6">
               <h5 class="h6"></h5>
-              <p><b>Modeling Purposes:</b>
+              <p><b>Modeling Purpose:</b>
                 {% if solution.modeling_purpose_ids %}
                   {% for pid in solution.modeling_purpose_ids %}
                     {% set purpose = modeling_purpose_lookup.get(pid) %}
@@ -241,7 +265,7 @@
                 {% endif %}
               </ul>
 
-              <h5 class="h6">Effects</h5>
+              <h5 class="h6">Effect</h5>
               <ul class="list-group mb-3">
                 {% for effect in solution_effect_lookup.get(solution.id, []) %}
                   <li class="list-group-item">
@@ -267,7 +291,7 @@
                     </div>
                   </li>
                 {% else %}
-                  <li class="list-group-item text-muted">No effects linked to this solution.</li>
+                  <li class="list-group-item text-muted">No Effect linked to this solution.</li>
                 {% endfor %}
               </ul>
 
@@ -320,13 +344,13 @@
                   <div class="form-text">Select one or more other techniques linked to this solution.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Modeling Purposes</label>
+                  <label class="form-label">Modeling Purpose</label>
                   <select class="form-select" name="modeling_purpose_ids" multiple size="5">
                     {% for purpose in modeling_purposes %}
                       <option value="{{ purpose.id }}">{{ purpose.name }}</option>
                     {% endfor %}
                   </select>
-                  <div class="form-text">Select one or more related modeling purposes.</div>
+                  <div class="form-text">Select one or more related Modeling Purpose entries.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Justification</label>
@@ -464,7 +488,7 @@
 
         <div class="card mb-4 subtle-panel">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <h4 class="h6 mb-0 text-muted">Modeling Purposes</h4>
+            <h4 class="h6 mb-0 text-muted">Modeling Purpose</h4>
             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#modeling-purposes-panel" aria-expanded="false" aria-controls="modeling-purposes-panel">Show</button>
           </div>
           <div class="collapse" id="modeling-purposes-panel">
@@ -573,7 +597,7 @@
                     </div>
                   </li>
                 {% else %}
-                  <li class="list-group-item text-muted">No modeling purposes yet.</li>
+                  <li class="list-group-item text-muted">No Modeling Purpose yet.</li>
                 {% endfor %}
               </ul>
             </div>
@@ -691,7 +715,7 @@
 
         <div class="card mt-3 mb-0 subtle-panel">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <h4 class="h6 mb-0 text-muted">Effects</h4>
+            <h4 class="h6 mb-0 text-muted">Effect</h4>
             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#effects-panel" aria-expanded="false" aria-controls="effects-panel">Show</button>
           </div>
           <div class="collapse" id="effects-panel">
@@ -774,7 +798,7 @@
                     </div>
                   </li>
                 {% else %}
-                  <li class="list-group-item text-muted">No effects yet.</li>
+                  <li class="list-group-item text-muted">No Effect yet.</li>
                 {% endfor %}
               </ul>
             </div>
@@ -839,13 +863,17 @@
       const detailCards = Array.from(document.querySelectorAll('.kb-solution-detail'));
       const placeholder = document.getElementById('solution-detail-placeholder');
       const modelTypeFilter = document.getElementById('nav-filter-model-type');
-      const techniqueFilter = document.getElementById('nav-filter-technique');
+      const promptingTechniqueFilter = document.getElementById('nav-filter-technique');
+      const otherTechniqueFilter = document.getElementById('nav-filter-other-technique');
+      const underlyingLlmFilter = document.getElementById('nav-filter-underlying-llm');
       let activePurposeId = null;
       let activeSolutionId = '';
 
       function applyPurposeHighlight() {
         const activeModelType = modelTypeFilter ? modelTypeFilter.value : '';
-        const activeTechnique = techniqueFilter ? techniqueFilter.value : '';
+        const activePromptingTechnique = promptingTechniqueFilter ? promptingTechniqueFilter.value : '';
+        const activeOtherTechnique = otherTechniqueFilter ? otherTechniqueFilter.value : '';
+        const activeUnderlyingLlm = underlyingLlmFilter ? underlyingLlmFilter.value : '';
 
         purposeLinks.forEach(function (link) {
           link.classList.toggle('purpose-link-active', !!activePurposeId && link.dataset.purposeId === activePurposeId);
@@ -854,11 +882,15 @@
         solutionItems.forEach(function (item) {
           const purposeIds = parseCsvIds(item.dataset.purposeIds);
           const modelTypeIds = parseCsvIds(item.dataset.modelTypeIds);
-          const techniqueIds = parseCsvIds(item.dataset.techniqueIds);
+          const promptingTechniqueIds = parseCsvIds(item.dataset.promptingTechniqueIds);
+          const otherTechniqueIds = parseCsvIds(item.dataset.otherTechniqueIds);
+          const underlyingLlmIds = parseCsvIds(item.dataset.underlyingLlmIds);
           const matchesPurpose = !activePurposeId || purposeIds.includes(activePurposeId);
           const matchesModelType = !activeModelType || modelTypeIds.includes(activeModelType);
-          const matchesTechnique = !activeTechnique || techniqueIds.includes(activeTechnique);
-          const passesFilter = matchesModelType && matchesTechnique;
+          const matchesPromptingTechnique = !activePromptingTechnique || promptingTechniqueIds.includes(activePromptingTechnique);
+          const matchesOtherTechnique = !activeOtherTechnique || otherTechniqueIds.includes(activeOtherTechnique);
+          const matchesUnderlyingLlm = !activeUnderlyingLlm || underlyingLlmIds.includes(activeUnderlyingLlm);
+          const passesFilter = matchesModelType && matchesPromptingTechnique && matchesOtherTechnique && matchesUnderlyingLlm;
 
           item.style.display = passesFilter ? '' : 'none';
           item.classList.toggle('solution-list-item-highlight', passesFilter && !!activePurposeId && matchesPurpose);
@@ -871,14 +903,20 @@
       function showSolutionDetails(solutionId) {
         activeSolutionId = solutionId || '';
         const activeModelType = modelTypeFilter ? modelTypeFilter.value : '';
-        const activeTechnique = techniqueFilter ? techniqueFilter.value : '';
+        const activePromptingTechnique = promptingTechniqueFilter ? promptingTechniqueFilter.value : '';
+        const activeOtherTechnique = otherTechniqueFilter ? otherTechniqueFilter.value : '';
+        const activeUnderlyingLlm = underlyingLlmFilter ? underlyingLlmFilter.value : '';
         let shown = false;
         detailCards.forEach(function (card) {
           const modelTypeIds = parseCsvIds(card.dataset.modelTypeIds);
-          const techniqueIds = parseCsvIds(card.dataset.techniqueIds);
+          const promptingTechniqueIds = parseCsvIds(card.dataset.promptingTechniqueIds);
+          const otherTechniqueIds = parseCsvIds(card.dataset.otherTechniqueIds);
+          const underlyingLlmIds = parseCsvIds(card.dataset.underlyingLlmIds);
           const passesModelType = !activeModelType || modelTypeIds.includes(activeModelType);
-          const passesTechnique = !activeTechnique || techniqueIds.includes(activeTechnique);
-          const isMatch = card.dataset.solutionId === activeSolutionId && passesModelType && passesTechnique;
+          const passesPromptingTechnique = !activePromptingTechnique || promptingTechniqueIds.includes(activePromptingTechnique);
+          const passesOtherTechnique = !activeOtherTechnique || otherTechniqueIds.includes(activeOtherTechnique);
+          const passesUnderlyingLlm = !activeUnderlyingLlm || underlyingLlmIds.includes(activeUnderlyingLlm);
+          const isMatch = card.dataset.solutionId === activeSolutionId && passesModelType && passesPromptingTechnique && passesOtherTechnique && passesUnderlyingLlm;
           card.classList.toggle('kb-solution-detail-visible', isMatch);
           if (isMatch) shown = true;
         });
@@ -901,8 +939,16 @@
         modelTypeFilter.addEventListener('change', applyPurposeHighlight);
       }
 
-      if (techniqueFilter) {
-        techniqueFilter.addEventListener('change', applyPurposeHighlight);
+      if (promptingTechniqueFilter) {
+        promptingTechniqueFilter.addEventListener('change', applyPurposeHighlight);
+      }
+
+      if (otherTechniqueFilter) {
+        otherTechniqueFilter.addEventListener('change', applyPurposeHighlight);
+      }
+
+      if (underlyingLlmFilter) {
+        underlyingLlmFilter.addEventListener('change', applyPurposeHighlight);
       }
 
       solutionLinks.forEach(function (link) {

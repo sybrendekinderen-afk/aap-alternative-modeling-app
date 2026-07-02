@@ -47,8 +47,24 @@
       "year": ""
     }
   ],
-  "effects": [],
-  "underlying_llms": [],
+  "effects": [
+    {
+      "id": 1,
+      "description": "magnificent effect.",
+      "evidence_rigor": "informal qualitative sensibility check",
+      "solution_id": 1,
+      "prompting_technique_id": null,
+      "other_technique_id": null,
+      "underlying_llm_id": 1
+    }
+  ],
+  "underlying_llms": [
+    {
+      "id": 1,
+      "name": "GPT",
+      "version": "5.6"
+    }
+  ],
   "model_types": [
     {
       "id": 1,
@@ -97,7 +113,7 @@
       "name": "Establish desired model output format",
       "parent_id": null,
       "root_order": 2,
-      "model_type_id": null
+      "model_type_id": 2
     },
     {
       "id": 3,
