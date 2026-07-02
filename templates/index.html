@@ -159,7 +159,6 @@
                     <li class="list-group-item kb-solution-list-item" data-solution-id="{{ solution.id }}" data-purpose-ids="{{ solution.modeling_purpose_ids|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}">
                       <div class="d-flex justify-content-between align-items-center gap-2">
                         <a href="#solution-{{ solution.id }}" class="fw-semibold text-decoration-none solution-select-link" data-solution-id="{{ solution.id }}">{{ solution.name }}</a>
-                        <span class="badge bg-secondary-subtle text-secondary-emphasis">{% if solution_source_lookup.get(solution.id) %}1 source{% else %}0 sources{% endif %}</span>
                       </div>
                       {% if solution.modeling_purpose_ids %}
                         <div class="small text-muted mt-1">
