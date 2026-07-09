@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Alternative Modeling App</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .effect-row { border: 1px solid #dee2e6; border-radius: .5rem; padding: .75rem; margin-bottom: .5rem; }
+    .effect-row .form-label { font-size: .9rem; }
+    .primary-surface { border: 2px solid #0d6efd; box-shadow: 0 .5rem 1rem rgba(13, 110, 253, .12); }
+    .subtle-panel { border: 1px solid #e9ecef; background-color: #fcfcfd; }
+    .subtle-panel .card-header { background-color: #f8f9fa; }
+    .solution-card { border-left: 4px solid #0d6efd; box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05); }
+    .purpose-tree-item { border-left: 3px solid #dce7ff; padding-left: .75rem; margin-left: .25rem; }
+    .purpose-tree-item .purpose-toggle { width: 1.25rem; height: 1.25rem; padding: 0; line-height: 1; }
+    .purpose-link-active { text-decoration: underline !important; font-weight: 700; }
+    .solution-list-item-highlight { border-color: #0d6efd; background-color: #eef4ff; }
+    .solution-list-item-dim { opacity: .45; }
+    .kb-solution-detail { display: none; }
+    .kb-solution-detail.kb-solution-detail-visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container mt-4">
+    <hr>
+
+    {% if request.args.get('save_blocked') == '1' %}
+      <div class="alert alert-danger border" role="alert">
+        Save was blocked by deployment authentication/protection, so your changes were not persisted to Vercel Blob.
+      </div>
+    {% elif request.args.get('save_conflict') == '1' %}
+      <div class="alert alert-warning border" role="alert">
+        Your changes were saved after a retry because the shared JSON blob had changed in the meantime.
+      </div>
+    {% endif %}
+
+    <div class="card mb-4">
+      <div class="card-header"><h3 class="h5 mb-0">Knowledge Base Navigation</h3></div>
+      <div class="card-body">
+        <div class="row g-4">
+          <div class="col-lg-7">
+            <div class="card h-100 primary-surface">
+              <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Purpose</h4></div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">Browse the purpose tree and jump to the solutions linked to each purpose.</p>
+                <ul class="list-group">
+                  {% for purpose in modeling_purpose_tree %}
+                    <li class="list-group-item purpose-tree-item">
+                      <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="flex-grow-1">
+                          <div class="d-flex align-items-center gap-2">
+                            {% if purpose.children %}
+                              <button class="btn btn-outline-secondary btn-sm purpose-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#kb-purpose-{{ purpose.id }}" aria-expanded="false" aria-controls="kb-purpose-{{ purpose.id }}">▾</button>
+                            {% else %}
+                              <span class="text-muted small">•</span>
+                            {% endif %}
+                            <div>
+                              <a href="#purpose-{{ purpose.id }}" class="fw-semibold text-decoration-none purpose-select-link" data-purpose-id="{{ purpose.id }}">{{ purpose.name }}</a>
+                              {% if purpose.model_type_id %}
+                                {% set purpose_model_type = model_type_lookup.get(purpose.model_type_id) %}
+                                {% if purpose_model_type %}
+                                  <span class="badge bg-light text-dark border ms-1">{{ purpose_model_type.name }}</span>
+                                {% endif %}
+                              {% endif %}
+                            </div>
+                          </div>
+                          {% if purpose.children %}
+                            <div class="collapse mt-2" id="kb-purpose-{{ purpose.id }}">
+                              <ul class="list-group">
+                                {% for child in purpose.children %}
+                                  <li class="list-group-item border-0 ps-4">
+                                    <div class="d-flex justify-content-between align-items-start gap-2">
+                                      <div>
+                                        <a href="#purpose-{{ child.id }}" class="fw-semibold text-decoration-none purpose-select-link" data-purpose-id="{{ child.id }}">{{ child.name }}</a>
+                                            {% if child.model_type_id %}
+                                              {% set child_model_type = model_type_lookup.get(child.model_type_id) %}
+                                              {% if child_model_type %}
+                                                <span class="badge bg-light text-dark border ms-1">{{ child_model_type.name }}</span>
+                                              {% endif %}
+                                            {% endif %}
+                                      </div>
+                                      <div class="text-muted small">{{ modeling_purpose_solution_lookup.get(child.id, [])|length }} solution{% if modeling_purpose_solution_lookup.get(child.id, [])|length != 1 %}s{% endif %}</div>
+                                    </div>
+                                  </li>
+                                {% endfor %}
+                              </ul>
+                            </div>
+                          {% endif %}
+                        </div>
+                        <div class="text-muted small">{{ modeling_purpose_solution_lookup.get(purpose.id, [])|length }} solution{% if modeling_purpose_solution_lookup.get(purpose.id, [])|length != 1 %}s{% endif %}</div>
+                      </div>
+                      {% if modeling_purpose_solution_lookup.get(purpose.id, []) %}
+                        <div class="mt-2">
+                          <div class="small text-muted">Linked solutions:</div>
+                          {% for solution in modeling_purpose_solution_lookup.get(purpose.id, []) %}
+                            <a href="#solution-{{ solution.id }}" class="badge bg-primary-subtle text-primary-emphasis me-1 mb-1 text-decoration-none solution-select-link" data-solution-id="{{ solution.id }}">{{ solution.name }}</a>
+                          {% endfor %}
+                        </div>
+                      {% endif %}
+                    </li>
+                  {% else %}
+                    <li class="list-group-item text-muted">No Modeling Purpose yet.</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="card h-100 solution-card">
+              <div class="card-header"><h4 class="h6 mb-0">Modeling Solutions Already Added</h4></div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">Jump straight to the detailed solution cards and their sources.</p>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h5 class="h6 mb-0">Filters</h5>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#solution-filters-panel" aria-expanded="false" aria-controls="solution-filters-panel">Show</button>
+                </div>
+                <div class="collapse mb-3" id="solution-filters-panel">
+                  <div class="row g-2">
+                    <div class="col-12">
+                      <label for="nav-filter-technique" class="form-label form-label-sm mb-1">Filter by Prompting Technique</label>
+                      <select id="nav-filter-technique" class="form-select form-select-sm">
+                        <option value="">All Prompting Techniques</option>
+                        {% for technique in prompting_techniques %}
+                          <option value="{{ technique.id }}">{{ technique.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="nav-filter-other-technique" class="form-label form-label-sm mb-1">Filter by Other Technique</label>
+                      <select id="nav-filter-other-technique" class="form-select form-select-sm">
+                        <option value="">All Other Techniques</option>
+                        {% for technique in other_techniques %}
+                          <option value="{{ technique.id }}">{{ technique.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="nav-filter-model-type" class="form-label form-label-sm mb-1">Model Type (via Modeling Purpose)</label>
+                      <select id="nav-filter-model-type" class="form-select form-select-sm">
+                        <option value="">All Model Types</option>
+                        {% for model_type in model_types %}
+                          <option value="{{ model_type.id }}">{{ model_type.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="nav-filter-underlying-llm" class="form-label form-label-sm mb-1">Underlying LLM (via Effect)</label>
+                      <select id="nav-filter-underlying-llm" class="form-select form-select-sm">
+                        <option value="">All Underlying LLMs</option>
+                        {% for llm in underlying_llms %}
+                          <option value="{{ llm.id }}">{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <ul class="list-group">
+                  {% for solution in solutions %}
+                    <li class="list-group-item kb-solution-list-item" data-solution-id="{{ solution.id }}" data-purpose-ids="{{ solution.modeling_purpose_ids|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}">
+                      <div class="d-flex justify-content-between align-items-center gap-2">
+                        <a href="#solution-{{ solution.id }}" class="fw-semibold text-decoration-none solution-select-link" data-solution-id="{{ solution.id }}">{{ solution.name }}</a>
+                      </div>
+                      {% if solution.modeling_purpose_ids %}
+                        <div class="small text-muted mt-1">
+                          {% for pid in solution.modeling_purpose_ids %}
+                            {% set purpose = modeling_purpose_lookup.get(pid) %}
+                            {% if purpose %}
+                              <a href="#purpose-{{ purpose.id }}" class="badge bg-info-subtle text-info-emphasis me-1 text-decoration-none purpose-select-link" data-purpose-id="{{ purpose.id }}">{{ purpose.name }}</a>
+                            {% endif %}
+                          {% endfor %}
+                        </div>
+                      {% endif %}
+                    </li>
+                  {% else %}
+                    <li class="list-group-item text-muted">No modeling solutions yet.</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-light border mb-3" id="solution-detail-placeholder">
+      Select a modeling purpose to highlight related solutions, then click a modeling solution to view full details.
+    </div>
+
+    {% for solution in solutions %}
+      <div class="card mb-3 solution-card kb-solution-detail" id="solution-{{ solution.id }}" data-solution-id="{{ solution.id }}" data-purpose-ids="{{ solution.modeling_purpose_ids|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>{{ solution.name }}</strong>
+          <div>
+            <a href="/edit_solution/{{ solution.id }}" class="btn btn-sm btn-outline-primary">Edit Solution</a>
+            <a href="/delete_solution/{{ solution.id }}" class="btn btn-sm btn-danger">Delete</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <h5 class="h6"></h5>
+              <p><b>Modeling Purpose:</b>
+                {% if solution.modeling_purpose_ids %}
+                  {% for pid in solution.modeling_purpose_ids %}
+                    {% set purpose = modeling_purpose_lookup.get(pid) %}
+                    {% if purpose %}
+                      <a href="#purpose-{{ purpose.id }}" class="badge bg-primary-subtle text-primary-emphasis me-1 text-decoration-none">{{ purpose.name }}</a>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </p>
+              <p><b>Prompting Techniques:</b>
+                {% if solution.prompting_technique_ids %}
+                  {% for pid in solution.prompting_technique_ids %}
+                    {% set technique = prompting_technique_lookup.get(pid) %}
+                    {% if technique %}
+                      <span class="badge bg-secondary me-1">{{ technique.name }}</span>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </p>
+              <p><b>Other Techniques:</b>
+                {% if solution.other_technique_ids %}
+                  {% for tid in solution.other_technique_ids %}
+                    {% set technique = other_technique_lookup.get(tid) %}
+                    {% if technique %}
+                      <span class="badge bg-warning text-dark me-1">{{ technique.name }}</span>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </p>
+              <p><b>Justification:</b> {{ solution.justification }}</p>
+            </div>
+            <div class="col-md-6">
+              <h5 class="h6">Source</h5>
+              {% set source = solution_source_lookup.get(solution.id) %}
+
+              <ul class="list-group mb-3">
+                {% if source %}
+                  <li class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <b>{{ source.title }}</b> — {{ source.author }}{% if source.year %} ({{ source.year }}){% endif %}
+                        {% if source.doi %}
+                          {% set doi_value = source.doi %}
+                          {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
+                          <br>DOI: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a>
+                        {% endif %}
+                      </div>
+                      <div>
+                        <a href="/edit_source/{{ source.id }}" class="btn btn-sm btn-outline-warning">Edit</a>
+                        <a href="/delete_source/{{ source.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                      </div>
+                    </div>
+                  </li>
+                {% else %}
+                  <li class="list-group-item text-muted">No source assigned.</li>
+                {% endif %}
+              </ul>
+
+              <h5 class="h6">Effects</h5>
+              <ul class="list-group mb-3">
+                {% for effect in solution_effect_lookup.get(solution.id, []) %}
+                  <li class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                      <div>
+                        <div><b>{{ effect.description }}</b></div>
+                        {% if effect.evidence_rigor %}
+                          <div class="small text-muted">Evidence Rigor: {{ effect.evidence_rigor }}</div>
+                        {% endif %}
+                        <div class="small mt-1">
+                          {% set prompting = prompting_technique_lookup.get(effect.prompting_technique_id) %}
+                          {% set other = other_technique_lookup.get(effect.other_technique_id) %}
+                          {% set llm = underlying_llm_lookup.get(effect.underlying_llm_id) %}
+                          {% if prompting %}
+                            <span class="badge bg-secondary me-1">{{ prompting.name }}</span>
+                          {% endif %}
+                          {% if other %}
+                            <span class="badge bg-warning text-dark me-1">{{ other.name }}</span>
+                          {% endif %}
+                          {% if llm %}
+                            <span class="badge bg-success-subtle text-success-emphasis">{{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}</span>
+                          {% endif %}
+                        </div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <a href="/edit_effect/{{ effect.id }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                        <a href="/delete_effect/{{ effect.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                      </div>
+                    </div>
+                  </li>
+                {% else %}
+                  <li class="list-group-item text-muted">No Effects linked to this solution.</li>
+                {% endfor %}
+              </ul>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+
+    <div class="card mb-4 subtle-panel">
+      <div class="card-header"><h3 class="h5 mb-0">Populate Knowledge Base</h3></div>
+      <div class="card-body">
+        <div class="card mb-4 primary-surface">
+          <div class="card-header d-flex justify-content-between align-items-center bg-primary text-white">
+            <h4 class="h6 mb-0">Modeling Solutions</h4>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#add-solution-panel" aria-expanded="false" aria-controls="add-solution-panel">Show</button>
+          </div>
+          <div class="collapse" id="add-solution-panel">
+            <div class="card-body">
+              <form method="post" action="/add_solution">
+                <div class="mb-3">
+                  <label class="form-label">Solution Name</label>
+                  <input class="form-control" name="name" placeholder="Modeling Solution Name" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Source (required)</label>
+                  <select class="form-select" name="source_id" required>
+                    {% for source in sources %}
+                      <option value="{{ source.id }}">{{ source.title }}{% if source.author %} - {{ source.author }}{% endif %}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Each solution links to exactly one source.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Prompting Techniques</label>
+                  <select class="form-select" name="prompting_technique_ids" multiple size="5">
+                    {% for technique in prompting_techniques %}
+                      <option value="{{ technique.id }}">{{ technique.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Hold Ctrl/Cmd to select multiple techniques.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Other Techniques</label>
+                  <select class="form-select" name="other_technique_ids" multiple size="5">
+                    {% for technique in other_techniques %}
+                      <option value="{{ technique.id }}">{{ technique.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Select one or more other techniques linked to this solution.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Modeling Purpose</label>
+                  <select class="form-select" name="modeling_purpose_ids" multiple size="5">
+                    {% for purpose in modeling_purposes %}
+                      <option value="{{ purpose.id }}">{{ purpose.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Select one or more related Modeling Purpose entries.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Justification</label>
+                  <textarea class="form-control" name="justification" placeholder="Justification"></textarea>
+                </div>
+                <button class="btn btn-primary">Add Solution</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4 primary-surface">
+          <div class="card-header d-flex justify-content-between align-items-center bg-primary text-white">
+            <h4 class="h6 mb-0">Sources</h4>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#add-source-panel" aria-expanded="false" aria-controls="add-source-panel">Show</button>
+          </div>
+          <div class="collapse" id="add-source-panel">
+            <div class="card-body">
+              <div class="card subtle-panel">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h4 class="h6 mb-0 text-muted">Add Source</h4>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#add-source-fields-panel" aria-expanded="false" aria-controls="add-source-fields-panel">Show</button>
+                </div>
+                <div class="collapse" id="add-source-fields-panel">
+                  <div class="card-body">
+                    <form method="post" action="/add_source">
+                      <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input class="form-control" name="title" placeholder="Source title" required>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Author</label>
+                        <input class="form-control" name="author" placeholder="Author">
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Year</label>
+                        <input class="form-control" name="year" placeholder="Year" inputmode="numeric" type="number" min="0" step="1">
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">DOI</label>
+                        <input class="form-control" name="doi" placeholder="DOI">
+                      </div>
+                      <button class="btn btn-success">Add to Sources</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card mt-4 subtle-panel">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h4 class="h6 mb-0 text-muted">Manage Sources</h4>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#manage-sources-panel" aria-expanded="false" aria-controls="manage-sources-panel">Show</button>
+                </div>
+                <div class="collapse" id="manage-sources-panel">
+                  <div class="card-body">
+                  <ul class="list-group">
+                    {% for source in sources %}
+                      <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                          <div class="flex-grow-1">
+                            <div><b>{{ source.title }}</b> — {{ source.author }}{% if source.year %} ({{ source.year }}){% endif %}</div>
+                            {% if source.doi %}
+                              {% set doi_value = source.doi %}
+                              {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
+                              <div class="small">DOI: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a></div>
+                            {% endif %}
+                            <div class="small mt-1">
+                              <b>Linked Modeling Solutions:</b>
+                              {% if source_solution_lookup.get(source.id, []) %}
+                                {% for solution in source_solution_lookup.get(source.id, []) %}
+                                  <a href="#solution-{{ solution.id }}" class="badge bg-primary-subtle text-primary-emphasis text-decoration-none me-1">{{ solution.name }}</a>
+                                {% endfor %}
+                              {% else %}
+                                <span class="text-muted">None</span>
+                              {% endif %}
+                            </div>
+                          </div>
+                          <div class="d-flex gap-2">
+                            <a href="/edit_source/{{ source.id }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                            <a href="/delete_source/{{ source.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                          </div>
+                        </div>
+                      </li>
+                    {% else %}
+                      <li class="list-group-item text-muted">No sources yet.</li>
+                    {% endfor %}
+                  </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-3 subtle-panel">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="h6 mb-0 text-muted">Model Types</h4>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#model-types-panel" aria-expanded="false" aria-controls="model-types-panel">Show</button>
+          </div>
+          <div class="collapse" id="model-types-panel">
+            <div class="card-body">
+              <form method="post" action="/add_model_type" class="row g-2 mb-3">
+                <div class="col-md-5">
+                  <input class="form-control" name="model_type_name" placeholder="Model Type Name">
+                </div>
+                <div class="col-md-5">
+                  <input class="form-control" name="model_type_notation" placeholder="Model Type Notation">
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-outline-secondary w-100" id="add-effect-button" type="submit">Add</button>
+                </div>
+              </form>
+              <ul class="list-group">
+                {% for model_type in model_types %}
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      <b>{{ model_type.name }}</b> — {{ model_type.notation }}
+                    </div>
+                    <div class="d-flex gap-2">
+                      <form method="post" action="/update_model_type/{{ model_type.id }}" class="d-flex gap-2">
+                        <input class="form-control form-control-sm" name="model_type_name" value="{{ model_type.name }}">
+                        <input class="form-control form-control-sm" name="model_type_notation" value="{{ model_type.notation }}">
+                        <button class="btn btn-sm btn-outline-primary">Update</button>
+                      </form>
+                      <a href="/delete_model_type/{{ model_type.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </div>
+                  </li>
+                {% else %}
+                  <li class="list-group-item text-muted">No model types yet.</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4 subtle-panel">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="h6 mb-0 text-muted">Modeling Purpose</h4>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#modeling-purposes-panel" aria-expanded="false" aria-controls="modeling-purposes-panel">Show</button>
+          </div>
+          <div class="collapse" id="modeling-purposes-panel">
+            <div class="card-body">
+              <form method="post" action="/add_modeling_purpose" class="row g-2 mb-3">
+                <div class="col-md-4">
+                  <input class="form-control" name="modeling_purpose_name" placeholder="Purpose name" required>
+                </div>
+                <div class="col-md-2">
+                  <select class="form-select" name="parent_id">
+                    <option value="">-- Root purpose --</option>
+                    {% for purpose in modeling_purposes %}
+                      <option value="{{ purpose.id }}">{{ purpose.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <select class="form-select" name="model_type_id">
+                    <option value="">-- Optional model type --</option>
+                    {% for model_type in model_types %}
+                      <option value="{{ model_type.id }}">{{ model_type.name }}{% if model_type.notation %} ({{ model_type.notation }}){% endif %}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-outline-secondary w-100">Add</button>
+                </div>
+              </form>
+              <ul class="list-group">
+                {% for purpose in modeling_purpose_tree %}
+                  <li class="list-group-item purpose-tree-item">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                      <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2">
+                          {% if purpose.children %}
+                            <button class="btn btn-outline-secondary btn-sm purpose-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#manage-purpose-{{ purpose.id }}" aria-expanded="false" aria-controls="manage-purpose-{{ purpose.id }}">▾</button>
+                          {% else %}
+                            <span class="text-muted small">•</span>
+                          {% endif %}
+                          <div>
+                            <b>{{ purpose.name }}</b>
+                          </div>
+                        </div>
+                        {% if purpose.children %}
+                          <div class="collapse mt-2" id="manage-purpose-{{ purpose.id }}">
+                            <ul class="list-group">
+                              {% for child in purpose.children %}
+                                <li class="list-group-item border-0 ps-4">
+                                  <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                      <b>{{ child.name }}</b>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                      <form method="post" action="/update_modeling_purpose/{{ child.id }}" class="d-flex gap-2">
+                                        <input class="form-control form-control-sm" name="modeling_purpose_name" value="{{ child.name }}">
+                                        <select class="form-select form-select-sm" name="parent_id">
+                                          <option value="">-- Root purpose --</option>
+                                          {% for candidate in modeling_purposes %}
+                                            {% if candidate.id != child.id %}
+                                              <option value="{{ candidate.id }}" {% if child.parent_id == candidate.id %}selected{% endif %}>{{ candidate.name }}</option>
+                                            {% endif %}
+                                          {% endfor %}
+                                        </select>
+                                        <select class="form-select form-select-sm" name="model_type_id">
+                                          <option value="">-- Optional model type --</option>
+                                          {% for model_type in model_types %}
+                                            <option value="{{ model_type.id }}" {% if child.model_type_id == model_type.id %}selected{% endif %}>{{ model_type.name }}</option>
+                                          {% endfor %}
+                                        </select>
+                                        <button class="btn btn-sm btn-outline-primary">Update</button>
+                                      </form>
+                                      <a href="/delete_modeling_purpose/{{ child.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                                    </div>
+                                  </div>
+                                </li>
+                              {% endfor %}
+                            </ul>
+                          </div>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex gap-2">
+                        <div class="d-flex gap-1">
+                          <a href="/move_modeling_purpose_root/{{ purpose.id }}/up" class="btn btn-sm btn-outline-secondary" title="Move root purpose up">Up</a>
+                          <a href="/move_modeling_purpose_root/{{ purpose.id }}/down" class="btn btn-sm btn-outline-secondary" title="Move root purpose down">Down</a>
+                        </div>
+                        <form method="post" action="/update_modeling_purpose/{{ purpose.id }}" class="d-flex gap-2">
+                          <input class="form-control form-control-sm" name="modeling_purpose_name" value="{{ purpose.name }}">
+                          <select class="form-select form-select-sm" name="parent_id">
+                            <option value="">-- Root purpose --</option>
+                            {% for candidate in modeling_purposes %}
+                              {% if candidate.id != purpose.id %}
+                                <option value="{{ candidate.id }}" {% if purpose.parent_id == candidate.id %}selected{% endif %}>{{ candidate.name }}</option>
+                              {% endif %}
+                            {% endfor %}
+                          </select>
+                          <select class="form-select form-select-sm" name="model_type_id">
+                            <option value="">-- Optional model type --</option>
+                            {% for model_type in model_types %}
+                              <option value="{{ model_type.id }}" {% if purpose.model_type_id == model_type.id %}selected{% endif %}>{{ model_type.name }}</option>
+                            {% endfor %}
+                          </select>
+                          <button class="btn btn-sm btn-outline-primary">Update</button>
+                        </form>
+                        <a href="/delete_modeling_purpose/{{ purpose.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                      </div>
+                    </div>
+                  </li>
+                {% else %}
+                  <li class="list-group-item text-muted">No Modeling Purpose yet.</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-0 subtle-panel">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="h6 mb-0 text-muted">Prompting Techniques</h4>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#prompting-techniques-panel" aria-expanded="false" aria-controls="prompting-techniques-panel">Show</button>
+          </div>
+          <div class="collapse" id="prompting-techniques-panel">
+            <div class="card-body">
+              <form method="post" action="/add_prompting_technique" class="row g-2 mb-3">
+                <div class="col-md-10">
+                  <input class="form-control" name="prompting_technique_name" placeholder="Prompting Technique Name">
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-outline-secondary w-100">Add</button>
+                </div>
+              </form>
+              <ul class="list-group">
+                {% for technique in prompting_techniques %}
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div><b>{{ technique.name }}</b></div>
+                    <div class="d-flex gap-2">
+                      <form method="post" action="/update_prompting_technique/{{ technique.id }}" class="d-flex gap-2">
+                        <input class="form-control form-control-sm" name="prompting_technique_name" value="{{ technique.name }}">
+                        <button class="btn btn-sm btn-outline-primary">Update</button>
+                      </form>
+                      <a href="/delete_prompting_technique/{{ technique.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </div>
+                  </li>
+                {% else %}
+                  <li class="list-group-item text-muted">No prompting techniques yet.</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-3 mb-0 subtle-panel">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="h6 mb-0 text-muted">Other Techniques</h4>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#other-techniques-panel" aria-expanded="false" aria-controls="other-techniques-panel">Show</button>
+          </div>
+          <div class="collapse" id="other-techniques-panel">
+            <div class="card-body">
+              <form method="post" action="/add_other_technique" class="row g-2 mb-3">
+                <div class="col-md-10">
+                  <input class="form-control" name="other_technique_name" placeholder="Other Technique Name">
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-outline-secondary w-100">Add</button>
+                </div>
+              </form>
+              <ul class="list-group">
+                {% for technique in other_techniques %}
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div><b>{{ technique.name }}</b></div>
+                    <div class="d-flex gap-2">
+                      <form method="post" action="/update_other_technique/{{ technique.id }}" class="d-flex gap-2">
+                        <input class="form-control form-control-sm" name="other_technique_name" value="{{ technique.name }}">
+                        <button class="btn btn-sm btn-outline-primary">Update</button>
+                      </form>
+                      <a href="/delete_other_technique/{{ technique.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </div>
+                  </li>
+                {% else %}
+                  <li class="list-group-item text-muted">No other techniques yet.</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-3 mb-0 subtle-panel">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="h6 mb-0 text-muted">Underlying LLMs</h4>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#underlying-llms-panel" aria-expanded="false" aria-controls="underlying-llms-panel">Show</button>
+          </div>
+          <div class="collapse" id="underlying-llms-panel">
+            <div class="card-body">
+              <form method="post" action="/add_underlying_llm" class="row g-2 mb-3">
+                <div class="col-md-5">
+                  <input class="form-control" name="underlying_llm_name" placeholder="LLM Name">
+                </div>
+                <div class="col-md-5">
+                  <input class="form-control" name="underlying_llm_version" placeholder="Version">
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-outline-secondary w-100">Add</button>
+                </div>
+              </form>
+              <ul class="list-group">
+                {% for llm in underlying_llms %}
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div><b>{{ llm.name }}</b>{% if llm.version %} — {{ llm.version }}{% endif %}</div>
+                    <div class="d-flex gap-2">
+                      <form method="post" action="/update_underlying_llm/{{ llm.id }}" class="d-flex gap-2">
+                        <input class="form-control form-control-sm" name="underlying_llm_name" value="{{ llm.name }}">
+                        <input class="form-control form-control-sm" name="underlying_llm_version" value="{{ llm.version }}">
+                        <button class="btn btn-sm btn-outline-primary">Update</button>
+                      </form>
+                      <a href="/delete_underlying_llm/{{ llm.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </div>
+                  </li>
+                {% else %}
+                  <li class="list-group-item text-muted">No underlying LLMs yet.</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-3 mb-0 subtle-panel">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="h6 mb-0 text-muted">Effects</h4>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#effects-panel" aria-expanded="false" aria-controls="effects-panel">Show</button>
+          </div>
+          <div class="collapse" id="effects-panel">
+            <div class="card-body">
+              <form method="post" action="/add_effect" class="row g-2 mb-3">
+                <div class="col-12">
+                  <textarea class="form-control" name="description" rows="2" placeholder="Effect description" required></textarea>
+                </div>
+                <div class="col-md-4">
+                  <input class="form-control" name="evidence_rigor" list="evidence-rigor-options" autocomplete="off" placeholder="Evidence rigor">
+                  <datalist id="evidence-rigor-options">
+                    {% for value in evidence_rigor_values %}
+                      <option value="{{ value }}"></option>
+                    {% endfor %}
+                  </datalist>
+                </div>
+                <div class="col-md-4">
+                  <select class="form-select" name="solution_id">
+                    <option value="">No linked solution</option>
+                    {% for solution in solutions %}
+                      <option value="{{ solution.id }}">{{ solution.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <select class="form-select" name="prompting_technique_id">
+                    <option value="">No prompting technique</option>
+                    {% for technique in prompting_techniques %}
+                      <option value="{{ technique.id }}">{{ technique.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <select class="form-select" name="other_technique_id">
+                    <option value="">No other technique</option>
+                    {% for technique in other_techniques %}
+                      <option value="{{ technique.id }}">{{ technique.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-12">
+                  <div class="form-text">Constraint: choose at most one of Modeling Solution, Prompting Technique, or Other Technique.</div>
+                </div>
+                <div class="col-md-4">
+                  <select class="form-select" name="underlying_llm_id">
+                    <option value="">No underlying LLM</option>
+                    {% for llm in underlying_llms %}
+                      <option value="{{ llm.id }}">{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-outline-secondary w-100">Add</button>
+                </div>
+              </form>
+
+              <ul class="list-group">
+                {% for effect in effects %}
+                  <li class="list-group-item d-flex justify-content-between align-items-start gap-3">
+                    <div class="flex-grow-1">
+                      <div><b>{{ effect.description }}</b></div>
+                      {% if effect.evidence_rigor %}
+                        <div class="small text-muted">Evidence rigor: {{ effect.evidence_rigor }}</div>
+                      {% endif %}
+                      {% if effect.solution_id %}
+                        {% set linked_solution = solutions|selectattr('id', 'equalto', effect.solution_id)|list|first %}
+                        {% if linked_solution %}
+                          <div class="small">Solution: <a href="#solution-{{ linked_solution.id }}" class="text-decoration-none">{{ linked_solution.name }}</a></div>
+                        {% endif %}
+                      {% endif %}
+                      <div class="small mt-1">
+                        {% set prompting = prompting_technique_lookup.get(effect.prompting_technique_id) %}
+                        {% set other = other_technique_lookup.get(effect.other_technique_id) %}
+                        {% set llm = underlying_llm_lookup.get(effect.underlying_llm_id) %}
+                        {% if prompting %}
+                          <span class="badge bg-secondary me-1">{{ prompting.name }}</span>
+                        {% endif %}
+                        {% if other %}
+                          <span class="badge bg-warning text-dark me-1">{{ other.name }}</span>
+                        {% endif %}
+                        {% if llm %}
+                          <span class="badge bg-success-subtle text-success-emphasis">{{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                      <a href="/edit_effect/{{ effect.id }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                      <a href="/delete_effect/{{ effect.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </div>
+                  </li>
+                {% else %}
+                  <li class="list-group-item text-muted">No Effects yet.</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Delete</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">Are you sure?</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+          <button type="button" class="btn btn-danger" id="confirm-delete-yes">Yes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function parseCsvIds(rawValue) {
+      if (!rawValue) return [];
+      return rawValue.split(',').map(function (value) { return value.trim(); }).filter(Boolean);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const deleteConfirmModalElement = document.getElementById('deleteConfirmModal');
+      const deleteConfirmYesButton = document.getElementById('confirm-delete-yes');
+      const deleteConfirmModal = deleteConfirmModalElement ? new bootstrap.Modal(deleteConfirmModalElement) : null;
+      let pendingDeleteHref = null;
+
+      document.addEventListener('click', function (event) {
+        const deleteLink = event.target.closest('a[href*="/delete_"]');
+        if (!deleteLink) {
+          return;
+        }
+        event.preventDefault();
+        pendingDeleteHref = deleteLink.getAttribute('href');
+        if (deleteConfirmModal) {
+          deleteConfirmModal.show();
+        }
+      });
+
+      if (deleteConfirmYesButton) {
+        deleteConfirmYesButton.addEventListener('click', function () {
+          if (pendingDeleteHref) {
+            window.location.href = pendingDeleteHref;
+          }
+        });
+      }
+
+      const addEffectForm = document.querySelector('form[action="/add_effect"]');
+      if (addEffectForm) {
+        const addEffectButton = addEffectForm.querySelector('#add-effect-button');
+        const solutionSelect = addEffectForm.querySelector('select[name="solution_id"]');
+        const promptingSelect = addEffectForm.querySelector('select[name="prompting_technique_id"]');
+        const otherSelect = addEffectForm.querySelector('select[name="other_technique_id"]');
+
+        function updateAddEffectButtonState() {
+          if (!addEffectButton) {
+            return;
+          }
+          const hasLinkedEffect = [solutionSelect, promptingSelect, otherSelect].some(function (selectEl) {
+            return selectEl && selectEl.value;
+          });
+          addEffectButton.classList.toggle('btn-outline-secondary', !hasLinkedEffect);
+          addEffectButton.classList.toggle('btn-success', hasLinkedEffect);
+          addEffectButton.classList.toggle('text-white', hasLinkedEffect);
+          addEffectButton.classList.toggle('shadow-sm', hasLinkedEffect);
+        }
+
+        function enforceExclusiveSelection(changedSelect) {
+          if (!changedSelect || !changedSelect.value) {
+            updateAddEffectButtonState();
+            return;
+          }
+          [solutionSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
+            if (selectEl && selectEl !== changedSelect) {
+              selectEl.value = '';
+            }
+          });
+          updateAddEffectButtonState();
+        }
+
+        [solutionSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
+          if (!selectEl) {
+            return;
+          }
+          selectEl.addEventListener('change', function () {
+            enforceExclusiveSelection(selectEl);
+          });
+        });
+
+        updateAddEffectButtonState();
+      }
+
+      const purposeLinks = Array.from(document.querySelectorAll('.purpose-select-link[data-purpose-id]'));
+      const solutionLinks = Array.from(document.querySelectorAll('.solution-select-link[data-solution-id]'));
+      const solutionItems = Array.from(document.querySelectorAll('.kb-solution-list-item'));
+      const detailCards = Array.from(document.querySelectorAll('.kb-solution-detail'));
+      const placeholder = document.getElementById('solution-detail-placeholder');
+      const modelTypeFilter = document.getElementById('nav-filter-model-type');
+      const promptingTechniqueFilter = document.getElementById('nav-filter-technique');
+      const otherTechniqueFilter = document.getElementById('nav-filter-other-technique');
+      const underlyingLlmFilter = document.getElementById('nav-filter-underlying-llm');
+      let activePurposeId = null;
+      let activeSolutionId = '';
+
+      function applyPurposeHighlight() {
+        const activeModelType = modelTypeFilter ? modelTypeFilter.value : '';
+        const activePromptingTechnique = promptingTechniqueFilter ? promptingTechniqueFilter.value : '';
+        const activeOtherTechnique = otherTechniqueFilter ? otherTechniqueFilter.value : '';
+        const activeUnderlyingLlm = underlyingLlmFilter ? underlyingLlmFilter.value : '';
+
+        purposeLinks.forEach(function (link) {
+          link.classList.toggle('purpose-link-active', !!activePurposeId && link.dataset.purposeId === activePurposeId);
+        });
+
+        solutionItems.forEach(function (item) {
+          const purposeIds = parseCsvIds(item.dataset.purposeIds);
+          const modelTypeIds = parseCsvIds(item.dataset.modelTypeIds);
+          const promptingTechniqueIds = parseCsvIds(item.dataset.promptingTechniqueIds);
+          const otherTechniqueIds = parseCsvIds(item.dataset.otherTechniqueIds);
+          const underlyingLlmIds = parseCsvIds(item.dataset.underlyingLlmIds);
+          const matchesPurpose = !activePurposeId || purposeIds.includes(activePurposeId);
+          const matchesModelType = !activeModelType || modelTypeIds.includes(activeModelType);
+          const matchesPromptingTechnique = !activePromptingTechnique || promptingTechniqueIds.includes(activePromptingTechnique);
+          const matchesOtherTechnique = !activeOtherTechnique || otherTechniqueIds.includes(activeOtherTechnique);
+          const matchesUnderlyingLlm = !activeUnderlyingLlm || underlyingLlmIds.includes(activeUnderlyingLlm);
+          const passesFilter = matchesModelType && matchesPromptingTechnique && matchesOtherTechnique && matchesUnderlyingLlm;
+
+          item.style.display = passesFilter ? '' : 'none';
+          item.classList.toggle('solution-list-item-highlight', passesFilter && !!activePurposeId && matchesPurpose);
+          item.classList.toggle('solution-list-item-dim', passesFilter && !!activePurposeId && !matchesPurpose);
+        });
+
+        showSolutionDetails(activeSolutionId);
+      }
+
+      function showSolutionDetails(solutionId) {
+        activeSolutionId = solutionId || '';
+        const activeModelType = modelTypeFilter ? modelTypeFilter.value : '';
+        const activePromptingTechnique = promptingTechniqueFilter ? promptingTechniqueFilter.value : '';
+        const activeOtherTechnique = otherTechniqueFilter ? otherTechniqueFilter.value : '';
+        const activeUnderlyingLlm = underlyingLlmFilter ? underlyingLlmFilter.value : '';
+        let shown = false;
+        detailCards.forEach(function (card) {
+          const modelTypeIds = parseCsvIds(card.dataset.modelTypeIds);
+          const promptingTechniqueIds = parseCsvIds(card.dataset.promptingTechniqueIds);
+          const otherTechniqueIds = parseCsvIds(card.dataset.otherTechniqueIds);
+          const underlyingLlmIds = parseCsvIds(card.dataset.underlyingLlmIds);
+          const passesModelType = !activeModelType || modelTypeIds.includes(activeModelType);
+          const passesPromptingTechnique = !activePromptingTechnique || promptingTechniqueIds.includes(activePromptingTechnique);
+          const passesOtherTechnique = !activeOtherTechnique || otherTechniqueIds.includes(activeOtherTechnique);
+          const passesUnderlyingLlm = !activeUnderlyingLlm || underlyingLlmIds.includes(activeUnderlyingLlm);
+          const isMatch = card.dataset.solutionId === activeSolutionId && passesModelType && passesPromptingTechnique && passesOtherTechnique && passesUnderlyingLlm;
+          card.classList.toggle('kb-solution-detail-visible', isMatch);
+          if (isMatch) shown = true;
+        });
+
+        if (placeholder) {
+          placeholder.style.display = shown ? 'none' : 'block';
+        }
+      }
+
+      purposeLinks.forEach(function (link) {
+        link.addEventListener('click', function (event) {
+          event.preventDefault();
+          const clickedPurpose = this.dataset.purposeId;
+          activePurposeId = activePurposeId === clickedPurpose ? null : clickedPurpose;
+          applyPurposeHighlight();
+        });
+      });
+
+      if (modelTypeFilter) {
+        modelTypeFilter.addEventListener('change', applyPurposeHighlight);
+      }
+
+      if (promptingTechniqueFilter) {
+        promptingTechniqueFilter.addEventListener('change', applyPurposeHighlight);
+      }
+
+      if (otherTechniqueFilter) {
+        otherTechniqueFilter.addEventListener('change', applyPurposeHighlight);
+      }
+
+      if (underlyingLlmFilter) {
+        underlyingLlmFilter.addEventListener('change', applyPurposeHighlight);
+      }
+
+      solutionLinks.forEach(function (link) {
+        link.addEventListener('click', function (event) {
+          event.preventDefault();
+          showSolutionDetails(this.dataset.solutionId);
+        });
+      });
+
+      applyPurposeHighlight();
+      showSolutionDetails('');
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

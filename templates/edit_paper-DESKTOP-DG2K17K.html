@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Record</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container mt-4">
+    {% if mode == "solution" %}
+      <h2>Edit</h2>
+      <form method="post" action="/update_solution/{{ solution.id }}">
+        <input class="form-control mb-2" name="name" value="{{ solution.name }}">
+        <select class="form-select mb-2" name="source_id" required>
+          {% for source in sources %}
+            <option value="{{ source.id }}" {% if source.id == solution.source_id %}selected{% endif %}>{{ source.title }}{% if source.author %} - {{ source.author }}{% endif %}</option>
+          {% endfor %}
+        </select>
+        <select class="form-select mb-2" name="prompting_technique_ids" multiple size="5">
+          {% for technique in prompting_techniques %}
+            <option value="{{ technique.id }}" {% if technique.id in solution.prompting_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
+          {% endfor %}
+        </select>
+        <select class="form-select mb-2" name="other_technique_ids" multiple size="5">
+          {% for technique in other_techniques %}
+            <option value="{{ technique.id }}" {% if technique.id in solution.other_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
+          {% endfor %}
+        </select>
+        <select class="form-select mb-2" name="modeling_purpose_ids" multiple size="5">
+          {% for purpose in modeling_purposes %}
+            <option value="{{ purpose.id }}" {% if purpose.id in solution.modeling_purpose_ids %}selected{% endif %}>{{ purpose.name }}</option>
+          {% endfor %}
+        </select>
+        <textarea class="form-control mb-2" name="justification">{{ solution.justification }}</textarea>
+        <button class="btn btn-primary">Save</button>
+        <a href="/" class="btn btn-secondary">Cancel</a>
+      </form>
+    {% elif mode == "source" %}
+      <h2>Edit Source</h2>
+      <form method="post" action="/update_source/{{ source.id }}">
+        <input class="form-control mb-2" name="title" value="{{ source.title }}">
+        <input class="form-control mb-2" name="author" value="{{ source.author }}">
+        <input class="form-control mb-2" name="year" value="{{ source.year }}" placeholder="Year" inputmode="numeric" type="number" min="0" step="1">
+        <input class="form-control mb-2" name="doi" value="{{ source.doi }}" placeholder="DOI">
+        <button class="btn btn-primary">Save</button>
+        <a href="/" class="btn btn-secondary">Cancel</a>
+      </form>
+    {% elif mode == "effect" %}
+      <h2>Edit Effect</h2>
+      <form method="post" action="/update_effect/{{ effect.id }}">
+        <textarea class="form-control mb-2" name="description" rows="3" required>{{ effect.description }}</textarea>
+        <input class="form-control mb-2" name="evidence_rigor" value="{{ effect.evidence_rigor }}" list="evidence-rigor-options" autocomplete="off" placeholder="Evidence rigor">
+        <select class="form-select mb-2" name="solution_id">
+          <option value="">No linked solution</option>
+          {% for solution in solutions %}
+            <option value="{{ solution.id }}" {% if effect.solution_id == solution.id %}selected{% endif %}>{{ solution.name }}</option>
+          {% endfor %}
+        </select>
+        <select class="form-select mb-2" name="prompting_technique_id">
+          <option value="">No prompting technique</option>
+          {% for technique in prompting_techniques %}
+            <option value="{{ technique.id }}" {% if effect.prompting_technique_id == technique.id %}selected{% endif %}>{{ technique.name }}</option>
+          {% endfor %}
+        </select>
+        <select class="form-select mb-2" name="other_technique_id">
+          <option value="">No other technique</option>
+          {% for technique in other_techniques %}
+            <option value="{{ technique.id }}" {% if effect.other_technique_id == technique.id %}selected{% endif %}>{{ technique.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text mb-2">Constraint: choose at most one of Modeling Solution, Prompting Technique, or Other Technique.</div>
+        <select class="form-select mb-2" name="underlying_llm_id">
+          <option value="">No underlying LLM</option>
+          {% for llm in underlying_llms %}
+            <option value="{{ llm.id }}" {% if effect.underlying_llm_id == llm.id %}selected{% endif %}>{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-primary">Save</button>
+        <a href="/" class="btn btn-secondary">Cancel</a>
+      </form>
+      <datalist id="evidence-rigor-options">
+        {% for value in evidence_rigor_values %}
+          <option value="{{ value }}"></option>
+        {% endfor %}
+      </datalist>
+    {% else %}
+      <p class="text-muted">Unknown edit mode.</p>
+      <a href="/" class="btn btn-secondary">Back</a>
+    {% endif %}
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const effectForm = document.querySelector('form[action^="/update_effect/"]');
+      if (!effectForm) {
+        return;
+      }
+
+      const solutionSelect = effectForm.querySelector('select[name="solution_id"]');
+      const promptingSelect = effectForm.querySelector('select[name="prompting_technique_id"]');
+      const otherSelect = effectForm.querySelector('select[name="other_technique_id"]');
+
+      function enforceExclusiveSelection(changedSelect) {
+        if (!changedSelect || !changedSelect.value) {
+          return;
+        }
+        [solutionSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
+          if (selectEl && selectEl !== changedSelect) {
+            selectEl.value = '';
+          }
+        });
+      }
+
+      [solutionSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
+        if (!selectEl) {
+          return;
+        }
+        selectEl.addEventListener('change', function () {
+          enforceExclusiveSelection(selectEl);
+        });
+      });
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

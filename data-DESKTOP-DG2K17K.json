@@ -1,0 +1,174 @@
+{
+  "solutions": [
+    {
+      "id": 1,
+      "name": "Formal Language Specification",
+      "prompting_technique_ids": [
+        1,
+        3,
+        4
+      ],
+      "modeling_purpose_ids": [
+        1
+      ],
+      "justification": "Make the model machine readable.",
+      "other_technique_ids": [],
+      "source_id": 1
+    },
+    {
+      "id": 2,
+      "name": "Step by step LLM reasoning",
+      "prompting_technique_ids": [
+        2
+      ],
+      "modeling_purpose_ids": [
+        8
+      ],
+      "justification": "Supposed increase in quality of output ",
+      "other_technique_ids": [
+        1
+      ],
+      "source_id": 2
+    }
+  ],
+  "sources": [
+    {
+      "id": 1,
+      "title": "Automated Domain Modeling with Large Language Models: A Comparative Study",
+      "author": "Chen et al",
+      "doi": "https://doi.org/10.1109/MODELS58315.2023.00037",
+      "year": "2024"
+    },
+    {
+      "id": 2,
+      "title": "Leveraging machines to derive domain models from user stories",
+      "author": "Bragilovski et al.",
+      "doi": "https://doi.org/10.1007/s00766-025-00442-9",
+      "year": ""
+    }
+  ],
+  "effects": [
+    {
+      "id": 1,
+      "description": "magnificent effect.",
+      "evidence_rigor": "informal qualitative sensibility check",
+      "solution_id": 1,
+      "prompting_technique_id": null,
+      "other_technique_id": null,
+      "underlying_llm_id": 1
+    },
+    {
+      "id": 2,
+      "description": "test",
+      "evidence_rigor": "test",
+      "solution_id": 1,
+      "prompting_technique_id": null,
+      "other_technique_id": null,
+      "underlying_llm_id": 1
+    }
+  ],
+  "underlying_llms": [
+    {
+      "id": 1,
+      "name": "GPT",
+      "version": "5.6"
+    }
+  ],
+  "model_types": [
+    {
+      "id": 1,
+      "name": "business process modeling",
+      "notation": "BPMN"
+    },
+    {
+      "id": 2,
+      "name": "UML Class Diagrams",
+      "notation": "Domain Data Model"
+    }
+  ],
+  "prompting_techniques": [
+    {
+      "id": 1,
+      "name": "Few-Shot"
+    },
+    {
+      "id": 2,
+      "name": "Chain-of-Thought"
+    },
+    {
+      "id": 3,
+      "name": "meta-language creation"
+    },
+    {
+      "id": 4,
+      "name": "Output formatting"
+    }
+  ],
+  "other_techniques": [
+    {
+      "id": 1,
+      "name": "agentic"
+    }
+  ],
+  "modeling_purposes": [
+    {
+      "id": 1,
+      "name": "Use machine readable models, for computer aided analysis",
+      "parent_id": 2,
+      "model_type_id": null
+    },
+    {
+      "id": 2,
+      "name": "Establish desired model output format",
+      "parent_id": null,
+      "root_order": 2,
+      "model_type_id": 2
+    },
+    {
+      "id": 3,
+      "name": "Explore LLM modeling capabilities",
+      "parent_id": null,
+      "root_order": 0,
+      "model_type_id": null
+    },
+    {
+      "id": 4,
+      "name": "Gain insight into modeling language familiarity",
+      "parent_id": 3,
+      "model_type_id": null
+    },
+    {
+      "id": 5,
+      "name": "Gain insight into domain familiarity",
+      "parent_id": 3,
+      "model_type_id": null
+    },
+    {
+      "id": 6,
+      "name": "Use models for human communication",
+      "parent_id": 2,
+      "model_type_id": null
+    },
+    {
+      "id": 7,
+      "name": "Tweak quality of LLM output",
+      "parent_id": null,
+      "root_order": 1,
+      "model_type_id": null
+    },
+    {
+      "id": 8,
+      "name": "Explicate LLM reasoning",
+      "parent_id": 7,
+      "model_type_id": null
+    }
+  ],
+  "evidence_rigor_values": [
+    "quantitative ablation",
+    "case based isolation",
+    "bundled comparison",
+    "momolitic application",
+    "informal qualitative sensibility check",
+    "test"
+  ]
+}
