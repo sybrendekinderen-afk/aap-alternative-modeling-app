@@ -38,48 +38,65 @@
       <div class="card-header"><h3 class="h5 mb-0">Knowledge Base Navigation</h3></div>
       <div class="card-body">
         <div class="row g-4">
-          <div class="col-lg-7">
-            <div class="card h-100 primary-surface">
-              <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Purpose</h4></div>
+          <div class="col-lg-4">
+            <div class="card primary-surface mb-3">
+              <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Task</h4></div>
               <div class="card-body">
-                <p class="text-muted small mb-3">Browse the purpose tree and jump to the solutions linked to each purpose.</p>
+                <p class="text-muted small mb-3">Select a task to highlight related solutions.</p>
                 <ul class="list-group">
-                  {% for purpose in modeling_purpose_tree %}
+                  {% for task in modeling_tasks %}
+                    <li class="list-group-item">
+                      <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                          <a href="#task-{{ task.id }}" class="fw-semibold text-decoration-none task-select-link" data-task-id="{{ task.id }}">{{ task.name }}</a>
+                          {% if task.model_type_id %}
+                            {% set task_model_type = model_type_lookup.get(task.model_type_id) %}
+                            {% if task_model_type %}
+                              <span class="badge bg-light text-dark border ms-1">{{ task_model_type.name }}</span>
+                            {% endif %}
+                          {% endif %}
+                        </div>
+                        <div class="text-muted small text-nowrap">{{ modeling_task_solution_lookup.get(task.id, [])|length }} solution{% if modeling_task_solution_lookup.get(task.id, [])|length != 1 %}s{% endif %}</div>
+                      </div>
+                      {% if modeling_task_solution_lookup.get(task.id, []) %}
+                        <div class="mt-1">
+                          {% for solution in modeling_task_solution_lookup.get(task.id, []) %}
+                            <a href="#solution-{{ solution.id }}" class="badge bg-primary-subtle text-primary-emphasis me-1 mb-1 text-decoration-none solution-select-link" data-solution-id="{{ solution.id }}">{{ solution.name }}</a>
+                          {% endfor %}
+                        </div>
+                      {% endif %}
+                    </li>
+                  {% else %}
+                    <li class="list-group-item text-muted">No Modeling Tasks yet.</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+            <div class="card primary-surface">
+              <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Problem</h4></div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">Select a problem to highlight solutions addressing it.</p>
+                <ul class="list-group">
+                  {% for problem in modeling_problem_tree %}
                     <li class="list-group-item purpose-tree-item">
                       <div class="d-flex justify-content-between align-items-start gap-2">
                         <div class="flex-grow-1">
                           <div class="d-flex align-items-center gap-2">
-                            {% if purpose.children %}
-                              <button class="btn btn-outline-secondary btn-sm purpose-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#kb-purpose-{{ purpose.id }}" aria-expanded="false" aria-controls="kb-purpose-{{ purpose.id }}">▾</button>
+                            {% if problem.children %}
+                              <button class="btn btn-outline-secondary btn-sm purpose-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#kb-problem-{{ problem.id }}" aria-expanded="false">▾</button>
                             {% else %}
                               <span class="text-muted small">•</span>
                             {% endif %}
-                            <div>
-                              <a href="#purpose-{{ purpose.id }}" class="fw-semibold text-decoration-none purpose-select-link" data-purpose-id="{{ purpose.id }}">{{ purpose.name }}</a>
-                              {% if purpose.model_type_id %}
-                                {% set purpose_model_type = model_type_lookup.get(purpose.model_type_id) %}
-                                {% if purpose_model_type %}
-                                  <span class="badge bg-light text-dark border ms-1">{{ purpose_model_type.name }}</span>
-                                {% endif %}
-                              {% endif %}
-                            </div>
+                            <a href="#problem-{{ problem.id }}" class="fw-semibold text-decoration-none problem-select-link" data-problem-id="{{ problem.id }}">{{ problem.name }}</a>
                           </div>
-                          {% if purpose.children %}
-                            <div class="collapse mt-2" id="kb-purpose-{{ purpose.id }}">
+                          {% if problem.children %}
+                            <div class="collapse mt-2" id="kb-problem-{{ problem.id }}">
                               <ul class="list-group">
-                                {% for child in purpose.children %}
+                                {% for child in problem.children %}
                                   <li class="list-group-item border-0 ps-4">
                                     <div class="d-flex justify-content-between align-items-start gap-2">
-                                      <div>
-                                        <a href="#purpose-{{ child.id }}" class="fw-semibold text-decoration-none purpose-select-link" data-purpose-id="{{ child.id }}">{{ child.name }}</a>
-                                            {% if child.model_type_id %}
-                                              {% set child_model_type = model_type_lookup.get(child.model_type_id) %}
-                                              {% if child_model_type %}
-                                                <span class="badge bg-light text-dark border ms-1">{{ child_model_type.name }}</span>
-                                              {% endif %}
-                                            {% endif %}
-                                      </div>
-                                      <div class="text-muted small">{{ modeling_purpose_solution_lookup.get(child.id, [])|length }} solution{% if modeling_purpose_solution_lookup.get(child.id, [])|length != 1 %}s{% endif %}</div>
+                                      <a href="#problem-{{ child.id }}" class="fw-semibold text-decoration-none problem-select-link" data-problem-id="{{ child.id }}">{{ child.name }}</a>
+                                      <div class="text-muted small text-nowrap">{{ modeling_problem_solution_lookup.get(child.id, [])|length }} solution{% if modeling_problem_solution_lookup.get(child.id, [])|length != 1 %}s{% endif %}</div>
                                     </div>
                                   </li>
                                 {% endfor %}
@@ -87,25 +104,17 @@
                             </div>
                           {% endif %}
                         </div>
-                        <div class="text-muted small">{{ modeling_purpose_solution_lookup.get(purpose.id, [])|length }} solution{% if modeling_purpose_solution_lookup.get(purpose.id, [])|length != 1 %}s{% endif %}</div>
+                        <div class="text-muted small text-nowrap">{{ modeling_problem_solution_lookup.get(problem.id, [])|length }} solution{% if modeling_problem_solution_lookup.get(problem.id, [])|length != 1 %}s{% endif %}</div>
                       </div>
-                      {% if modeling_purpose_solution_lookup.get(purpose.id, []) %}
-                        <div class="mt-2">
-                          <div class="small text-muted">Linked solutions:</div>
-                          {% for solution in modeling_purpose_solution_lookup.get(purpose.id, []) %}
-                            <a href="#solution-{{ solution.id }}" class="badge bg-primary-subtle text-primary-emphasis me-1 mb-1 text-decoration-none solution-select-link" data-solution-id="{{ solution.id }}">{{ solution.name }}</a>
-                          {% endfor %}
-                        </div>
-                      {% endif %}
                     </li>
                   {% else %}
-                    <li class="list-group-item text-muted">No Modeling Purpose yet.</li>
+                    <li class="list-group-item text-muted">No Modeling Problems yet.</li>
                   {% endfor %}
                 </ul>
               </div>
             </div>
           </div>
-          <div class="col-lg-5">
+          <div class="col-lg-8">
             <div class="card h-100 solution-card">
               <div class="card-header"><h4 class="h6 mb-0">Modeling Solutions Already Added</h4></div>
               <div class="card-body">
@@ -135,7 +144,7 @@
                       </select>
                     </div>
                     <div class="col-12">
-                      <label for="nav-filter-model-type" class="form-label form-label-sm mb-1">Model Type (via Modeling Purpose)</label>
+                      <label for="nav-filter-model-type" class="form-label form-label-sm mb-1">Model Type (via Modeling Task)</label>
                       <select id="nav-filter-model-type" class="form-select form-select-sm">
                         <option value="">All Model Types</option>
                         {% for model_type in model_types %}
@@ -156,16 +165,16 @@
                 </div>
                 <ul class="list-group">
                   {% for solution in solutions %}
-                    <li class="list-group-item kb-solution-list-item" data-solution-id="{{ solution.id }}" data-purpose-ids="{{ solution.modeling_purpose_ids|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}">
+                    <li class="list-group-item kb-solution-list-item" data-solution-id="{{ solution.id }}" data-task-ids="{{ solution.modeling_task_ids|join(',') }}" data-problem-ids="{{ solution_problem_lookup.get(solution.id, [])|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}">
                       <div class="d-flex justify-content-between align-items-center gap-2">
                         <a href="#solution-{{ solution.id }}" class="fw-semibold text-decoration-none solution-select-link" data-solution-id="{{ solution.id }}">{{ solution.name }}</a>
                       </div>
-                      {% if solution.modeling_purpose_ids %}
+                      {% if solution.modeling_task_ids %}
                         <div class="small text-muted mt-1">
-                          {% for pid in solution.modeling_purpose_ids %}
-                            {% set purpose = modeling_purpose_lookup.get(pid) %}
-                            {% if purpose %}
-                              <a href="#purpose-{{ purpose.id }}" class="badge bg-info-subtle text-info-emphasis me-1 text-decoration-none purpose-select-link" data-purpose-id="{{ purpose.id }}">{{ purpose.name }}</a>
+                          {% for tid in solution.modeling_task_ids %}
+                            {% set task = modeling_task_lookup.get(tid) %}
+                            {% if task %}
+                              <a href="#task-{{ task.id }}" class="badge bg-info-subtle text-info-emphasis me-1 text-decoration-none task-select-link" data-task-id="{{ task.id }}">{{ task.name }}</a>
                             {% endif %}
                           {% endfor %}
                         </div>
@@ -187,7 +196,7 @@
     </div>
 
     {% for solution in solutions %}
-      <div class="card mb-3 solution-card kb-solution-detail" id="solution-{{ solution.id }}" data-solution-id="{{ solution.id }}" data-purpose-ids="{{ solution.modeling_purpose_ids|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}">
+      <div class="card mb-3 solution-card kb-solution-detail" id="solution-{{ solution.id }}" data-solution-id="{{ solution.id }}" data-task-ids="{{ solution.modeling_task_ids|join(',') }}" data-problem-ids="{{ solution_problem_lookup.get(solution.id, [])|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}">
         <div class="card-header d-flex justify-content-between align-items-center">
           <strong>{{ solution.name }}</strong>
           <div>
@@ -199,12 +208,12 @@
           <div class="row">
             <div class="col-md-6">
               <h5 class="h6"></h5>
-              <p><b>Modeling Purpose:</b>
-                {% if solution.modeling_purpose_ids %}
-                  {% for pid in solution.modeling_purpose_ids %}
-                    {% set purpose = modeling_purpose_lookup.get(pid) %}
-                    {% if purpose %}
-                      <a href="#purpose-{{ purpose.id }}" class="badge bg-primary-subtle text-primary-emphasis me-1 text-decoration-none">{{ purpose.name }}</a>
+              <p><b>Modeling Task:</b>
+                {% if solution.modeling_task_ids %}
+                  {% for tid in solution.modeling_task_ids %}
+                    {% set task = modeling_task_lookup.get(tid) %}
+                    {% if task %}
+                      <a href="#task-{{ task.id }}" class="badge bg-primary-subtle text-primary-emphasis me-1 text-decoration-none">{{ task.name }}</a>
                     {% endif %}
                   {% endfor %}
                 {% else %}
@@ -349,13 +358,13 @@
                   <div class="form-text">Select one or more other techniques linked to this solution.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Modeling Purpose</label>
-                  <select class="form-select" name="modeling_purpose_ids" multiple size="5">
-                    {% for purpose in modeling_purposes %}
-                      <option value="{{ purpose.id }}">{{ purpose.name }}</option>
+                  <label class="form-label">Modeling Task</label>
+                  <select class="form-select" name="modeling_task_ids" multiple size="5">
+                    {% for task in modeling_tasks %}
+                      <option value="{{ task.id }}">{{ task.name }}</option>
                     {% endfor %}
                   </select>
-                  <div class="form-text">Select one or more related Modeling Purpose entries.</div>
+                  <div class="form-text">Select one or more related Modeling Tasks. Hold Ctrl/Cmd for multiple.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Justification</label>
@@ -493,79 +502,176 @@
 
         <div class="card mb-4 subtle-panel">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <h4 class="h6 mb-0 text-muted">Modeling Purpose</h4>
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#modeling-purposes-panel" aria-expanded="false" aria-controls="modeling-purposes-panel">Show</button>
+            <h4 class="h6 mb-0 text-muted">Modeling Tasks</h4>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#add-modeling-task-panel" aria-expanded="false" aria-controls="add-modeling-task-panel">Show</button>
           </div>
-          <div class="collapse" id="modeling-purposes-panel">
+          <div class="collapse" id="add-modeling-task-panel">
             <div class="card-body">
-              <form method="post" action="/add_modeling_purpose" class="row g-2 mb-3">
-                <div class="col-md-4">
-                  <input class="form-control" name="modeling_purpose_name" placeholder="Purpose name" required>
+              <div class="card subtle-panel">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h4 class="h6 mb-0 text-muted">Add Modeling Task</h4>
+                </div>
+                <div class="card-body">
+                  <form method="post" action="/add_modeling_task" class="row g-2">
+                    <div class="col-md-5">
+                      <input class="form-control" name="modeling_task_name" placeholder="Task name" required>
+                    </div>
+                    <div class="col-md-5">
+                      <select class="form-select" name="model_type_id">
+                        <option value="">-- Optional model type --</option>
+                        {% for model_type in model_types %}
+                          <option value="{{ model_type.id }}">{{ model_type.name }}{% if model_type.notation %} ({{ model_type.notation }}){% endif %}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <button class="btn btn-outline-secondary w-100">Add</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <div class="card mt-4 subtle-panel">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h4 class="h6 mb-0 text-muted">Manage Modeling Tasks</h4>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#manage-modeling-tasks-panel" aria-expanded="false" aria-controls="manage-modeling-tasks-panel">Show</button>
+                </div>
+                <div class="collapse" id="manage-modeling-tasks-panel">
+                  <div class="card-body">
+                    <ul class="list-group">
+                      {% for task in modeling_tasks %}
+                        <li class="list-group-item">
+                          <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                            <div>
+                              <b>{{ task.name }}</b>
+                              {% if task.model_type_id %}
+                                {% set mt = model_type_lookup.get(task.model_type_id) %}
+                                {% if mt %}<span class="badge bg-light text-dark border ms-1">{{ mt.name }}</span>{% endif %}
+                              {% endif %}
+                              {% if task.modeling_problem_ids %}
+                                <div class="small text-muted mt-1">
+                                  Problems:
+                                  {% for pid in task.modeling_problem_ids %}
+                                    {% set prob = modeling_problem_lookup.get(pid) %}
+                                    {% if prob %}<span class="badge bg-secondary-subtle text-secondary-emphasis me-1">{{ prob.name }}</span>{% endif %}
+                                  {% endfor %}
+                                </div>
+                              {% endif %}
+                            </div>
+                            <div class="d-flex gap-2 flex-wrap">
+                              <form method="post" action="/update_modeling_task/{{ task.id }}" class="d-flex gap-2 flex-wrap">
+                                <input class="form-control form-control-sm" style="min-width:140px" name="modeling_task_name" value="{{ task.name }}">
+                                <select class="form-select form-select-sm" name="model_type_id">
+                                  <option value="">-- No model type --</option>
+                                  {% for model_type in model_types %}
+                                    <option value="{{ model_type.id }}" {% if task.model_type_id == model_type.id %}selected{% endif %}>{{ model_type.name }}</option>
+                                  {% endfor %}
+                                </select>
+                                <select class="form-select form-select-sm" name="modeling_problem_ids" multiple size="3">
+                                  {% for problem in modeling_problems %}
+                                    <option value="{{ problem.id }}" {% if problem.id in task.modeling_problem_ids %}selected{% endif %}>{{ problem.name }}</option>
+                                  {% endfor %}
+                                </select>
+                                <button class="btn btn-sm btn-outline-primary">Update</button>
+                              </form>
+                              <a href="/delete_modeling_task/{{ task.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                            </div>
+                          </div>
+                        </li>
+                      {% else %}
+                        <li class="list-group-item text-muted">No Modeling Tasks yet.</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4 subtle-panel">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="h6 mb-0 text-muted">Modeling Problems</h4>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#modeling-problems-panel" aria-expanded="false" aria-controls="modeling-problems-panel">Show</button>
+          </div>
+          <div class="collapse" id="modeling-problems-panel">
+            <div class="card-body">
+              <form method="post" action="/add_modeling_problem" class="row g-2 mb-3">
+                <div class="col-md-3">
+                  <input class="form-control" name="modeling_problem_name" placeholder="Problem name" required>
+                </div>
+                <div class="col-md-3">
+                  <select class="form-select" name="parent_id">
+                    <option value="">-- Root problem --</option>
+                    {% for problem in modeling_problems %}
+                      <option value="{{ problem.id }}">{{ problem.name }}</option>
+                    {% endfor %}
+                  </select>
                 </div>
                 <div class="col-md-2">
-                  <select class="form-select" name="parent_id">
-                    <option value="">-- Root purpose --</option>
-                    {% for purpose in modeling_purposes %}
-                      <option value="{{ purpose.id }}">{{ purpose.name }}</option>
+                  <select class="form-select" name="prompting_technique_ids" multiple size="3" title="Prompting Techniques">
+                    {% for technique in prompting_techniques %}
+                      <option value="{{ technique.id }}">{{ technique.name }}</option>
                     {% endfor %}
                   </select>
+                  <div class="form-text">Prompting techniques</div>
                 </div>
-                <div class="col-md-4">
-                  <select class="form-select" name="model_type_id">
-                    <option value="">-- Optional model type --</option>
-                    {% for model_type in model_types %}
-                      <option value="{{ model_type.id }}">{{ model_type.name }}{% if model_type.notation %} ({{ model_type.notation }}){% endif %}</option>
+                <div class="col-md-2">
+                  <select class="form-select" name="other_technique_ids" multiple size="3" title="Other Techniques">
+                    {% for technique in other_techniques %}
+                      <option value="{{ technique.id }}">{{ technique.name }}</option>
                     {% endfor %}
                   </select>
+                  <div class="form-text">Other techniques</div>
                 </div>
                 <div class="col-md-2">
                   <button class="btn btn-outline-secondary w-100">Add</button>
                 </div>
               </form>
               <ul class="list-group">
-                {% for purpose in modeling_purpose_tree %}
+                {% for problem in modeling_problem_tree %}
                   <li class="list-group-item purpose-tree-item">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
                       <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
-                          {% if purpose.children %}
-                            <button class="btn btn-outline-secondary btn-sm purpose-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#manage-purpose-{{ purpose.id }}" aria-expanded="false" aria-controls="manage-purpose-{{ purpose.id }}">▾</button>
+                          {% if problem.children %}
+                            <button class="btn btn-outline-secondary btn-sm purpose-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#manage-problem-{{ problem.id }}">▾</button>
                           {% else %}
                             <span class="text-muted small">•</span>
                           {% endif %}
-                          <div>
-                            <b>{{ purpose.name }}</b>
-                          </div>
+                          <b>{{ problem.name }}</b>
                         </div>
-                        {% if purpose.children %}
-                          <div class="collapse mt-2" id="manage-purpose-{{ purpose.id }}">
+                        {% if problem.children %}
+                          <div class="collapse mt-2" id="manage-problem-{{ problem.id }}">
                             <ul class="list-group">
-                              {% for child in purpose.children %}
+                              {% for child in problem.children %}
                                 <li class="list-group-item border-0 ps-4">
-                                  <div class="d-flex justify-content-between align-items-start gap-2">
-                                    <div>
-                                      <b>{{ child.name }}</b>
-                                    </div>
-                                    <div class="d-flex gap-2">
-                                      <form method="post" action="/update_modeling_purpose/{{ child.id }}" class="d-flex gap-2">
-                                        <input class="form-control form-control-sm" name="modeling_purpose_name" value="{{ child.name }}">
+                                  <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                                    <b>{{ child.name }}</b>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                      <form method="post" action="/update_modeling_problem/{{ child.id }}" class="d-flex gap-2 flex-wrap">
+                                        <input class="form-control form-control-sm" name="modeling_problem_name" value="{{ child.name }}">
                                         <select class="form-select form-select-sm" name="parent_id">
-                                          <option value="">-- Root purpose --</option>
-                                          {% for candidate in modeling_purposes %}
+                                          <option value="">-- Root problem --</option>
+                                          {% for candidate in modeling_problems %}
                                             {% if candidate.id != child.id %}
                                               <option value="{{ candidate.id }}" {% if child.parent_id == candidate.id %}selected{% endif %}>{{ candidate.name }}</option>
                                             {% endif %}
                                           {% endfor %}
                                         </select>
-                                        <select class="form-select form-select-sm" name="model_type_id">
-                                          <option value="">-- Optional model type --</option>
-                                          {% for model_type in model_types %}
-                                            <option value="{{ model_type.id }}" {% if child.model_type_id == model_type.id %}selected{% endif %}>{{ model_type.name }}</option>
+                                        <select class="form-select form-select-sm" name="prompting_technique_ids" multiple size="3">
+                                          {% for technique in prompting_techniques %}
+                                            <option value="{{ technique.id }}" {% if technique.id in child.prompting_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
+                                          {% endfor %}
+                                        </select>
+                                        <select class="form-select form-select-sm" name="other_technique_ids" multiple size="3">
+                                          {% for technique in other_techniques %}
+                                            <option value="{{ technique.id }}" {% if technique.id in child.other_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
                                           {% endfor %}
                                         </select>
                                         <button class="btn btn-sm btn-outline-primary">Update</button>
                                       </form>
-                                      <a href="/delete_modeling_purpose/{{ child.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                                      <a href="/delete_modeling_problem/{{ child.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
                                     </div>
                                   </div>
                                 </li>
@@ -574,35 +680,35 @@
                           </div>
                         {% endif %}
                       </div>
-                      <div class="d-flex gap-2">
-                        <div class="d-flex gap-1">
-                          <a href="/move_modeling_purpose_root/{{ purpose.id }}/up" class="btn btn-sm btn-outline-secondary" title="Move root purpose up">Up</a>
-                          <a href="/move_modeling_purpose_root/{{ purpose.id }}/down" class="btn btn-sm btn-outline-secondary" title="Move root purpose down">Down</a>
-                        </div>
-                        <form method="post" action="/update_modeling_purpose/{{ purpose.id }}" class="d-flex gap-2">
-                          <input class="form-control form-control-sm" name="modeling_purpose_name" value="{{ purpose.name }}">
+                      <div class="d-flex gap-2 flex-wrap">
+                        <form method="post" action="/update_modeling_problem/{{ problem.id }}" class="d-flex gap-2 flex-wrap">
+                          <input class="form-control form-control-sm" style="min-width:140px" name="modeling_problem_name" value="{{ problem.name }}">
                           <select class="form-select form-select-sm" name="parent_id">
-                            <option value="">-- Root purpose --</option>
-                            {% for candidate in modeling_purposes %}
-                              {% if candidate.id != purpose.id %}
-                                <option value="{{ candidate.id }}" {% if purpose.parent_id == candidate.id %}selected{% endif %}>{{ candidate.name }}</option>
+                            <option value="">-- Root problem --</option>
+                            {% for candidate in modeling_problems %}
+                              {% if candidate.id != problem.id %}
+                                <option value="{{ candidate.id }}" {% if problem.parent_id == candidate.id %}selected{% endif %}>{{ candidate.name }}</option>
                               {% endif %}
                             {% endfor %}
                           </select>
-                          <select class="form-select form-select-sm" name="model_type_id">
-                            <option value="">-- Optional model type --</option>
-                            {% for model_type in model_types %}
-                              <option value="{{ model_type.id }}" {% if purpose.model_type_id == model_type.id %}selected{% endif %}>{{ model_type.name }}</option>
+                          <select class="form-select form-select-sm" name="prompting_technique_ids" multiple size="3">
+                            {% for technique in prompting_techniques %}
+                              <option value="{{ technique.id }}" {% if technique.id in problem.prompting_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
+                            {% endfor %}
+                          </select>
+                          <select class="form-select form-select-sm" name="other_technique_ids" multiple size="3">
+                            {% for technique in other_techniques %}
+                              <option value="{{ technique.id }}" {% if technique.id in problem.other_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
                             {% endfor %}
                           </select>
                           <button class="btn btn-sm btn-outline-primary">Update</button>
                         </form>
-                        <a href="/delete_modeling_purpose/{{ purpose.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                        <a href="/delete_modeling_problem/{{ problem.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
                       </div>
                     </div>
                   </li>
                 {% else %}
-                  <li class="list-group-item text-muted">No Modeling Purpose yet.</li>
+                  <li class="list-group-item text-muted">No Modeling Problems yet.</li>
                 {% endfor %}
               </ul>
             </div>
@@ -916,7 +1022,8 @@
         updateAddEffectButtonState();
       }
 
-      const purposeLinks = Array.from(document.querySelectorAll('.purpose-select-link[data-purpose-id]'));
+      const taskLinks = Array.from(document.querySelectorAll('.task-select-link[data-task-id]'));
+      const problemLinks = Array.from(document.querySelectorAll('.problem-select-link[data-problem-id]'));
       const solutionLinks = Array.from(document.querySelectorAll('.solution-select-link[data-solution-id]'));
       const solutionItems = Array.from(document.querySelectorAll('.kb-solution-list-item'));
       const detailCards = Array.from(document.querySelectorAll('.kb-solution-detail'));
@@ -925,35 +1032,44 @@
       const promptingTechniqueFilter = document.getElementById('nav-filter-technique');
       const otherTechniqueFilter = document.getElementById('nav-filter-other-technique');
       const underlyingLlmFilter = document.getElementById('nav-filter-underlying-llm');
-      let activePurposeId = null;
+      let activeTaskId = null;
+      let activeProblemId = null;
       let activeSolutionId = '';
 
-      function applyPurposeHighlight() {
+      function applyHighlight() {
         const activeModelType = modelTypeFilter ? modelTypeFilter.value : '';
         const activePromptingTechnique = promptingTechniqueFilter ? promptingTechniqueFilter.value : '';
         const activeOtherTechnique = otherTechniqueFilter ? otherTechniqueFilter.value : '';
         const activeUnderlyingLlm = underlyingLlmFilter ? underlyingLlmFilter.value : '';
 
-        purposeLinks.forEach(function (link) {
-          link.classList.toggle('purpose-link-active', !!activePurposeId && link.dataset.purposeId === activePurposeId);
+        taskLinks.forEach(function (link) {
+          link.classList.toggle('purpose-link-active', !!activeTaskId && link.dataset.taskId === activeTaskId);
+        });
+
+        problemLinks.forEach(function (link) {
+          link.classList.toggle('purpose-link-active', !!activeProblemId && link.dataset.problemId === activeProblemId);
         });
 
         solutionItems.forEach(function (item) {
-          const purposeIds = parseCsvIds(item.dataset.purposeIds);
+          const taskIds = parseCsvIds(item.dataset.taskIds);
+          const problemIds = parseCsvIds(item.dataset.problemIds);
           const modelTypeIds = parseCsvIds(item.dataset.modelTypeIds);
           const promptingTechniqueIds = parseCsvIds(item.dataset.promptingTechniqueIds);
           const otherTechniqueIds = parseCsvIds(item.dataset.otherTechniqueIds);
           const underlyingLlmIds = parseCsvIds(item.dataset.underlyingLlmIds);
-          const matchesPurpose = !activePurposeId || purposeIds.includes(activePurposeId);
+          const matchesTask = !activeTaskId || taskIds.includes(activeTaskId);
+          const matchesProblem = !activeProblemId || problemIds.includes(activeProblemId);
           const matchesModelType = !activeModelType || modelTypeIds.includes(activeModelType);
           const matchesPromptingTechnique = !activePromptingTechnique || promptingTechniqueIds.includes(activePromptingTechnique);
           const matchesOtherTechnique = !activeOtherTechnique || otherTechniqueIds.includes(activeOtherTechnique);
           const matchesUnderlyingLlm = !activeUnderlyingLlm || underlyingLlmIds.includes(activeUnderlyingLlm);
           const passesFilter = matchesModelType && matchesPromptingTechnique && matchesOtherTechnique && matchesUnderlyingLlm;
+          const hasActiveSelection = !!activeTaskId || !!activeProblemId;
+          const matchesSelection = matchesTask && matchesProblem;
 
           item.style.display = passesFilter ? '' : 'none';
-          item.classList.toggle('solution-list-item-highlight', passesFilter && !!activePurposeId && matchesPurpose);
-          item.classList.toggle('solution-list-item-dim', passesFilter && !!activePurposeId && !matchesPurpose);
+          item.classList.toggle('solution-list-item-highlight', passesFilter && hasActiveSelection && matchesSelection);
+          item.classList.toggle('solution-list-item-dim', passesFilter && hasActiveSelection && !matchesSelection);
         });
 
         showSolutionDetails(activeSolutionId);
@@ -985,29 +1101,38 @@
         }
       }
 
-      purposeLinks.forEach(function (link) {
+      taskLinks.forEach(function (link) {
         link.addEventListener('click', function (event) {
           event.preventDefault();
-          const clickedPurpose = this.dataset.purposeId;
-          activePurposeId = activePurposeId === clickedPurpose ? null : clickedPurpose;
-          applyPurposeHighlight();
+          const clickedTask = this.dataset.taskId;
+          activeTaskId = activeTaskId === clickedTask ? null : clickedTask;
+          applyHighlight();
+        });
+      });
+
+      problemLinks.forEach(function (link) {
+        link.addEventListener('click', function (event) {
+          event.preventDefault();
+          const clickedProblem = this.dataset.problemId;
+          activeProblemId = activeProblemId === clickedProblem ? null : clickedProblem;
+          applyHighlight();
         });
       });
 
       if (modelTypeFilter) {
-        modelTypeFilter.addEventListener('change', applyPurposeHighlight);
+        modelTypeFilter.addEventListener('change', applyHighlight);
       }
 
       if (promptingTechniqueFilter) {
-        promptingTechniqueFilter.addEventListener('change', applyPurposeHighlight);
+        promptingTechniqueFilter.addEventListener('change', applyHighlight);
       }
 
       if (otherTechniqueFilter) {
-        otherTechniqueFilter.addEventListener('change', applyPurposeHighlight);
+        otherTechniqueFilter.addEventListener('change', applyHighlight);
       }
 
       if (underlyingLlmFilter) {
-        underlyingLlmFilter.addEventListener('change', applyPurposeHighlight);
+        underlyingLlmFilter.addEventListener('change', applyHighlight);
       }
 
       solutionLinks.forEach(function (link) {
@@ -1017,7 +1142,7 @@
         });
       });
 
-      applyPurposeHighlight();
+      applyHighlight();
       showSolutionDetails('');
     });
   </script>

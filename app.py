@@ -225,7 +225,8 @@ def load_data():
             "model_types": [],
             "prompting_techniques": [],
             "other_techniques": [],
-            "modeling_purposes": [],
+            "modeling_tasks": [],
+            "modeling_problems": [],
             "evidence_rigor_values": DEFAULT_EVIDENCE_RIGOR_VALUES,
         }
 
@@ -238,7 +239,8 @@ def load_data():
             "model_types": data.get("model_types", []),
             "prompting_techniques": data.get("prompting_techniques", []),
             "other_techniques": data.get("other_techniques", []),
-            "modeling_purposes": data.get("modeling_purposes", []),
+            "modeling_tasks": data.get("modeling_tasks", data.get("modeling_purposes", [])),
+            "modeling_problems": data.get("modeling_problems", []),
             "evidence_rigor_values": data.get("evidence_rigor_values", DEFAULT_EVIDENCE_RIGOR_VALUES)
         }
 
@@ -300,21 +302,56 @@ def load_data():
                     continue
             solution["other_technique_ids"] = list(dict.fromkeys(normalized_other_technique_ids))
 
+            raw_task_ids = solution.get("modeling_task_ids", solution.get("modeling_purpose_ids", []))
+            normalized_task_ids = []
+            for task_id in raw_task_ids:
+                try:
+                    normalized_task_ids.append(int(task_id))
+                except (TypeError, ValueError):
+                    continue
+            solution["modeling_task_ids"] = list(dict.fromkeys(normalized_task_ids))
+            solution.pop("modeling_purpose_ids", None)
+
         valid_source_ids = {source.get("id") for source in store.get("sources", [])}
         fallback_source_id = next(iter(valid_source_ids), None)
         for solution in store.get("solutions", []):
             if solution.get("source_id") not in valid_source_ids:
                 solution["source_id"] = fallback_source_id
 
-        for modeling_purpose in store.get("modeling_purposes", []):
-            modeling_purpose.pop("description", None)
-            parent_id = modeling_purpose.get("parent_id")
-            modeling_purpose["parent_id"] = int(parent_id) if parent_id not in [None, ""] else None
-            model_type_id = modeling_purpose.get("model_type_id")
+        for modeling_task in store.get("modeling_tasks", []):
+            modeling_task.pop("description", None)
+            modeling_task.pop("parent_id", None)
+            modeling_task.pop("root_order", None)
+            model_type_id = modeling_task.get("model_type_id")
             try:
-                modeling_purpose["model_type_id"] = int(model_type_id)
+                modeling_task["model_type_id"] = int(model_type_id)
             except (TypeError, ValueError):
-                modeling_purpose["model_type_id"] = None
+                modeling_task["model_type_id"] = None
+            normalized_problem_ids = []
+            for pid in modeling_task.get("modeling_problem_ids", []):
+                try:
+                    normalized_problem_ids.append(int(pid))
+                except (TypeError, ValueError):
+                    continue
+            modeling_task["modeling_problem_ids"] = list(dict.fromkeys(normalized_problem_ids))
+
+        for modeling_problem in store.get("modeling_problems", []):
+            parent_id = modeling_problem.get("parent_id")
+            modeling_problem["parent_id"] = int(parent_id) if parent_id not in [None, ""] else None
+            normalized_pt_ids = []
+            for ptid in modeling_problem.get("prompting_technique_ids", []):
+                try:
+                    normalized_pt_ids.append(int(ptid))
+                except (TypeError, ValueError):
+                    continue
+            modeling_problem["prompting_technique_ids"] = list(dict.fromkeys(normalized_pt_ids))
+            normalized_ot_ids = []
+            for otid in modeling_problem.get("other_technique_ids", []):
+                try:
+                    normalized_ot_ids.append(int(otid))
+                except (TypeError, ValueError):
+                    continue
+            modeling_problem["other_technique_ids"] = list(dict.fromkeys(normalized_ot_ids))
 
         normalized_effects = []
         for effect in store.get("effects", []):
@@ -371,6 +408,16 @@ def load_data():
                 if tid not in removed_other_ids
             ]
 
+        for problem in store.get("modeling_problems", []):
+            problem["prompting_technique_ids"] = [
+                tid for tid in problem.get("prompting_technique_ids", [])
+                if tid not in removed_prompting_ids
+            ]
+            problem["other_technique_ids"] = [
+                tid for tid in problem.get("other_technique_ids", [])
+                if tid not in removed_other_ids
+            ]
+
         for effect in store.get("effects", []):
             if effect.get("prompting_technique_id") in removed_prompting_ids:
                 effect["prompting_technique_id"] = None
@@ -378,14 +425,15 @@ def load_data():
                 effect["other_technique_id"] = None
 
         valid_model_type_ids = {model_type.get("id") for model_type in store.get("model_types", [])}
-        for modeling_purpose in store.get("modeling_purposes", []):
-            if modeling_purpose.get("model_type_id") not in valid_model_type_ids:
-                modeling_purpose["model_type_id"] = None
+        for modeling_task in store.get("modeling_tasks", []):
+            if modeling_task.get("model_type_id") not in valid_model_type_ids:
+                modeling_task["model_type_id"] = None
 
         valid_solution_ids = {solution.get("id") for solution in store.get("solutions", [])}
         valid_prompting_ids = {tech.get("id") for tech in store.get("prompting_techniques", [])}
         valid_other_ids = {tech.get("id") for tech in store.get("other_techniques", [])}
         valid_underlying_llm_ids = {llm.get("id") for llm in store.get("underlying_llms", [])}
+        valid_problem_ids = {p.get("id") for p in store.get("modeling_problems", [])}
         for effect in store.get("effects", []):
             if effect.get("solution_id") not in valid_solution_ids:
                 effect["solution_id"] = None
@@ -397,7 +445,23 @@ def load_data():
                 effect["underlying_llm_id"] = None
             enforce_effect_binding_precedence(effect)
 
-        normalize_root_purpose_order(store.get("modeling_purposes", []))
+        for modeling_task in store.get("modeling_tasks", []):
+            modeling_task["modeling_problem_ids"] = [
+                pid for pid in modeling_task.get("modeling_problem_ids", [])
+                if pid in valid_problem_ids
+            ]
+
+        for problem in store.get("modeling_problems", []):
+            if problem.get("parent_id") not in valid_problem_ids:
+                problem["parent_id"] = None
+            problem["prompting_technique_ids"] = [
+                tid for tid in problem.get("prompting_technique_ids", [])
+                if tid in valid_prompting_ids
+            ]
+            problem["other_technique_ids"] = [
+                tid for tid in problem.get("other_technique_ids", [])
+                if tid in valid_other_ids
+            ]
 
         evidence_values = list(store.get("evidence_rigor_values", []))
         for effect in store.get("effects", []):
@@ -417,7 +481,8 @@ def load_data():
             "model_types": [],
             "prompting_techniques": [],
             "other_techniques": [],
-            "modeling_purposes": [],
+            "modeling_tasks": [],
+            "modeling_problems": [],
             "evidence_rigor_values": DEFAULT_EVIDENCE_RIGOR_VALUES,
         }
 
@@ -429,7 +494,8 @@ def load_data():
         "model_types": [],
         "prompting_techniques": [],
         "other_techniques": [],
-        "modeling_purposes": [],
+        "modeling_tasks": [],
+        "modeling_problems": [],
         "evidence_rigor_values": DEFAULT_EVIDENCE_RIGOR_VALUES,
     }
 
@@ -489,16 +555,49 @@ def get_underlying_llm_lookup(underlying_llms):
     return {llm["id"]: llm for llm in underlying_llms}
 
 
-def get_modeling_purpose_lookup(modeling_purposes):
-    return {purpose["id"]: purpose for purpose in modeling_purposes}
+def get_modeling_task_lookup(modeling_tasks):
+    return {task["id"]: task for task in modeling_tasks}
 
 
-def get_modeling_purpose_solution_lookup(solutions):
+def get_modeling_task_solution_lookup(solutions):
     lookup = {}
     for solution in solutions:
-        for purpose_id in solution.get("modeling_purpose_ids", []):
-            purpose_key = int(purpose_id)
-            lookup.setdefault(purpose_key, []).append(solution)
+        for task_id in solution.get("modeling_task_ids", []):
+            lookup.setdefault(int(task_id), []).append(solution)
+    return lookup
+
+
+def get_modeling_problem_lookup(modeling_problems):
+    return {problem["id"]: problem for problem in modeling_problems}
+
+
+def get_modeling_problem_solution_lookup(solutions, modeling_tasks):
+    task_lookup = {task["id"]: task for task in modeling_tasks}
+    lookup = {}
+    seen = {}
+    for solution in solutions:
+        for task_id in solution.get("modeling_task_ids", []):
+            task = task_lookup.get(task_id)
+            if not task:
+                continue
+            for problem_id in task.get("modeling_problem_ids", []):
+                seen.setdefault(problem_id, set())
+                if solution["id"] not in seen[problem_id]:
+                    seen[problem_id].add(solution["id"])
+                    lookup.setdefault(problem_id, []).append(solution)
+    return lookup
+
+
+def get_solution_problem_lookup(solutions, modeling_tasks):
+    task_lookup = {task["id"]: task for task in modeling_tasks}
+    lookup = {}
+    for solution in solutions:
+        problem_ids = []
+        for task_id in solution.get("modeling_task_ids", []):
+            task = task_lookup.get(task_id)
+            if task:
+                problem_ids.extend(str(pid) for pid in task.get("modeling_problem_ids", []))
+        lookup[solution.get("id")] = list(dict.fromkeys(problem_ids))
     return lookup
 
 
@@ -635,31 +734,15 @@ def get_source_solution_lookup(solutions, sources):
     return lookup
 
 
-def get_solution_model_type_lookup(solutions, modeling_purposes):
-    purpose_lookup = {purpose["id"]: purpose for purpose in modeling_purposes}
-
-    def collect_model_type_ids_with_root_ancestors(purpose_id):
-        model_type_ids = []
-        visited = set()
-        current = purpose_lookup.get(purpose_id)
-
-        # Include current purpose and walk to root to inherit root-associated model types.
-        while current and current.get("id") not in visited:
-            visited.add(current.get("id"))
-            model_type_id = current.get("model_type_id")
-            if model_type_id not in [None, ""]:
-                model_type_ids.append(str(model_type_id))
-
-            parent_id = current.get("parent_id")
-            current = purpose_lookup.get(parent_id) if parent_id is not None else None
-
-        return model_type_ids
-
+def get_solution_model_type_lookup(solutions, modeling_tasks):
+    task_lookup = {task["id"]: task for task in modeling_tasks}
     lookup = {}
     for solution in solutions:
         model_type_ids = []
-        for purpose_id in solution.get("modeling_purpose_ids", []):
-            model_type_ids.extend(collect_model_type_ids_with_root_ancestors(purpose_id))
+        for task_id in solution.get("modeling_task_ids", []):
+            task = task_lookup.get(task_id)
+            if task and task.get("model_type_id") is not None:
+                model_type_ids.append(str(task["model_type_id"]))
         lookup[solution.get("id")] = list(dict.fromkeys(model_type_ids))
     return lookup
 
@@ -688,39 +771,18 @@ def get_solution_underlying_llm_lookup(solutions, effects):
     return lookup
 
 
-def normalize_root_purpose_order(modeling_purposes):
-    indexed = list(enumerate(modeling_purposes))
-    root_items = []
-    for idx, purpose in indexed:
-        if purpose.get("parent_id") is None:
-            raw_order = purpose.get("root_order")
-            try:
-                parsed_order = int(raw_order)
-                has_order = 0
-            except (TypeError, ValueError):
-                parsed_order = idx
-                has_order = 1
-            root_items.append((has_order, parsed_order, idx, purpose))
-        else:
-            purpose.pop("root_order", None)
-
-    root_items.sort(key=lambda item: (item[0], item[1], item[2]))
-    for position, (_, _, _, purpose) in enumerate(root_items):
-        purpose["root_order"] = position
-
-
-def build_modeling_purpose_tree(modeling_purposes):
-    purpose_lookup = {purpose["id"]: {**purpose, "children": []} for purpose in modeling_purposes}
+def build_modeling_problem_tree(modeling_problems):
+    problem_lookup = {problem["id"]: {**problem, "children": []} for problem in modeling_problems}
     roots = []
 
-    for purpose in purpose_lookup.values():
-        parent_id = purpose.get("parent_id")
-        if parent_id in purpose_lookup:
-            purpose_lookup[parent_id]["children"].append(purpose)
+    for problem in problem_lookup.values():
+        parent_id = problem.get("parent_id")
+        if parent_id in problem_lookup:
+            problem_lookup[parent_id]["children"].append(problem)
         else:
-            roots.append(purpose)
+            roots.append(problem)
 
-    roots.sort(key=lambda node: (node.get("root_order", 10**9), node.get("name", "").lower()))
+    roots.sort(key=lambda node: node.get("name", "").lower())
 
     def sort_children(nodes):
         nodes.sort(key=lambda node: node.get("name", "").lower())
@@ -732,22 +794,22 @@ def build_modeling_purpose_tree(modeling_purposes):
     return roots
 
 
-def is_valid_modeling_purpose_parent(purpose_id, parent_id, modeling_purposes):
+def is_valid_modeling_problem_parent(problem_id, parent_id, modeling_problems):
     if not parent_id:
         return True
 
-    if purpose_id is not None and int(parent_id) == int(purpose_id):
+    if problem_id is not None and int(parent_id) == int(problem_id):
         return False
 
-    purpose_lookup = {purpose["id"]: purpose for purpose in modeling_purposes}
+    problem_lookup = {problem["id"]: problem for problem in modeling_problems}
     current_parent_id = int(parent_id)
     while current_parent_id:
-        if purpose_id is not None and current_parent_id == int(purpose_id):
+        if problem_id is not None and current_parent_id == int(problem_id):
             return False
-        parent_purpose = purpose_lookup.get(current_parent_id)
-        if not parent_purpose:
+        parent_problem = problem_lookup.get(current_parent_id)
+        if not parent_problem:
             break
-        current_parent_id = parent_purpose.get("parent_id")
+        current_parent_id = parent_problem.get("parent_id")
     return True
 
 
@@ -837,7 +899,8 @@ def home():
     model_types = store.get("model_types", [])
     prompting_techniques = store.get("prompting_techniques", [])
     other_techniques = store.get("other_techniques", [])
-    modeling_purposes = store.get("modeling_purposes", [])
+    modeling_tasks = store.get("modeling_tasks", [])
+    modeling_problems = store.get("modeling_problems", [])
     return render_template(
         "index.html",
         solutions=solutions,
@@ -848,7 +911,8 @@ def home():
         solution_effect_lookup=get_solution_effect_lookup(effects),
         solution_underlying_llm_lookup=get_solution_underlying_llm_lookup(solutions, effects),
         source_solution_lookup=get_source_solution_lookup(solutions, sources),
-        solution_model_type_lookup=get_solution_model_type_lookup(solutions, modeling_purposes),
+        solution_model_type_lookup=get_solution_model_type_lookup(solutions, modeling_tasks),
+        solution_problem_lookup=get_solution_problem_lookup(solutions, modeling_tasks),
         model_types=model_types,
         model_type_lookup=get_model_type_lookup(model_types),
         prompting_techniques=prompting_techniques,
@@ -856,10 +920,13 @@ def home():
         other_techniques=other_techniques,
         other_technique_lookup=get_other_technique_lookup(other_techniques),
         underlying_llm_lookup=get_underlying_llm_lookup(underlying_llms),
-        modeling_purposes=modeling_purposes,
-        modeling_purpose_lookup=get_modeling_purpose_lookup(modeling_purposes),
-        modeling_purpose_tree=build_modeling_purpose_tree(modeling_purposes),
-        modeling_purpose_solution_lookup=get_modeling_purpose_solution_lookup(solutions),
+        modeling_tasks=modeling_tasks,
+        modeling_task_lookup=get_modeling_task_lookup(modeling_tasks),
+        modeling_task_solution_lookup=get_modeling_task_solution_lookup(solutions),
+        modeling_problems=modeling_problems,
+        modeling_problem_lookup=get_modeling_problem_lookup(modeling_problems),
+        modeling_problem_tree=build_modeling_problem_tree(modeling_problems),
+        modeling_problem_solution_lookup=get_modeling_problem_solution_lookup(solutions, modeling_tasks),
         evidence_rigor_values=store.get("evidence_rigor_values", DEFAULT_EVIDENCE_RIGOR_VALUES)
     )
 
@@ -881,14 +948,14 @@ def add_solution():
 
     prompting_technique_ids = parse_int_list(request.form.getlist("prompting_technique_ids"))
     other_technique_ids = parse_int_list(request.form.getlist("other_technique_ids"))
-    modeling_purpose_ids = parse_int_list(request.form.getlist("modeling_purpose_ids"))
+    modeling_task_ids = parse_int_list(request.form.getlist("modeling_task_ids"))
 
     solutions.append({
         "id": next_id,
         "name": request.form["name"],
         "prompting_technique_ids": prompting_technique_ids,
         "other_technique_ids": other_technique_ids,
-        "modeling_purpose_ids": modeling_purpose_ids,
+        "modeling_task_ids": modeling_task_ids,
         "justification": request.form.get("justification", ""),
         "source_id": source_id
     })
@@ -898,105 +965,128 @@ def add_solution():
     return redirect("/")
 
 
-@app.route("/add_modeling_purpose", methods=["POST"])
-def add_modeling_purpose():
+@app.route("/add_modeling_task", methods=["POST"])
+def add_modeling_task():
     store = load_data()
-    name = request.form.get("modeling_purpose_name", "").strip()
-    parent_id = parse_optional_int(request.form.get("parent_id", ""))
+    name = request.form.get("modeling_task_name", "").strip()
     model_type_id = parse_optional_int(request.form.get("model_type_id", ""))
 
     if name:
-        modeling_purposes = store.get("modeling_purposes", [])
-        parent_value = parent_id
-        model_type_value = model_type_id
-        if is_valid_modeling_purpose_parent(None, parent_value, modeling_purposes):
-            new_root_order = len([mp for mp in modeling_purposes if mp.get("parent_id") is None]) if parent_value is None else None
-            modeling_purposes.append({
-                "id": max([mp["id"] for mp in modeling_purposes], default=0) + 1,
+        modeling_tasks = store.get("modeling_tasks", [])
+        modeling_tasks.append({
+            "id": max([mt["id"] for mt in modeling_tasks], default=0) + 1,
+            "name": name,
+            "model_type_id": model_type_id,
+            "modeling_problem_ids": []
+        })
+        store["modeling_tasks"] = modeling_tasks
+        save_data(store)
+
+    return redirect("/")
+
+
+@app.route("/update_modeling_task/<int:modeling_task_id>", methods=["POST"])
+def update_modeling_task(modeling_task_id):
+    store = load_data()
+    modeling_tasks = store.get("modeling_tasks", [])
+    modeling_problems = store.get("modeling_problems", [])
+    valid_problem_ids = {p["id"] for p in modeling_problems}
+    model_type_value = parse_optional_int(request.form.get("model_type_id", ""))
+    modeling_problem_ids = [
+        pid for pid in parse_int_list(request.form.getlist("modeling_problem_ids"))
+        if pid in valid_problem_ids
+    ]
+
+    for modeling_task in modeling_tasks:
+        if modeling_task["id"] == modeling_task_id:
+            modeling_task["name"] = request.form.get("modeling_task_name", modeling_task["name"]).strip()
+            modeling_task["model_type_id"] = model_type_value
+            modeling_task["modeling_problem_ids"] = list(dict.fromkeys(modeling_problem_ids))
+            break
+
+    store["modeling_tasks"] = modeling_tasks
+    save_data(store)
+    return redirect("/")
+
+
+@app.route("/delete_modeling_task/<int:modeling_task_id>")
+def delete_modeling_task(modeling_task_id):
+    store = load_data()
+    store["modeling_tasks"] = [
+        mt for mt in store.get("modeling_tasks", [])
+        if mt["id"] != modeling_task_id
+    ]
+    for solution in store.get("solutions", []):
+        solution["modeling_task_ids"] = [
+            tid for tid in solution.get("modeling_task_ids", [])
+            if tid != modeling_task_id
+        ]
+    save_data(store)
+    return redirect("/")
+
+
+@app.route("/add_modeling_problem", methods=["POST"])
+def add_modeling_problem():
+    store = load_data()
+    name = request.form.get("modeling_problem_name", "").strip()
+    parent_id = parse_optional_int(request.form.get("parent_id", ""))
+    prompting_technique_ids = parse_int_list(request.form.getlist("prompting_technique_ids"))
+    other_technique_ids = parse_int_list(request.form.getlist("other_technique_ids"))
+
+    if name:
+        modeling_problems = store.get("modeling_problems", [])
+        if is_valid_modeling_problem_parent(None, parent_id, modeling_problems):
+            modeling_problems.append({
+                "id": max([p["id"] for p in modeling_problems], default=0) + 1,
                 "name": name,
-                "parent_id": parent_value,
-                "model_type_id": model_type_value,
-                "root_order": new_root_order
+                "parent_id": parent_id,
+                "prompting_technique_ids": prompting_technique_ids,
+                "other_technique_ids": other_technique_ids,
             })
-            normalize_root_purpose_order(modeling_purposes)
-            store["modeling_purposes"] = modeling_purposes
+            store["modeling_problems"] = modeling_problems
             save_data(store)
 
     return redirect("/")
 
 
-@app.route("/update_modeling_purpose/<int:modeling_purpose_id>", methods=["POST"])
-def update_modeling_purpose(modeling_purpose_id):
+@app.route("/update_modeling_problem/<int:modeling_problem_id>", methods=["POST"])
+def update_modeling_problem(modeling_problem_id):
     store = load_data()
-    modeling_purposes = store.get("modeling_purposes", [])
+    modeling_problems = store.get("modeling_problems", [])
     parent_value = parse_optional_int(request.form.get("parent_id", ""))
-    model_type_value = parse_optional_int(request.form.get("model_type_id", ""))
+    prompting_technique_ids = parse_int_list(request.form.getlist("prompting_technique_ids"))
+    other_technique_ids = parse_int_list(request.form.getlist("other_technique_ids"))
 
-    for modeling_purpose in modeling_purposes:
-        if modeling_purpose["id"] == modeling_purpose_id:
-            previous_parent_id = modeling_purpose.get("parent_id")
-            modeling_purpose["name"] = request.form.get("modeling_purpose_name", modeling_purpose["name"]).strip()
-            modeling_purpose["model_type_id"] = model_type_value
-            if is_valid_modeling_purpose_parent(modeling_purpose_id, parent_value, modeling_purposes):
-                modeling_purpose["parent_id"] = parent_value
-                if previous_parent_id is None and parent_value is not None:
-                    modeling_purpose.pop("root_order", None)
-                elif previous_parent_id is not None and parent_value is None:
-                    modeling_purpose["root_order"] = len([mp for mp in modeling_purposes if mp.get("parent_id") is None and mp.get("id") != modeling_purpose_id])
+    for modeling_problem in modeling_problems:
+        if modeling_problem["id"] == modeling_problem_id:
+            modeling_problem["name"] = request.form.get("modeling_problem_name", modeling_problem["name"]).strip()
+            if is_valid_modeling_problem_parent(modeling_problem_id, parent_value, modeling_problems):
+                modeling_problem["parent_id"] = parent_value
+            modeling_problem["prompting_technique_ids"] = prompting_technique_ids
+            modeling_problem["other_technique_ids"] = other_technique_ids
             break
 
-    normalize_root_purpose_order(modeling_purposes)
-    store["modeling_purposes"] = modeling_purposes
+    store["modeling_problems"] = modeling_problems
     save_data(store)
     return redirect("/")
 
 
-@app.route("/move_modeling_purpose_root/<int:modeling_purpose_id>/<string:direction>")
-def move_modeling_purpose_root(modeling_purpose_id, direction):
-    if direction not in ["up", "down"]:
-        return redirect("/")
-
+@app.route("/delete_modeling_problem/<int:modeling_problem_id>")
+def delete_modeling_problem(modeling_problem_id):
     store = load_data()
-    modeling_purposes = store.get("modeling_purposes", [])
-    normalize_root_purpose_order(modeling_purposes)
-    roots = [mp for mp in modeling_purposes if mp.get("parent_id") is None]
-    roots.sort(key=lambda mp: mp.get("root_order", 10**9))
-
-    index = next((i for i, mp in enumerate(roots) if mp.get("id") == modeling_purpose_id), None)
-    if index is None:
-        return redirect("/")
-
-    if direction == "up" and index > 0:
-        roots[index - 1], roots[index] = roots[index], roots[index - 1]
-    elif direction == "down" and index < len(roots) - 1:
-        roots[index + 1], roots[index] = roots[index], roots[index + 1]
-
-    for position, purpose in enumerate(roots):
-        purpose["root_order"] = position
-
-    store["modeling_purposes"] = modeling_purposes
-    save_data(store)
-    return redirect("/")
-
-
-@app.route("/delete_modeling_purpose/<int:modeling_purpose_id>")
-def delete_modeling_purpose(modeling_purpose_id):
-    store = load_data()
-    modeling_purposes = store.get("modeling_purposes", [])
-    store["modeling_purposes"] = []
-    for modeling_purpose in modeling_purposes:
-        if modeling_purpose["id"] == modeling_purpose_id:
+    modeling_problems = store.get("modeling_problems", [])
+    store["modeling_problems"] = []
+    for problem in modeling_problems:
+        if problem["id"] == modeling_problem_id:
             continue
-        if modeling_purpose.get("parent_id") == modeling_purpose_id:
-            modeling_purpose["parent_id"] = None
-        store["modeling_purposes"].append(modeling_purpose)
+        if problem.get("parent_id") == modeling_problem_id:
+            problem["parent_id"] = None
+        store["modeling_problems"].append(problem)
 
-    normalize_root_purpose_order(store["modeling_purposes"])
-
-    for solution in store.get("solutions", []):
-        solution["modeling_purpose_ids"] = [
-            pid for pid in solution.get("modeling_purpose_ids", [])
-            if pid != modeling_purpose_id
+    for modeling_task in store.get("modeling_tasks", []):
+        modeling_task["modeling_problem_ids"] = [
+            pid for pid in modeling_task.get("modeling_problem_ids", [])
+            if pid != modeling_problem_id
         ]
 
     save_data(store)
@@ -1218,7 +1308,7 @@ def edit_solution(solution_id):
         sources=store.get("sources", []),
         prompting_techniques=store.get("prompting_techniques", []),
         other_techniques=store.get("other_techniques", []),
-        modeling_purposes=store.get("modeling_purposes", [])
+        modeling_tasks=store.get("modeling_tasks", [])
     )
 
 
@@ -1232,12 +1322,12 @@ def update_solution(solution_id):
         source_exists = any(source.get("id") == source_id for source in store.get("sources", []))
         prompting_technique_ids = parse_int_list(request.form.getlist("prompting_technique_ids"))
         other_technique_ids = parse_int_list(request.form.getlist("other_technique_ids"))
-        modeling_purpose_ids = parse_int_list(request.form.getlist("modeling_purpose_ids"))
+        modeling_task_ids = parse_int_list(request.form.getlist("modeling_task_ids"))
         if source_exists:
             solution["source_id"] = source_id
         solution["prompting_technique_ids"] = prompting_technique_ids
         solution["other_technique_ids"] = other_technique_ids
-        solution["modeling_purpose_ids"] = modeling_purpose_ids
+        solution["modeling_task_ids"] = modeling_task_ids
         solution["justification"] = request.form.get("justification", solution["justification"])
         save_data(store)
     return redirect("/")

@@ -26,9 +26,9 @@
             <option value="{{ technique.id }}" {% if technique.id in solution.other_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
           {% endfor %}
         </select>
-        <select class="form-select mb-2" name="modeling_purpose_ids" multiple size="5">
-          {% for purpose in modeling_purposes %}
-            <option value="{{ purpose.id }}" {% if purpose.id in solution.modeling_purpose_ids %}selected{% endif %}>{{ purpose.name }}</option>
+        <select class="form-select mb-2" name="modeling_task_ids" multiple size="5">
+          {% for task in modeling_tasks %}
+            <option value="{{ task.id }}" {% if task.id in solution.modeling_task_ids %}selected{% endif %}>{{ task.name }}</option>
           {% endfor %}
         </select>
         <textarea class="form-control mb-2" name="justification">{{ solution.justification }}</textarea>
