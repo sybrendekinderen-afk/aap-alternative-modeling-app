@@ -509,8 +509,6 @@ def load_data():
                     continue
                 solution_to_approach[sid] = approach.get("id")
                 solution_ids.append(sid)
-            if not solution_ids:
-                continue
             approach["solution_ids"] = solution_ids
             filtered_approaches.append(approach)
         store["modeling_approaches"] = filtered_approaches
@@ -715,11 +713,8 @@ def sync_solution_approach_links(store):
         if approach_id in approach_lookup:
             approach_lookup[approach_id]["solution_ids"].append(solution.get("id"))
 
-    store["modeling_approaches"] = [
-        approach for approach in modeling_approaches
-        if approach.get("solution_ids")
-    ]
-    valid_after_filter = {approach.get("id") for approach in store.get("modeling_approaches", [])}
+    store["modeling_approaches"] = modeling_approaches
+    valid_after_filter = {approach.get("id") for approach in modeling_approaches}
     for solution in solutions:
         if solution.get("modeling_approach_id") not in valid_after_filter:
             solution["modeling_approach_id"] = None
@@ -1079,9 +1074,7 @@ def add_solution():
     next_id = max([s["id"] for s in solutions], default=0) + 1
 
     modeling_approach_id = parse_optional_int(request.form.get("modeling_approach_id", ""))
-    if modeling_approach_id is None:
-        return redirect("/")
-    if not any(approach.get("id") == modeling_approach_id for approach in modeling_approaches):
+    if modeling_approach_id is not None and not any(approach.get("id") == modeling_approach_id for approach in modeling_approaches):
         return redirect("/")
 
     prompting_technique_ids = parse_int_list(request.form.getlist("prompting_technique_ids"))
@@ -1125,8 +1118,6 @@ def add_modeling_approach():
         return redirect("/")
     valid_solution_ids = {solution.get("id") for solution in solutions}
     solution_ids = [sid for sid in solution_ids if sid in valid_solution_ids]
-    if not solution_ids:
-        return redirect("/")
 
     new_id = get_next_modeling_approach_id(modeling_approaches)
     modeling_approaches.append({
@@ -1172,8 +1163,6 @@ def update_modeling_approach(modeling_approach_id):
         if source_id is None or not any(source.get("id") == source_id for source in sources):
             return redirect("/")
         if modeling_task_id is None or not any(task.get("id") == modeling_task_id for task in modeling_tasks):
-            return redirect("/")
-        if not solution_ids:
             return redirect("/")
 
         approach["name"] = name
@@ -1631,7 +1620,7 @@ def update_solution(solution_id):
         solution["name"] = request.form.get("name", solution["name"])
         modeling_approach_id = parse_optional_int(request.form.get("modeling_approach_id", ""))
         approach_exists = any(approach.get("id") == modeling_approach_id for approach in store.get("modeling_approaches", []))
-        if not approach_exists:
+        if modeling_approach_id is not None and not approach_exists:
             return redirect("/")
         prompting_technique_ids = parse_int_list(request.form.getlist("prompting_technique_ids"))
         other_technique_ids = parse_int_list(request.form.getlist("other_technique_ids"))

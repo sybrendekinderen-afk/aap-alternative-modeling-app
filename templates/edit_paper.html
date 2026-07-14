@@ -11,7 +11,8 @@
       <h2>Edit</h2>
       <form method="post" action="/update_solution/{{ solution.id }}">
         <input class="form-control mb-2" name="name" value="{{ solution.name }}">
-        <select class="form-select mb-2" name="modeling_approach_id" required>
+        <select class="form-select mb-2" name="modeling_approach_id">
+          <option value="">-- No modeling approach --</option>
           {% for approach in modeling_approaches %}
             <option value="{{ approach.id }}" {% if approach.id == solution.modeling_approach_id %}selected{% endif %}>{{ approach.name }}</option>
           {% endfor %}
@@ -108,12 +109,12 @@
             <option value="{{ task.id }}" {% if task.id == modeling_approach.modeling_task_id %}selected{% endif %}>{{ task.name }}</option>
           {% endfor %}
         </select>
-        <select class="form-select mb-2" name="solution_ids" multiple size="8" required>
+        <select class="form-select mb-2" name="solution_ids" multiple size="8">
           {% for solution in solutions %}
             <option value="{{ solution.id }}" {% if solution.id in modeling_approach.solution_ids %}selected{% endif %}>{{ solution.name }}</option>
           {% endfor %}
         </select>
-        <div class="form-text mb-2">Select one or more modeling solutions.</div>
+        <div class="form-text mb-2">Optional: keep empty for now and link solutions later.</div>
         <button class="btn btn-primary">Save</button>
         <a href="/" class="btn btn-secondary">Cancel</a>
       </form>

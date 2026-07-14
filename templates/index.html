@@ -386,13 +386,14 @@
                   <input class="form-control" name="name" placeholder="Modeling Solution Name" required>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Modeling Approach (required)</label>
-                  <select class="form-select" name="modeling_approach_id" required>
+                  <label class="form-label">Modeling Approach (optional)</label>
+                  <select class="form-select" name="modeling_approach_id">
+                    <option value="">-- No modeling approach yet --</option>
                     {% for approach in modeling_approaches %}
                       <option value="{{ approach.id }}">{{ approach.name }}</option>
                     {% endfor %}
                   </select>
-                  <div class="form-text">Each solution belongs to exactly one modeling approach.</div>
+                  <div class="form-text">You can assign an approach now or link it later.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Prompting Techniques</label>
@@ -672,12 +673,12 @@
                   </select>
                 </div>
                 <div class="col-md-3">
-                  <select class="form-select" name="solution_ids" multiple size="4" required>
+                  <select class="form-select" name="solution_ids" multiple size="4">
                     {% for solution in solutions %}
                       <option value="{{ solution.id }}">{{ solution.name }}</option>
                     {% endfor %}
                   </select>
-                  <div class="form-text">Select one or more solutions.</div>
+                  <div class="form-text">Optional: select solutions now or link them later.</div>
                 </div>
                 <div class="col-12">
                   <button class="btn btn-outline-secondary">Add</button>
