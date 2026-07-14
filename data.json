@@ -13,7 +13,7 @@
       ],
       "justification": "Make the model machine readable.",
       "other_technique_ids": [],
-      "source_id": 1
+      "modeling_approach_id": null
     },
     {
       "id": 2,
@@ -28,7 +28,7 @@
       "other_technique_ids": [
         1
       ],
-      "source_id": 2
+      "modeling_approach_id": 1
     }
   ],
   "sources": [
@@ -53,18 +53,22 @@
       "description": "magnificent effect.",
       "evidence_rigor": "informal qualitative sensibility check",
       "solution_id": 1,
+      "modeling_approach_id": null,
       "prompting_technique_id": null,
       "other_technique_id": null,
-      "underlying_llm_id": 1
+      "underlying_llm_id": 1,
+      "effect_polarity": "neutral"
     },
     {
       "id": 2,
       "description": "test",
       "evidence_rigor": "test",
       "solution_id": 1,
+      "modeling_approach_id": null,
       "prompting_technique_id": null,
       "other_technique_id": null,
-      "underlying_llm_id": 1
+      "underlying_llm_id": 1,
+      "effect_polarity": "neutral"
     }
   ],
   "underlying_llms": [
@@ -89,32 +93,37 @@
   "prompting_techniques": [
     {
       "id": 1,
-      "name": "Few-Shot"
+      "name": "Few-Shot",
+      "description": ""
     },
     {
       "id": 2,
-      "name": "Chain-of-Thought"
+      "name": "Chain-of-Thought",
+      "description": ""
     },
     {
       "id": 3,
-      "name": "meta-language creation"
+      "name": "meta-language creation",
+      "description": ""
     },
     {
       "id": 4,
-      "name": "Output formatting"
+      "name": "Output formatting",
+      "description": ""
     }
   ],
   "other_techniques": [
     {
       "id": 1,
-      "name": "agentic"
+      "name": "agentic",
+      "description": ""
     }
   ],
   "modeling_tasks": [
     {
       "id": 1,
       "name": "Use machine readable models, for computer aided analysis",
-      "model_type_id": null,
+      "model_type_id": 2,
       "modeling_problem_ids": []
     },
     {
@@ -161,6 +170,17 @@
     }
   ],
   "modeling_problems": [],
+  "modeling_approaches": [
+    {
+      "id": 1,
+      "name": "text to OCL",
+      "source_id": 1,
+      "modeling_task_id": 1,
+      "solution_ids": [
+        2
+      ]
+    }
+  ],
   "evidence_rigor_values": [
     "quantitative ablation",
     "case based isolation",

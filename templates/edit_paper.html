@@ -11,9 +11,9 @@
       <h2>Edit</h2>
       <form method="post" action="/update_solution/{{ solution.id }}">
         <input class="form-control mb-2" name="name" value="{{ solution.name }}">
-        <select class="form-select mb-2" name="source_id" required>
-          {% for source in sources %}
-            <option value="{{ source.id }}" {% if source.id == solution.source_id %}selected{% endif %}>{{ source.title }}{% if source.author %} - {{ source.author }}{% endif %}</option>
+        <select class="form-select mb-2" name="modeling_approach_id" required>
+          {% for approach in modeling_approaches %}
+            <option value="{{ approach.id }}" {% if approach.id == solution.modeling_approach_id %}selected{% endif %}>{{ approach.name }}</option>
           {% endfor %}
         </select>
         <select class="form-select mb-2" name="prompting_technique_ids" multiple size="5">
@@ -50,10 +50,21 @@
       <form method="post" action="/update_effect/{{ effect.id }}">
         <textarea class="form-control mb-2" name="description" rows="3" required>{{ effect.description }}</textarea>
         <input class="form-control mb-2" name="evidence_rigor" value="{{ effect.evidence_rigor }}" list="evidence-rigor-options" autocomplete="off" placeholder="Evidence rigor">
+        <select class="form-select mb-2" name="effect_polarity">
+          {% for value in effect_polarity_values %}
+            <option value="{{ value }}" {% if effect.effect_polarity|default('neutral') == value %}selected{% endif %}>{{ value|capitalize }}</option>
+          {% endfor %}
+        </select>
         <select class="form-select mb-2" name="solution_id">
           <option value="">No linked solution</option>
           {% for solution in solutions %}
             <option value="{{ solution.id }}" {% if effect.solution_id == solution.id %}selected{% endif %}>{{ solution.name }}</option>
+          {% endfor %}
+        </select>
+        <select class="form-select mb-2" name="modeling_approach_id">
+          <option value="">No modeling approach</option>
+          {% for approach in modeling_approaches %}
+            <option value="{{ approach.id }}" {% if effect.modeling_approach_id == approach.id %}selected{% endif %}>{{ approach.name }}</option>
           {% endfor %}
         </select>
         <select class="form-select mb-2" name="prompting_technique_id">
@@ -68,7 +79,7 @@
             <option value="{{ technique.id }}" {% if effect.other_technique_id == technique.id %}selected{% endif %}>{{ technique.name }}</option>
           {% endfor %}
         </select>
-        <div class="form-text mb-2">Constraint: choose at most one of Modeling Solution, Prompting Technique, or Other Technique.</div>
+        <div class="form-text mb-2">Constraint: choose at most one of Modeling Solution, Modeling Approach, Prompting Technique, or Other Technique.</div>
         <select class="form-select mb-2" name="underlying_llm_id">
           <option value="">No underlying LLM</option>
           {% for llm in underlying_llms %}
@@ -83,6 +94,29 @@
           <option value="{{ value }}"></option>
         {% endfor %}
       </datalist>
+    {% elif mode == "modeling_approach" %}
+      <h2>Edit Modeling Approach</h2>
+      <form method="post" action="/update_modeling_approach/{{ modeling_approach.id }}">
+        <input class="form-control mb-2" name="modeling_approach_name" value="{{ modeling_approach.name }}" required>
+        <select class="form-select mb-2" name="source_id" required>
+          {% for source in sources %}
+            <option value="{{ source.id }}" {% if source.id == modeling_approach.source_id %}selected{% endif %}>{{ source.title }}{% if source.author %} - {{ source.author }}{% endif %}</option>
+          {% endfor %}
+        </select>
+        <select class="form-select mb-2" name="modeling_task_id" required>
+          {% for task in modeling_tasks %}
+            <option value="{{ task.id }}" {% if task.id == modeling_approach.modeling_task_id %}selected{% endif %}>{{ task.name }}</option>
+          {% endfor %}
+        </select>
+        <select class="form-select mb-2" name="solution_ids" multiple size="8" required>
+          {% for solution in solutions %}
+            <option value="{{ solution.id }}" {% if solution.id in modeling_approach.solution_ids %}selected{% endif %}>{{ solution.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text mb-2">Select one or more modeling solutions.</div>
+        <button class="btn btn-primary">Save</button>
+        <a href="/" class="btn btn-secondary">Cancel</a>
+      </form>
     {% else %}
       <p class="text-muted">Unknown edit mode.</p>
       <a href="/" class="btn btn-secondary">Back</a>
@@ -96,6 +130,7 @@
       }
 
       const solutionSelect = effectForm.querySelector('select[name="solution_id"]');
+      const approachSelect = effectForm.querySelector('select[name="modeling_approach_id"]');
       const promptingSelect = effectForm.querySelector('select[name="prompting_technique_id"]');
       const otherSelect = effectForm.querySelector('select[name="other_technique_id"]');
 
@@ -103,14 +138,14 @@
         if (!changedSelect || !changedSelect.value) {
           return;
         }
-        [solutionSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
+        [solutionSelect, approachSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
           if (selectEl && selectEl !== changedSelect) {
             selectEl.value = '';
           }
         });
       }
 
-      [solutionSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
+      [solutionSelect, approachSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
         if (!selectEl) {
           return;
         }

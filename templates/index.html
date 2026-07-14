@@ -18,6 +18,10 @@
     .solution-list-item-dim { opacity: .45; }
     .kb-solution-detail { display: none; }
     .kb-solution-detail.kb-solution-detail-visible { display: block; }
+    .approach-cluster { border: 1px dashed #b6c8ea; border-radius: .65rem; background: #f8fbff; padding: .6rem; }
+    .approach-cluster-title { font-size: .82rem; letter-spacing: .02em; text-transform: uppercase; color: #31508d; font-weight: 700; }
+    .approach-solution-chip { display: inline-block; margin: .2rem .35rem .2rem 0; padding: .3rem .6rem; border-radius: 999px; border: 1px solid #9fb6e7; background: #eaf1ff; color: #193463; text-decoration: none; font-size: .86rem; }
+    .approach-solution-chip:hover { background: #dbe8ff; color: #10284f; }
   </style>
 </head>
 <body>
@@ -34,21 +38,133 @@
       </div>
     {% endif %}
 
+    <ul class="nav nav-tabs mb-3" id="knowledge-base-tabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="kb-navigation-tab" data-bs-toggle="tab" data-bs-target="#kb-navigation-pane" type="button" role="tab" aria-controls="kb-navigation-pane" aria-selected="true">Knowledge Base Navigation</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="kb-population-tab" data-bs-toggle="tab" data-bs-target="#kb-population-pane" type="button" role="tab" aria-controls="kb-population-pane" aria-selected="false">Knowledge Base Population</button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="knowledge-base-tabs-content">
+      <div class="tab-pane fade show active" id="kb-navigation-pane" role="tabpanel" aria-labelledby="kb-navigation-tab" tabindex="0">
     <div class="card mb-4">
       <div class="card-header"><h3 class="h5 mb-0">Knowledge Base Navigation</h3></div>
       <div class="card-body">
         <div class="row g-4">
-          <div class="col-lg-4">
+          <div class="col-lg-7 order-lg-2">
+            <div class="card primary-surface mb-3">
+              <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Approaches</h4></div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">Primary pane: select an approach to highlight its solution cluster.</p>
+                <ul class="list-group">
+                  {% for approach in modeling_approaches %}
+                    <li class="list-group-item">
+                      <div>
+                        <a href="#" class="fw-semibold text-decoration-none approach-select-link" data-approach-id="{{ approach.id }}">{{ approach.name }}</a>
+                      </div>
+                      <div class="small text-muted mb-2">
+                        {% set linked_source = sources|selectattr('id', 'equalto', approach.source_id)|list|first %}
+                        {% set linked_task = modeling_task_lookup.get(approach.modeling_task_id) %}
+                        {% if linked_source %}{{ linked_source.title }}{% else %}Unknown source{% endif %}
+                        ·
+                        {% if linked_task %}{{ linked_task.name }}{% else %}Unknown task{% endif %}
+                      </div>
+                      <div class="approach-cluster">
+                        <div class="approach-cluster-title mb-1">Solution Cluster</div>
+                        <div>
+                          {% for sid in approach.solution_ids %}
+                            {% set linked_solution = solutions|selectattr('id', 'equalto', sid)|list|first %}
+                            {% if linked_solution %}
+                              <a href="#solution-{{ linked_solution.id }}" class="approach-solution-chip solution-select-link" data-solution-id="{{ linked_solution.id }}">{{ linked_solution.name }}</a>
+                            {% endif %}
+                          {% endfor %}
+                        </div>
+                      </div>
+                    </li>
+                  {% else %}
+                    <li class="list-group-item text-muted">No Modeling Approaches yet.</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+
+            <div class="card solution-card">
+              <div class="card-header"><h4 class="h6 mb-0">Modeling Solutions</h4></div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">Secondary pane: inspect solutions after selecting approaches, tasks, or problems.</p>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h5 class="h6 mb-0">Filters</h5>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#solution-filters-panel" aria-expanded="false" aria-controls="solution-filters-panel">Show</button>
+                </div>
+                <div class="collapse mb-3" id="solution-filters-panel">
+                  <div class="row g-2">
+                    <div class="col-12">
+                      <label for="nav-filter-technique" class="form-label form-label-sm mb-1">Filter by Prompting Technique</label>
+                      <select id="nav-filter-technique" class="form-select form-select-sm">
+                        <option value="">All Prompting Techniques</option>
+                        {% for technique in prompting_techniques %}
+                          <option value="{{ technique.id }}">{{ technique.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="nav-filter-other-technique" class="form-label form-label-sm mb-1">Filter by Other Technique</label>
+                      <select id="nav-filter-other-technique" class="form-select form-select-sm">
+                        <option value="">All Other Techniques</option>
+                        {% for technique in other_techniques %}
+                          <option value="{{ technique.id }}">{{ technique.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="nav-filter-model-type" class="form-label form-label-sm mb-1">Model Type (via Approach and Task)</label>
+                      <select id="nav-filter-model-type" class="form-select form-select-sm">
+                        <option value="">All Model Types</option>
+                        {% for model_type in model_types %}
+                          <option value="{{ model_type.id }}">{{ model_type.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="nav-filter-underlying-llm" class="form-label form-label-sm mb-1">Underlying LLM (via Effect)</label>
+                      <select id="nav-filter-underlying-llm" class="form-select form-select-sm">
+                        <option value="">All Underlying LLMs</option>
+                        {% for llm in underlying_llms %}
+                          <option value="{{ llm.id }}">{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <ul class="list-group">
+                  {% for solution in solutions %}
+                    <li class="list-group-item kb-solution-list-item" data-solution-id="{{ solution.id }}" data-problem-ids="{{ solution_problem_lookup.get(solution.id, [])|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}" data-approach-ids="{% for approach in solution_modeling_approach_lookup.get(solution.id, []) %}{{ approach.id }}{% if not loop.last %},{% endif %}{% endfor %}">
+                      <div class="d-flex justify-content-between align-items-center gap-2">
+                        <a href="#solution-{{ solution.id }}" class="fw-semibold text-decoration-none solution-select-link" data-solution-id="{{ solution.id }}">{{ solution.name }}</a>
+                      </div>
+                    </li>
+                  {% else %}
+                    <li class="list-group-item text-muted">No modeling solutions yet.</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-5 order-lg-1">
             <div class="card primary-surface mb-3">
               <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Task</h4></div>
               <div class="card-body">
-                <p class="text-muted small mb-3">Select a task to highlight related solutions.</p>
+                <p class="text-muted small mb-3">Inspect tasks and their linked modeling approaches.</p>
                 <ul class="list-group">
                   {% for task in modeling_tasks %}
                     <li class="list-group-item">
+                      {% set linked_approaches = modeling_approaches|selectattr('modeling_task_id', 'equalto', task.id)|list %}
                       <div class="d-flex justify-content-between align-items-start gap-2">
                         <div>
-                          <a href="#task-{{ task.id }}" class="fw-semibold text-decoration-none task-select-link" data-task-id="{{ task.id }}">{{ task.name }}</a>
+                          <span class="fw-semibold">{{ task.name }}</span>
                           {% if task.model_type_id %}
                             {% set task_model_type = model_type_lookup.get(task.model_type_id) %}
                             {% if task_model_type %}
@@ -56,12 +172,14 @@
                             {% endif %}
                           {% endif %}
                         </div>
-                        <div class="text-muted small text-nowrap">{{ modeling_task_solution_lookup.get(task.id, [])|length }} solution{% if modeling_task_solution_lookup.get(task.id, [])|length != 1 %}s{% endif %}</div>
+                        <div class="text-nowrap">
+                          <span class="badge bg-dark-subtle text-dark border">{{ linked_approaches|length }} approach{% if linked_approaches|length != 1 %}es{% endif %}</span>
+                        </div>
                       </div>
-                      {% if modeling_task_solution_lookup.get(task.id, []) %}
-                        <div class="mt-1">
-                          {% for solution in modeling_task_solution_lookup.get(task.id, []) %}
-                            <a href="#solution-{{ solution.id }}" class="badge bg-primary-subtle text-primary-emphasis me-1 mb-1 text-decoration-none solution-select-link" data-solution-id="{{ solution.id }}">{{ solution.name }}</a>
+                      {% if linked_approaches %}
+                        <div class="mt-2">
+                          {% for approach in linked_approaches %}
+                            <a href="#" class="badge bg-primary-subtle text-primary-emphasis me-1 mb-1 text-decoration-none approach-select-link" data-approach-id="{{ approach.id }}">{{ approach.name }}</a>
                           {% endfor %}
                         </div>
                       {% endif %}
@@ -72,6 +190,7 @@
                 </ul>
               </div>
             </div>
+
             <div class="card primary-surface">
               <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Problem</h4></div>
               <div class="card-body">
@@ -114,89 +233,16 @@
               </div>
             </div>
           </div>
-          <div class="col-lg-8">
-            <div class="card h-100 solution-card">
-              <div class="card-header"><h4 class="h6 mb-0">Modeling Solutions Already Added</h4></div>
-              <div class="card-body">
-                <p class="text-muted small mb-3">Jump straight to the detailed solution cards and their sources.</p>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h5 class="h6 mb-0">Filters</h5>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#solution-filters-panel" aria-expanded="false" aria-controls="solution-filters-panel">Show</button>
-                </div>
-                <div class="collapse mb-3" id="solution-filters-panel">
-                  <div class="row g-2">
-                    <div class="col-12">
-                      <label for="nav-filter-technique" class="form-label form-label-sm mb-1">Filter by Prompting Technique</label>
-                      <select id="nav-filter-technique" class="form-select form-select-sm">
-                        <option value="">All Prompting Techniques</option>
-                        {% for technique in prompting_techniques %}
-                          <option value="{{ technique.id }}">{{ technique.name }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    <div class="col-12">
-                      <label for="nav-filter-other-technique" class="form-label form-label-sm mb-1">Filter by Other Technique</label>
-                      <select id="nav-filter-other-technique" class="form-select form-select-sm">
-                        <option value="">All Other Techniques</option>
-                        {% for technique in other_techniques %}
-                          <option value="{{ technique.id }}">{{ technique.name }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    <div class="col-12">
-                      <label for="nav-filter-model-type" class="form-label form-label-sm mb-1">Model Type (via Modeling Task)</label>
-                      <select id="nav-filter-model-type" class="form-select form-select-sm">
-                        <option value="">All Model Types</option>
-                        {% for model_type in model_types %}
-                          <option value="{{ model_type.id }}">{{ model_type.name }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    <div class="col-12">
-                      <label for="nav-filter-underlying-llm" class="form-label form-label-sm mb-1">Underlying LLM (via Effect)</label>
-                      <select id="nav-filter-underlying-llm" class="form-select form-select-sm">
-                        <option value="">All Underlying LLMs</option>
-                        {% for llm in underlying_llms %}
-                          <option value="{{ llm.id }}">{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <ul class="list-group">
-                  {% for solution in solutions %}
-                    <li class="list-group-item kb-solution-list-item" data-solution-id="{{ solution.id }}" data-task-ids="{{ solution.modeling_task_ids|join(',') }}" data-problem-ids="{{ solution_problem_lookup.get(solution.id, [])|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}">
-                      <div class="d-flex justify-content-between align-items-center gap-2">
-                        <a href="#solution-{{ solution.id }}" class="fw-semibold text-decoration-none solution-select-link" data-solution-id="{{ solution.id }}">{{ solution.name }}</a>
-                      </div>
-                      {% if solution.modeling_task_ids %}
-                        <div class="small text-muted mt-1">
-                          {% for tid in solution.modeling_task_ids %}
-                            {% set task = modeling_task_lookup.get(tid) %}
-                            {% if task %}
-                              <a href="#task-{{ task.id }}" class="badge bg-info-subtle text-info-emphasis me-1 text-decoration-none task-select-link" data-task-id="{{ task.id }}">{{ task.name }}</a>
-                            {% endif %}
-                          {% endfor %}
-                        </div>
-                      {% endif %}
-                    </li>
-                  {% else %}
-                    <li class="list-group-item text-muted">No modeling solutions yet.</li>
-                  {% endfor %}
-                </ul>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
 
     <div class="alert alert-light border mb-3" id="solution-detail-placeholder">
-      Select a modeling purpose to highlight related solutions, then click a modeling solution to view full details.
+      Select a modeling approach or problem to highlight related solutions, then click a modeling solution to view full details.
     </div>
 
     {% for solution in solutions %}
-      <div class="card mb-3 solution-card kb-solution-detail" id="solution-{{ solution.id }}" data-solution-id="{{ solution.id }}" data-task-ids="{{ solution.modeling_task_ids|join(',') }}" data-problem-ids="{{ solution_problem_lookup.get(solution.id, [])|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}">
+      <div class="card mb-3 solution-card kb-solution-detail" id="solution-{{ solution.id }}" data-solution-id="{{ solution.id }}" data-problem-ids="{{ solution_problem_lookup.get(solution.id, [])|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}" data-approach-ids="{% for approach in solution_modeling_approach_lookup.get(solution.id, []) %}{{ approach.id }}{% if not loop.last %},{% endif %}{% endfor %}">
         <div class="card-header d-flex justify-content-between align-items-center">
           <strong>{{ solution.name }}</strong>
           <div>
@@ -208,13 +254,11 @@
           <div class="row">
             <div class="col-md-6">
               <h5 class="h6"></h5>
-              <p><b>Modeling Task:</b>
-                {% if solution.modeling_task_ids %}
-                  {% for tid in solution.modeling_task_ids %}
-                    {% set task = modeling_task_lookup.get(tid) %}
-                    {% if task %}
-                      <a href="#task-{{ task.id }}" class="badge bg-primary-subtle text-primary-emphasis me-1 text-decoration-none">{{ task.name }}</a>
-                    {% endif %}
+              <p><b>Modeling Approaches:</b>
+                {% set linked_approaches = solution_modeling_approach_lookup.get(solution.id, []) %}
+                {% if linked_approaches %}
+                  {% for approach in linked_approaches %}
+                    <span class="badge bg-dark-subtle text-dark me-1">{{ approach.name }}</span>
                   {% endfor %}
                 {% else %}
                   <span class="text-muted">None</span>
@@ -247,29 +291,36 @@
               <p><b>Justification:</b> {{ solution.justification }}</p>
             </div>
             <div class="col-md-6">
-              <h5 class="h6">Source</h5>
-              {% set source = solution_source_lookup.get(solution.id) %}
+              <h5 class="h6">Approach and Source</h5>
+              {% set linked_solution_approach = modeling_approach_lookup.get(solution.modeling_approach_id) %}
+              {% if linked_solution_approach %}
+                {% set source = sources|selectattr('id', 'equalto', linked_solution_approach.source_id)|list|first %}
+              {% else %}
+                {% set source = None %}
+              {% endif %}
 
               <ul class="list-group mb-3">
-                {% if source %}
+                {% if linked_solution_approach %}
                   <li class="list-group-item">
-                    <div class="d-flex justify-content-between align-items-start">
+                    <div>
                       <div>
-                        <b>{{ source.title }}</b> — {{ source.author }}{% if source.year %} ({{ source.year }}){% endif %}
-                        {% if source.doi %}
-                          {% set doi_value = source.doi %}
-                          {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
-                          <br>DOI: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a>
+                        <b>Approach:</b> {{ linked_solution_approach.name }}
+                        <br>
+                        {% if source %}
+                          <b>Source:</b> {{ source.title }} — {{ source.author }}{% if source.year %} ({{ source.year }}){% endif %}
+                          {% if source.doi %}
+                            {% set doi_value = source.doi %}
+                            {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
+                            <br>DOI: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a>
+                          {% endif %}
+                        {% else %}
+                          <b>Source:</b> <span class="text-muted">None</span>
                         {% endif %}
-                      </div>
-                      <div>
-                        <a href="/edit_source/{{ source.id }}" class="btn btn-sm btn-outline-warning">Edit</a>
-                        <a href="/delete_source/{{ source.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
                       </div>
                     </div>
                   </li>
                 {% else %}
-                  <li class="list-group-item text-muted">No source assigned.</li>
+                  <li class="list-group-item text-muted">No approach assigned.</li>
                 {% endif %}
               </ul>
 
@@ -283,6 +334,7 @@
                         {% if effect.evidence_rigor %}
                           <div class="small text-muted">Evidence Rigor: {{ effect.evidence_rigor }}</div>
                         {% endif %}
+                        <div class="small text-muted">Polarity: {{ effect.effect_polarity|default('neutral')|capitalize }}</div>
                         <div class="small mt-1">
                           {% set prompting = prompting_technique_lookup.get(effect.prompting_technique_id) %}
                           {% set other = other_technique_lookup.get(effect.other_technique_id) %}
@@ -315,6 +367,9 @@
       </div>
     {% endfor %}
 
+      </div>
+
+      <div class="tab-pane fade" id="kb-population-pane" role="tabpanel" aria-labelledby="kb-population-tab" tabindex="0">
     <div class="card mb-4 subtle-panel">
       <div class="card-header"><h3 class="h5 mb-0">Populate Knowledge Base</h3></div>
       <div class="card-body">
@@ -331,13 +386,13 @@
                   <input class="form-control" name="name" placeholder="Modeling Solution Name" required>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Source (required)</label>
-                  <select class="form-select" name="source_id" required>
-                    {% for source in sources %}
-                      <option value="{{ source.id }}">{{ source.title }}{% if source.author %} - {{ source.author }}{% endif %}</option>
+                  <label class="form-label">Modeling Approach (required)</label>
+                  <select class="form-select" name="modeling_approach_id" required>
+                    {% for approach in modeling_approaches %}
+                      <option value="{{ approach.id }}">{{ approach.name }}</option>
                     {% endfor %}
                   </select>
-                  <div class="form-text">Each solution links to exactly one source.</div>
+                  <div class="form-text">Each solution belongs to exactly one modeling approach.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Prompting Techniques</label>
@@ -432,10 +487,10 @@
                               <div class="small">DOI: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a></div>
                             {% endif %}
                             <div class="small mt-1">
-                              <b>Linked Modeling Solutions:</b>
-                              {% if source_solution_lookup.get(source.id, []) %}
-                                {% for solution in source_solution_lookup.get(source.id, []) %}
-                                  <a href="#solution-{{ solution.id }}" class="badge bg-primary-subtle text-primary-emphasis text-decoration-none me-1">{{ solution.name }}</a>
+                              <b>Linked Modeling Approaches:</b>
+                              {% if source_modeling_approach_lookup.get(source.id, []) %}
+                                {% for approach in source_modeling_approach_lookup.get(source.id, []) %}
+                                  <a href="/edit_modeling_approach/{{ approach.id }}" class="badge bg-primary-subtle text-primary-emphasis text-decoration-none me-1">{{ approach.name }}</a>
                                 {% endfor %}
                               {% else %}
                                 <span class="text-muted">None</span>
@@ -591,6 +646,94 @@
 
         <div class="card mb-4 subtle-panel">
           <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="h6 mb-0 text-muted">Modeling Approaches</h4>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#modeling-approaches-panel" aria-expanded="false" aria-controls="modeling-approaches-panel">Show</button>
+          </div>
+          <div class="collapse" id="modeling-approaches-panel">
+            <div class="card-body">
+              <form method="post" action="/add_modeling_approach" class="row g-2 mb-3">
+                <div class="col-md-3">
+                  <input class="form-control" name="modeling_approach_name" placeholder="Approach name" required>
+                </div>
+                <div class="col-md-3">
+                  <select class="form-select" name="source_id" required>
+                    <option value="">-- Select source --</option>
+                    {% for source in sources %}
+                      <option value="{{ source.id }}">{{ source.title }}{% if source.author %} - {{ source.author }}{% endif %}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <select class="form-select" name="modeling_task_id" required>
+                    <option value="">-- Select modeling task --</option>
+                    {% for task in modeling_tasks %}
+                      <option value="{{ task.id }}">{{ task.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <select class="form-select" name="solution_ids" multiple size="4" required>
+                    {% for solution in solutions %}
+                      <option value="{{ solution.id }}">{{ solution.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Select one or more solutions.</div>
+                </div>
+                <div class="col-12">
+                  <button class="btn btn-outline-secondary">Add</button>
+                </div>
+              </form>
+
+              <ul class="list-group">
+                {% for approach in modeling_approaches %}
+                  <li class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                      <div class="flex-grow-1">
+                        <div><b>{{ approach.name }}</b></div>
+                        <div class="small text-muted mt-1">
+                          {% set linked_source = sources|selectattr('id', 'equalto', approach.source_id)|list|first %}
+                          {% set linked_task = modeling_task_lookup.get(approach.modeling_task_id) %}
+                          Source:
+                          {% if linked_source %}
+                            {{ linked_source.title }}
+                          {% else %}
+                            N/A
+                          {% endif %}
+                          | Modeling Task:
+                          {% if linked_task %}
+                            {{ linked_task.name }}
+                          {% else %}
+                            N/A
+                          {% endif %}
+                        </div>
+                        <div class="approach-cluster mt-2">
+                          <div class="approach-cluster-title mb-1">Solution Cluster</div>
+                          <div>
+                            {% for sid in approach.solution_ids %}
+                              {% set linked_solution = solutions|selectattr('id', 'equalto', sid)|list|first %}
+                              {% if linked_solution %}
+                                <a href="#solution-{{ linked_solution.id }}" class="approach-solution-chip solution-select-link" data-solution-id="{{ linked_solution.id }}">{{ linked_solution.name }}</a>
+                              {% endif %}
+                            {% endfor %}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <a href="/edit_modeling_approach/{{ approach.id }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                        <a href="/delete_modeling_approach/{{ approach.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                      </div>
+                    </div>
+                  </li>
+                {% else %}
+                  <li class="list-group-item text-muted">No modeling approaches yet.</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4 subtle-panel">
+          <div class="card-header d-flex justify-content-between align-items-center">
             <h4 class="h6 mb-0 text-muted">Modeling Problems</h4>
             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#modeling-problems-panel" aria-expanded="false" aria-controls="modeling-problems-panel">Show</button>
           </div>
@@ -623,6 +766,14 @@
                     {% endfor %}
                   </select>
                   <div class="form-text">Other techniques</div>
+                </div>
+                <div class="col-md-2">
+                  <select class="form-select" name="solution_ids" multiple size="3" title="Modeling Solutions">
+                    {% for solution in solutions %}
+                      <option value="{{ solution.id }}">{{ solution.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Linked solutions</div>
                 </div>
                 <div class="col-md-2">
                   <button class="btn btn-outline-secondary w-100">Add</button>
@@ -669,6 +820,11 @@
                                             <option value="{{ technique.id }}" {% if technique.id in child.other_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
                                           {% endfor %}
                                         </select>
+                                        <select class="form-select form-select-sm" name="solution_ids" multiple size="3">
+                                          {% for solution in solutions %}
+                                            <option value="{{ solution.id }}" {% if solution.id in child.solution_ids %}selected{% endif %}>{{ solution.name }}</option>
+                                          {% endfor %}
+                                        </select>
                                         <button class="btn btn-sm btn-outline-primary">Update</button>
                                       </form>
                                       <a href="/delete_modeling_problem/{{ child.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
@@ -701,6 +857,11 @@
                               <option value="{{ technique.id }}" {% if technique.id in problem.other_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
                             {% endfor %}
                           </select>
+                          <select class="form-select form-select-sm" name="solution_ids" multiple size="3">
+                            {% for solution in solutions %}
+                              <option value="{{ solution.id }}" {% if solution.id in problem.solution_ids %}selected{% endif %}>{{ solution.name }}</option>
+                            {% endfor %}
+                          </select>
                           <button class="btn btn-sm btn-outline-primary">Update</button>
                         </form>
                         <a href="/delete_modeling_problem/{{ problem.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
@@ -723,8 +884,11 @@
           <div class="collapse" id="prompting-techniques-panel">
             <div class="card-body">
               <form method="post" action="/add_prompting_technique" class="row g-2 mb-3">
-                <div class="col-md-10">
+                <div class="col-md-4">
                   <input class="form-control" name="prompting_technique_name" placeholder="Prompting Technique Name">
+                </div>
+                <div class="col-md-6">
+                  <input class="form-control" name="prompting_technique_description" placeholder="Description">
                 </div>
                 <div class="col-md-2">
                   <button class="btn btn-outline-secondary w-100">Add</button>
@@ -733,10 +897,16 @@
               <ul class="list-group">
                 {% for technique in prompting_techniques %}
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <div><b>{{ technique.name }}</b></div>
+                    <div>
+                      <b>{{ technique.name }}</b>
+                      {% if technique.description %}
+                        <div class="small text-muted">{{ technique.description }}</div>
+                      {% endif %}
+                    </div>
                     <div class="d-flex gap-2">
                       <form method="post" action="/update_prompting_technique/{{ technique.id }}" class="d-flex gap-2">
                         <input class="form-control form-control-sm" name="prompting_technique_name" value="{{ technique.name }}">
+                        <input class="form-control form-control-sm" name="prompting_technique_description" value="{{ technique.description|default('') }}" placeholder="Description">
                         <button class="btn btn-sm btn-outline-primary">Update</button>
                       </form>
                       <a href="/delete_prompting_technique/{{ technique.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
@@ -758,8 +928,11 @@
           <div class="collapse" id="other-techniques-panel">
             <div class="card-body">
               <form method="post" action="/add_other_technique" class="row g-2 mb-3">
-                <div class="col-md-10">
+                <div class="col-md-4">
                   <input class="form-control" name="other_technique_name" placeholder="Other Technique Name">
+                </div>
+                <div class="col-md-6">
+                  <input class="form-control" name="other_technique_description" placeholder="Description">
                 </div>
                 <div class="col-md-2">
                   <button class="btn btn-outline-secondary w-100">Add</button>
@@ -768,10 +941,16 @@
               <ul class="list-group">
                 {% for technique in other_techniques %}
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <div><b>{{ technique.name }}</b></div>
+                    <div>
+                      <b>{{ technique.name }}</b>
+                      {% if technique.description %}
+                        <div class="small text-muted">{{ technique.description }}</div>
+                      {% endif %}
+                    </div>
                     <div class="d-flex gap-2">
                       <form method="post" action="/update_other_technique/{{ technique.id }}" class="d-flex gap-2">
                         <input class="form-control form-control-sm" name="other_technique_name" value="{{ technique.name }}">
+                        <input class="form-control form-control-sm" name="other_technique_description" value="{{ technique.description|default('') }}" placeholder="Description">
                         <button class="btn btn-sm btn-outline-primary">Update</button>
                       </form>
                       <a href="/delete_other_technique/{{ technique.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
@@ -844,10 +1023,25 @@
                   </datalist>
                 </div>
                 <div class="col-md-4">
+                  <select class="form-select" name="effect_polarity">
+                    <option value="positive">Positive</option>
+                    <option value="negative">Negative</option>
+                    <option value="neutral" selected>Neutral</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
                   <select class="form-select" name="solution_id">
                     <option value="">No linked solution</option>
                     {% for solution in solutions %}
                       <option value="{{ solution.id }}">{{ solution.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <select class="form-select" name="modeling_approach_id">
+                    <option value="">No modeling approach</option>
+                    {% for approach in modeling_approaches %}
+                      <option value="{{ approach.id }}">{{ approach.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -868,7 +1062,7 @@
                   </select>
                 </div>
                 <div class="col-12">
-                  <div class="form-text">Constraint: choose at most one of Modeling Solution, Prompting Technique, or Other Technique.</div>
+                  <div class="form-text">Constraint: choose at most one of Modeling Solution, Modeling Approach, Prompting Technique, or Other Technique.</div>
                 </div>
                 <div class="col-md-4">
                   <select class="form-select" name="underlying_llm_id">
@@ -891,10 +1085,17 @@
                       {% if effect.evidence_rigor %}
                         <div class="small text-muted">Evidence rigor: {{ effect.evidence_rigor }}</div>
                       {% endif %}
+                      <div class="small text-muted">Polarity: {{ effect.effect_polarity|default('neutral')|capitalize }}</div>
                       {% if effect.solution_id %}
                         {% set linked_solution = solutions|selectattr('id', 'equalto', effect.solution_id)|list|first %}
                         {% if linked_solution %}
                           <div class="small">Solution: <a href="#solution-{{ linked_solution.id }}" class="text-decoration-none">{{ linked_solution.name }}</a></div>
+                        {% endif %}
+                      {% endif %}
+                      {% if effect.modeling_approach_id %}
+                        {% set linked_approach = modeling_approaches|selectattr('id', 'equalto', effect.modeling_approach_id)|list|first %}
+                        {% if linked_approach %}
+                          <div class="small">Modeling approach: <a href="/edit_modeling_approach/{{ linked_approach.id }}" class="text-decoration-none">{{ linked_approach.name }}</a></div>
                         {% endif %}
                       {% endif %}
                       <div class="small mt-1">
@@ -924,6 +1125,9 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
       </div>
     </div>
 
@@ -981,6 +1185,7 @@
       if (addEffectForm) {
         const addEffectButton = addEffectForm.querySelector('#add-effect-button');
         const solutionSelect = addEffectForm.querySelector('select[name="solution_id"]');
+        const approachSelect = addEffectForm.querySelector('select[name="modeling_approach_id"]');
         const promptingSelect = addEffectForm.querySelector('select[name="prompting_technique_id"]');
         const otherSelect = addEffectForm.querySelector('select[name="other_technique_id"]');
 
@@ -988,7 +1193,7 @@
           if (!addEffectButton) {
             return;
           }
-          const hasLinkedEffect = [solutionSelect, promptingSelect, otherSelect].some(function (selectEl) {
+          const hasLinkedEffect = [solutionSelect, approachSelect, promptingSelect, otherSelect].some(function (selectEl) {
             return selectEl && selectEl.value;
           });
           addEffectButton.classList.toggle('btn-outline-secondary', !hasLinkedEffect);
@@ -1002,7 +1207,7 @@
             updateAddEffectButtonState();
             return;
           }
-          [solutionSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
+          [solutionSelect, approachSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
             if (selectEl && selectEl !== changedSelect) {
               selectEl.value = '';
             }
@@ -1010,7 +1215,7 @@
           updateAddEffectButtonState();
         }
 
-        [solutionSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
+        [solutionSelect, approachSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
           if (!selectEl) {
             return;
           }
@@ -1022,8 +1227,8 @@
         updateAddEffectButtonState();
       }
 
-      const taskLinks = Array.from(document.querySelectorAll('.task-select-link[data-task-id]'));
       const problemLinks = Array.from(document.querySelectorAll('.problem-select-link[data-problem-id]'));
+      const approachLinks = Array.from(document.querySelectorAll('.approach-select-link[data-approach-id]'));
       const solutionLinks = Array.from(document.querySelectorAll('.solution-select-link[data-solution-id]'));
       const solutionItems = Array.from(document.querySelectorAll('.kb-solution-list-item'));
       const detailCards = Array.from(document.querySelectorAll('.kb-solution-detail'));
@@ -1032,8 +1237,8 @@
       const promptingTechniqueFilter = document.getElementById('nav-filter-technique');
       const otherTechniqueFilter = document.getElementById('nav-filter-other-technique');
       const underlyingLlmFilter = document.getElementById('nav-filter-underlying-llm');
-      let activeTaskId = null;
       let activeProblemId = null;
+      let activeApproachId = null;
       let activeSolutionId = '';
 
       function applyHighlight() {
@@ -1042,30 +1247,30 @@
         const activeOtherTechnique = otherTechniqueFilter ? otherTechniqueFilter.value : '';
         const activeUnderlyingLlm = underlyingLlmFilter ? underlyingLlmFilter.value : '';
 
-        taskLinks.forEach(function (link) {
-          link.classList.toggle('purpose-link-active', !!activeTaskId && link.dataset.taskId === activeTaskId);
-        });
-
         problemLinks.forEach(function (link) {
           link.classList.toggle('purpose-link-active', !!activeProblemId && link.dataset.problemId === activeProblemId);
         });
 
+        approachLinks.forEach(function (link) {
+          link.classList.toggle('purpose-link-active', !!activeApproachId && link.dataset.approachId === activeApproachId);
+        });
+
         solutionItems.forEach(function (item) {
-          const taskIds = parseCsvIds(item.dataset.taskIds);
           const problemIds = parseCsvIds(item.dataset.problemIds);
           const modelTypeIds = parseCsvIds(item.dataset.modelTypeIds);
           const promptingTechniqueIds = parseCsvIds(item.dataset.promptingTechniqueIds);
           const otherTechniqueIds = parseCsvIds(item.dataset.otherTechniqueIds);
           const underlyingLlmIds = parseCsvIds(item.dataset.underlyingLlmIds);
-          const matchesTask = !activeTaskId || taskIds.includes(activeTaskId);
+          const approachIds = parseCsvIds(item.dataset.approachIds);
           const matchesProblem = !activeProblemId || problemIds.includes(activeProblemId);
+          const matchesApproach = !activeApproachId || approachIds.includes(activeApproachId);
           const matchesModelType = !activeModelType || modelTypeIds.includes(activeModelType);
           const matchesPromptingTechnique = !activePromptingTechnique || promptingTechniqueIds.includes(activePromptingTechnique);
           const matchesOtherTechnique = !activeOtherTechnique || otherTechniqueIds.includes(activeOtherTechnique);
           const matchesUnderlyingLlm = !activeUnderlyingLlm || underlyingLlmIds.includes(activeUnderlyingLlm);
           const passesFilter = matchesModelType && matchesPromptingTechnique && matchesOtherTechnique && matchesUnderlyingLlm;
-          const hasActiveSelection = !!activeTaskId || !!activeProblemId;
-          const matchesSelection = matchesTask && matchesProblem;
+          const hasActiveSelection = !!activeProblemId || !!activeApproachId;
+          const matchesSelection = matchesProblem && matchesApproach;
 
           item.style.display = passesFilter ? '' : 'none';
           item.classList.toggle('solution-list-item-highlight', passesFilter && hasActiveSelection && matchesSelection);
@@ -1087,11 +1292,13 @@
           const promptingTechniqueIds = parseCsvIds(card.dataset.promptingTechniqueIds);
           const otherTechniqueIds = parseCsvIds(card.dataset.otherTechniqueIds);
           const underlyingLlmIds = parseCsvIds(card.dataset.underlyingLlmIds);
+          const approachIds = parseCsvIds(card.dataset.approachIds);
           const passesModelType = !activeModelType || modelTypeIds.includes(activeModelType);
           const passesPromptingTechnique = !activePromptingTechnique || promptingTechniqueIds.includes(activePromptingTechnique);
           const passesOtherTechnique = !activeOtherTechnique || otherTechniqueIds.includes(activeOtherTechnique);
           const passesUnderlyingLlm = !activeUnderlyingLlm || underlyingLlmIds.includes(activeUnderlyingLlm);
-          const isMatch = card.dataset.solutionId === activeSolutionId && passesModelType && passesPromptingTechnique && passesOtherTechnique && passesUnderlyingLlm;
+          const passesApproach = !activeApproachId || approachIds.includes(activeApproachId);
+          const isMatch = card.dataset.solutionId === activeSolutionId && passesModelType && passesPromptingTechnique && passesOtherTechnique && passesUnderlyingLlm && passesApproach;
           card.classList.toggle('kb-solution-detail-visible', isMatch);
           if (isMatch) shown = true;
         });
@@ -1101,20 +1308,20 @@
         }
       }
 
-      taskLinks.forEach(function (link) {
-        link.addEventListener('click', function (event) {
-          event.preventDefault();
-          const clickedTask = this.dataset.taskId;
-          activeTaskId = activeTaskId === clickedTask ? null : clickedTask;
-          applyHighlight();
-        });
-      });
-
       problemLinks.forEach(function (link) {
         link.addEventListener('click', function (event) {
           event.preventDefault();
           const clickedProblem = this.dataset.problemId;
           activeProblemId = activeProblemId === clickedProblem ? null : clickedProblem;
+          applyHighlight();
+        });
+      });
+
+      approachLinks.forEach(function (link) {
+        link.addEventListener('click', function (event) {
+          event.preventDefault();
+          const clickedApproach = this.dataset.approachId;
+          activeApproachId = activeApproachId === clickedApproach ? null : clickedApproach;
           applyHighlight();
         });
       });
