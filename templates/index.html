@@ -288,6 +288,19 @@
                   <span class="text-muted">None</span>
                 {% endif %}
               </p>
+              <p><b>Linked Problems:</b>
+                {% set linked_problem_ids = solution_problem_lookup.get(solution.id, []) %}
+                {% if linked_problem_ids %}
+                  {% for pid in linked_problem_ids %}
+                    {% set problem = modeling_problem_lookup.get(pid|int) %}
+                    {% if problem %}
+                      <a href="#problem-{{ problem.id }}" class="badge bg-secondary-subtle text-secondary-emphasis text-decoration-none me-1">{{ problem.name }}</a>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </p>
               <p><b>Justification:</b> {{ solution.justification }}</p>
             </div>
             <div class="col-md-6">
@@ -414,13 +427,13 @@
                   <div class="form-text">Select one or more other techniques linked to this solution.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Modeling Task</label>
-                  <select class="form-select" name="modeling_task_ids" multiple size="5">
-                    {% for task in modeling_tasks %}
-                      <option value="{{ task.id }}">{{ task.name }}</option>
+                  <label class="form-label">Modeling Problems</label>
+                  <select class="form-select" name="modeling_problem_ids" multiple size="5">
+                    {% for problem in modeling_problems %}
+                      <option value="{{ problem.id }}">{{ problem.name }}</option>
                     {% endfor %}
                   </select>
-                  <div class="form-text">Select one or more related Modeling Tasks. Hold Ctrl/Cmd for multiple.</div>
+                  <div class="form-text">Optional: link one or more modeling problems. Hold Ctrl/Cmd for multiple.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Justification</label>

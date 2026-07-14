@@ -27,11 +27,12 @@
             <option value="{{ technique.id }}" {% if technique.id in solution.other_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
           {% endfor %}
         </select>
-        <select class="form-select mb-2" name="modeling_task_ids" multiple size="5">
-          {% for task in modeling_tasks %}
-            <option value="{{ task.id }}" {% if task.id in solution.modeling_task_ids %}selected{% endif %}>{{ task.name }}</option>
+        <select class="form-select mb-2" name="modeling_problem_ids" multiple size="8">
+          {% for problem in modeling_problems %}
+            <option value="{{ problem.id }}" {% if problem.id in selected_modeling_problem_ids %}selected{% endif %}>{{ problem.name }}</option>
           {% endfor %}
         </select>
+        <div class="form-text mb-2">Optional: select modeling problems linked to this solution.</div>
         <textarea class="form-control mb-2" name="justification">{{ solution.justification }}</textarea>
         <button class="btn btn-primary">Save</button>
         <a href="/" class="btn btn-secondary">Cancel</a>

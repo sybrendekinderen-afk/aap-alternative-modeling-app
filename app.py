@@ -275,6 +275,8 @@ def load_data():
             solution.pop("source_id", None)
             solution.pop("source_ids", None)
             solution.pop("sources", None)
+            solution.pop("modeling_task_ids", None)
+            solution.pop("modeling_purpose_ids", None)
 
             modeling_approach_id = parse_optional_int(solution.get("modeling_approach_id"))
             solution["modeling_approach_id"] = modeling_approach_id
@@ -286,16 +288,6 @@ def load_data():
                 except (TypeError, ValueError):
                     continue
             solution["other_technique_ids"] = list(dict.fromkeys(normalized_other_technique_ids))
-
-            raw_task_ids = solution.get("modeling_task_ids", solution.get("modeling_purpose_ids", []))
-            normalized_task_ids = []
-            for task_id in raw_task_ids:
-                try:
-                    normalized_task_ids.append(int(task_id))
-                except (TypeError, ValueError):
-                    continue
-            solution["modeling_task_ids"] = list(dict.fromkeys(normalized_task_ids))
-            solution.pop("modeling_purpose_ids", None)
 
         for modeling_task in store.get("modeling_tasks", []):
             modeling_task.pop("description", None)
@@ -1070,6 +1062,7 @@ def add_solution():
     store = load_data()
     solutions = store.get("solutions", [])
     modeling_approaches = store.get("modeling_approaches", [])
+    modeling_problems = store.get("modeling_problems", [])
 
     next_id = max([s["id"] for s in solutions], default=0) + 1
 
@@ -1079,19 +1072,30 @@ def add_solution():
 
     prompting_technique_ids = parse_int_list(request.form.getlist("prompting_technique_ids"))
     other_technique_ids = parse_int_list(request.form.getlist("other_technique_ids"))
-    modeling_task_ids = parse_int_list(request.form.getlist("modeling_task_ids"))
+    valid_problem_ids = {problem.get("id") for problem in modeling_problems}
+    modeling_problem_ids = [
+        pid for pid in parse_int_list(request.form.getlist("modeling_problem_ids"))
+        if pid in valid_problem_ids
+    ]
 
     solutions.append({
         "id": next_id,
         "name": request.form["name"],
         "prompting_technique_ids": prompting_technique_ids,
         "other_technique_ids": other_technique_ids,
-        "modeling_task_ids": modeling_task_ids,
         "justification": request.form.get("justification", ""),
         "modeling_approach_id": modeling_approach_id,
     })
 
+    for problem in modeling_problems:
+        existing_solution_ids = list(dict.fromkeys(parse_int_list(problem.get("solution_ids", []))))
+        if problem.get("id") in modeling_problem_ids:
+            if next_id not in existing_solution_ids:
+                existing_solution_ids.append(next_id)
+        problem["solution_ids"] = existing_solution_ids
+
     store["solutions"] = solutions
+    store["modeling_problems"] = modeling_problems
     sync_solution_approach_links(store)
     save_data(store)
     return redirect("/")
@@ -1580,6 +1584,12 @@ def edit_solution(solution_id):
     solution = find_solution(store.get("solutions", []), solution_id)
     if not solution:
         return redirect("/")
+    modeling_problems = store.get("modeling_problems", [])
+    selected_modeling_problem_ids = [
+        problem.get("id")
+        for problem in modeling_problems
+        if solution_id in problem.get("solution_ids", [])
+    ]
     return render_template(
         "edit_paper.html",
         solution=solution,
@@ -1588,7 +1598,8 @@ def edit_solution(solution_id):
         modeling_approaches=store.get("modeling_approaches", []),
         prompting_techniques=store.get("prompting_techniques", []),
         other_techniques=store.get("other_techniques", []),
-        modeling_tasks=store.get("modeling_tasks", [])
+        modeling_problems=modeling_problems,
+        selected_modeling_problem_ids=selected_modeling_problem_ids,
     )
 
 
@@ -1624,12 +1635,28 @@ def update_solution(solution_id):
             return redirect("/")
         prompting_technique_ids = parse_int_list(request.form.getlist("prompting_technique_ids"))
         other_technique_ids = parse_int_list(request.form.getlist("other_technique_ids"))
-        modeling_task_ids = parse_int_list(request.form.getlist("modeling_task_ids"))
+        modeling_problems = store.get("modeling_problems", [])
+        valid_problem_ids = {problem.get("id") for problem in modeling_problems}
+        modeling_problem_ids = [
+            pid for pid in parse_int_list(request.form.getlist("modeling_problem_ids"))
+            if pid in valid_problem_ids
+        ]
         solution["modeling_approach_id"] = modeling_approach_id
         solution["prompting_technique_ids"] = prompting_technique_ids
         solution["other_technique_ids"] = other_technique_ids
-        solution["modeling_task_ids"] = modeling_task_ids
         solution["justification"] = request.form.get("justification", solution["justification"])
+
+        selected_problem_ids = set(modeling_problem_ids)
+        for problem in modeling_problems:
+            existing_solution_ids = list(dict.fromkeys(parse_int_list(problem.get("solution_ids", []))))
+            if problem.get("id") in selected_problem_ids:
+                if solution_id not in existing_solution_ids:
+                    existing_solution_ids.append(solution_id)
+            else:
+                existing_solution_ids = [sid for sid in existing_solution_ids if sid != solution_id]
+            problem["solution_ids"] = existing_solution_ids
+
+        store["modeling_problems"] = modeling_problems
         sync_solution_approach_links(store)
         save_data(store)
     return redirect("/")
