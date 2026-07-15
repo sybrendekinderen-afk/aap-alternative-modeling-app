@@ -8,9 +8,6 @@
         3,
         4
       ],
-      "modeling_task_ids": [
-        1
-      ],
       "justification": "Make the model machine readable.",
       "other_technique_ids": [],
       "modeling_approach_id": null
@@ -20,9 +17,6 @@
       "name": "Step by step LLM reasoning",
       "prompting_technique_ids": [
         2
-      ],
-      "modeling_task_ids": [
-        8
       ],
       "justification": "Supposed increase in quality of output ",
       "other_technique_ids": [
@@ -124,7 +118,9 @@
       "id": 1,
       "name": "Use machine readable models, for computer aided analysis",
       "model_type_id": 2,
-      "modeling_problem_ids": []
+      "modeling_problem_ids": [
+        1
+      ]
     },
     {
       "id": 2,
@@ -169,7 +165,16 @@
       "modeling_problem_ids": []
     }
   ],
-  "modeling_problems": [],
+  "modeling_problems": [
+    {
+      "id": 1,
+      "name": "test",
+      "parent_id": null,
+      "prompting_technique_ids": [],
+      "other_technique_ids": [],
+      "solution_ids": []
+    }
+  ],
   "modeling_approaches": [
     {
       "id": 1,

@@ -13,7 +13,9 @@
     .solution-card { border-left: 4px solid #0d6efd; box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05); }
     .purpose-tree-item { border-left: 3px solid #dce7ff; padding-left: .75rem; margin-left: .25rem; }
     .purpose-tree-item .purpose-toggle { width: 1.25rem; height: 1.25rem; padding: 0; line-height: 1; }
+    .purpose-tree-item-related { border-color: #9fb6e7 !important; background-color: #f8fbff; }
     .purpose-link-active { text-decoration: underline !important; font-weight: 700; }
+    .purpose-link-related { color: #0d6efd; font-weight: 700; }
     .solution-list-item-highlight { border-color: #0d6efd; background-color: #eef4ff; }
     .solution-list-item-dim { opacity: .45; }
     .kb-solution-detail { display: none; }
@@ -22,6 +24,10 @@
     .approach-cluster-title { font-size: .82rem; letter-spacing: .02em; text-transform: uppercase; color: #31508d; font-weight: 700; }
     .approach-solution-chip { display: inline-block; margin: .2rem .35rem .2rem 0; padding: .3rem .6rem; border-radius: 999px; border: 1px solid #9fb6e7; background: #eaf1ff; color: #193463; text-decoration: none; font-size: .86rem; }
     .approach-solution-chip:hover { background: #dbe8ff; color: #10284f; }
+    .task-related-problems { margin-top: .4rem; }
+    .task-select-link { text-decoration: none; }
+    .task-select-link.task-select-active { text-decoration: underline; font-weight: 700; }
+    .task-pane-highlight { border-color: #9fb6e7 !important; background-color: #f8fbff; }
   </style>
 </head>
 <body>
@@ -157,18 +163,18 @@
             <div class="card primary-surface mb-3">
               <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Task</h4></div>
               <div class="card-body">
-                <p class="text-muted small mb-3">Inspect tasks and their linked modeling approaches.</p>
+                <p class="text-muted small mb-3">Inspect tasks, their linked modeling approaches, and related modeling problems.</p>
                 <ul class="list-group">
                   {% for task in modeling_tasks %}
-                    <li class="list-group-item">
+                    <li class="list-group-item task-list-item">
                       {% set linked_approaches = modeling_approaches|selectattr('modeling_task_id', 'equalto', task.id)|list %}
                       <div class="d-flex justify-content-between align-items-start gap-2">
                         <div>
-                          <span class="fw-semibold">{{ task.name }}</span>
+                          <a href="#" class="fw-semibold text-decoration-none task-select-link" data-task-id="{{ task.id }}" data-modeling-problem-ids="{{ task.modeling_problem_ids|default([])|join(',') }}">{{ task.name }}</a>
                           {% if task.model_type_id %}
                             {% set task_model_type = model_type_lookup.get(task.model_type_id) %}
                             {% if task_model_type %}
-                              <span class="badge bg-light text-dark border ms-1">{{ task_model_type.name }}</span>
+                              <span class="badge bg-light text-dark border ms-1">{{ task_model_type.notation or task_model_type.name }}</span>
                             {% endif %}
                           {% endif %}
                         </div>
@@ -176,6 +182,17 @@
                           <span class="badge bg-dark-subtle text-dark border">{{ linked_approaches|length }} approach{% if linked_approaches|length != 1 %}es{% endif %}</span>
                         </div>
                       </div>
+                      {% if task.modeling_problem_ids %}
+                        <div class="small text-muted task-related-problems">
+                          Related problems:
+                          {% for pid in task.modeling_problem_ids %}
+                            {% set prob = modeling_problem_lookup.get(pid) %}
+                            {% if prob %}
+                              <a href="#problem-{{ prob.id }}" class="badge bg-secondary-subtle text-secondary-emphasis text-decoration-none me-1 problem-select-link" data-problem-id="{{ prob.id }}">{{ prob.name }}</a>
+                            {% endif %}
+                          {% endfor %}
+                        </div>
+                      {% endif %}
                       {% if linked_approaches %}
                         <div class="mt-2">
                           {% for approach in linked_approaches %}
@@ -582,16 +599,24 @@
                 </div>
                 <div class="card-body">
                   <form method="post" action="/add_modeling_task" class="row g-2">
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                       <input class="form-control" name="modeling_task_name" placeholder="Task name" required>
                     </div>
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                       <select class="form-select" name="model_type_id">
                         <option value="">-- Optional model type --</option>
                         {% for model_type in model_types %}
                           <option value="{{ model_type.id }}">{{ model_type.name }}{% if model_type.notation %} ({{ model_type.notation }}){% endif %}</option>
                         {% endfor %}
                       </select>
+                    </div>
+                    <div class="col-md-2">
+                      <select class="form-select" name="modeling_problem_ids" multiple size="3">
+                        {% for problem in modeling_problems %}
+                          <option value="{{ problem.id }}">{{ problem.name }}</option>
+                        {% endfor %}
+                      </select>
+                      <div class="form-text">Problems</div>
                     </div>
                     <div class="col-md-2">
                       <button class="btn btn-outline-secondary w-100">Add</button>
@@ -609,13 +634,13 @@
                   <div class="card-body">
                     <ul class="list-group">
                       {% for task in modeling_tasks %}
-                        <li class="list-group-item">
+                        <li class="list-group-item task-list-item" data-task-id="{{ task.id }}">
                           <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
                             <div>
-                              <b>{{ task.name }}</b>
+                              <a href="#" class="fw-semibold text-decoration-none task-select-link" data-task-id="{{ task.id }}" data-modeling-problem-ids="{{ task.modeling_problem_ids|default([])|join(',') }}">{{ task.name }}</a>
                               {% if task.model_type_id %}
                                 {% set mt = model_type_lookup.get(task.model_type_id) %}
-                                {% if mt %}<span class="badge bg-light text-dark border ms-1">{{ mt.name }}</span>{% endif %}
+                                {% if mt %}<span class="badge bg-light text-dark border ms-1">{{ mt.notation or mt.name }}</span>{% endif %}
                               {% endif %}
                               {% if task.modeling_problem_ids %}
                                 <div class="small text-muted mt-1">
@@ -692,6 +717,14 @@
                     {% endfor %}
                   </select>
                   <div class="form-text">Optional: select solutions now or link them later.</div>
+                </div>
+                <div class="col-md-3">
+                  <select class="form-select" name="modeling_problem_ids" multiple size="5">
+                    {% for problem in modeling_problems %}
+                      <option value="{{ problem.id }}">{{ problem.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Optional: select modeling problems related to this approach.</div>
                 </div>
                 <div class="col-12">
                   <button class="btn btn-outline-secondary">Add</button>
@@ -1243,6 +1276,7 @@
 
       const problemLinks = Array.from(document.querySelectorAll('.problem-select-link[data-problem-id]'));
       const approachLinks = Array.from(document.querySelectorAll('.approach-select-link[data-approach-id]'));
+      const taskLinks = Array.from(document.querySelectorAll('.task-select-link[data-task-id]'));
       const solutionLinks = Array.from(document.querySelectorAll('.solution-select-link[data-solution-id]'));
       const solutionItems = Array.from(document.querySelectorAll('.kb-solution-list-item'));
       const detailCards = Array.from(document.querySelectorAll('.kb-solution-detail'));
@@ -1252,6 +1286,8 @@
       const otherTechniqueFilter = document.getElementById('nav-filter-other-technique');
       const underlyingLlmFilter = document.getElementById('nav-filter-underlying-llm');
       let activeProblemId = null;
+      let activeTaskId = null;
+      let activeTaskProblemIds = [];
       let activeApproachId = null;
       let activeSolutionId = '';
 
@@ -1263,6 +1299,20 @@
 
         problemLinks.forEach(function (link) {
           link.classList.toggle('purpose-link-active', !!activeProblemId && link.dataset.problemId === activeProblemId);
+          const isTaskRelatedProblem = !!activeTaskId && activeTaskProblemIds.includes(link.dataset.problemId);
+          link.classList.toggle('purpose-link-related', !activeProblemId && isTaskRelatedProblem);
+          const problemItem = link.closest('.list-group-item');
+          if (problemItem) {
+            problemItem.classList.toggle('purpose-tree-item-related', isTaskRelatedProblem);
+          }
+        });
+
+        taskLinks.forEach(function (link) {
+          link.classList.toggle('task-select-active', !!activeTaskId && link.dataset.taskId === activeTaskId);
+        });
+
+        document.querySelectorAll('.task-list-item').forEach(function (item) {
+          item.classList.toggle('task-pane-highlight', !!activeTaskId && item.dataset.taskId === activeTaskId);
         });
 
         approachLinks.forEach(function (link) {
@@ -1331,11 +1381,18 @@
         });
       });
 
-      approachLinks.forEach(function (link) {
+      taskLinks.forEach(function (link) {
         link.addEventListener('click', function (event) {
           event.preventDefault();
-          const clickedApproach = this.dataset.approachId;
-          activeApproachId = activeApproachId === clickedApproach ? null : clickedApproach;
+          const clickedTask = this.dataset.taskId;
+          const selectedProblems = parseCsvIds(this.dataset.modelingProblemIds || '');
+          if (activeTaskId === clickedTask) {
+            activeTaskId = null;
+            activeTaskProblemIds = [];
+          } else {
+            activeTaskId = clickedTask;
+            activeTaskProblemIds = selectedProblems;
+          }
           applyHighlight();
         });
       });

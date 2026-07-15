@@ -87,6 +87,12 @@ def _is_vercel_runtime():
     return bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
 
 
+def _remote_persistence_enabled():
+    if _is_vercel_runtime():
+        return True
+    return os.environ.get("ALLOW_REMOTE_PERSISTENCE", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _get_psycopg_module():
     try:
         return importlib.import_module("psycopg")
@@ -95,6 +101,9 @@ def _get_psycopg_module():
 
 
 def _load_data_from_postgres():
+    if not _remote_persistence_enabled():
+        return None
+
     db_url = _get_database_url()
     psycopg = _get_psycopg_module()
     if not db_url or psycopg is None:
@@ -134,6 +143,9 @@ def _load_data_from_postgres():
 
 
 def _save_data_to_postgres(data):
+    if not _remote_persistence_enabled():
+        return False
+
     db_url = _get_database_url()
     psycopg = _get_psycopg_module()
     if not db_url or psycopg is None:
@@ -174,6 +186,9 @@ def _save_data_to_postgres(data):
 
 def _get_blob_context():
     """Parse the Netlify Blobs context injected at runtime."""
+    if not _remote_persistence_enabled():
+        return None
+
     ctx_raw = os.environ.get("NETLIFY_BLOBS_CONTEXT", "")
     if not ctx_raw:
         return None
@@ -1108,11 +1123,13 @@ def add_modeling_approach():
     sources = store.get("sources", [])
     modeling_tasks = store.get("modeling_tasks", [])
     solutions = store.get("solutions", [])
+    modeling_problems = store.get("modeling_problems", [])
 
     name = request.form.get("modeling_approach_name", "").strip()
     source_id = parse_optional_int(request.form.get("source_id", ""))
     modeling_task_id = parse_optional_int(request.form.get("modeling_task_id", ""))
     solution_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("solution_ids"))))
+    modeling_problem_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("modeling_problem_ids"))))
 
     if not name:
         return redirect("/")
@@ -1122,6 +1139,8 @@ def add_modeling_approach():
         return redirect("/")
     valid_solution_ids = {solution.get("id") for solution in solutions}
     solution_ids = [sid for sid in solution_ids if sid in valid_solution_ids]
+    valid_problem_ids = {problem.get("id") for problem in modeling_problems}
+    modeling_problem_ids = [pid for pid in modeling_problem_ids if pid in valid_problem_ids]
 
     new_id = get_next_modeling_approach_id(modeling_approaches)
     modeling_approaches.append({
@@ -1130,6 +1149,7 @@ def add_modeling_approach():
         "source_id": source_id,
         "modeling_task_id": modeling_task_id,
         "solution_ids": [],
+        "modeling_problem_ids": modeling_problem_ids,
     })
 
     for solution in solutions:
@@ -1216,6 +1236,12 @@ def add_modeling_task():
     store = load_data()
     name = request.form.get("modeling_task_name", "").strip()
     model_type_id = parse_optional_int(request.form.get("model_type_id", ""))
+    modeling_problems = store.get("modeling_problems", [])
+    valid_problem_ids = {problem.get("id") for problem in modeling_problems}
+    modeling_problem_ids = [
+        pid for pid in parse_int_list(request.form.getlist("modeling_problem_ids"))
+        if pid in valid_problem_ids
+    ]
 
     if name:
         modeling_tasks = store.get("modeling_tasks", [])
@@ -1223,7 +1249,7 @@ def add_modeling_task():
             "id": max([mt["id"] for mt in modeling_tasks], default=0) + 1,
             "name": name,
             "model_type_id": model_type_id,
-            "modeling_problem_ids": []
+            "modeling_problem_ids": list(dict.fromkeys(modeling_problem_ids))
         })
         store["modeling_tasks"] = modeling_tasks
         save_data(store)
