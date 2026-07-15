@@ -183,7 +183,23 @@
       "modeling_task_id": 1,
       "solution_ids": [
         2
-      ]
+      ],
+      "prompting_technique_ids": [],
+      "other_technique_ids": []
+    },
+    {
+      "id": 2,
+      "name": "test",
+      "source_id": 1,
+      "modeling_task_id": 3,
+      "solution_ids": [],
+      "prompting_technique_ids": [
+        1,
+        2,
+        3
+      ],
+      "other_technique_ids": [],
+      "modeling_problem_ids": []
     }
   ],
   "evidence_rigor_values": [

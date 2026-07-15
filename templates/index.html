@@ -77,17 +77,48 @@
                         ·
                         {% if linked_task %}{{ linked_task.name }}{% else %}Unknown task{% endif %}
                       </div>
-                      <div class="approach-cluster">
-                        <div class="approach-cluster-title mb-1">Solution Cluster</div>
-                        <div>
-                          {% for sid in approach.solution_ids %}
-                            {% set linked_solution = solutions|selectattr('id', 'equalto', sid)|list|first %}
-                            {% if linked_solution %}
-                              <a href="#solution-{{ linked_solution.id }}" class="approach-solution-chip solution-select-link" data-solution-id="{{ linked_solution.id }}">{{ linked_solution.name }}</a>
-                            {% endif %}
-                          {% endfor %}
+                      {% if approach.solution_ids %}
+                        <div class="approach-cluster mb-2">
+                          <div class="approach-cluster-title mb-1">Solution Cluster</div>
+                          <div>
+                            {% for sid in approach.solution_ids %}
+                              {% set linked_solution = solutions|selectattr('id', 'equalto', sid)|list|first %}
+                              {% if linked_solution %}
+                                <a href="#solution-{{ linked_solution.id }}" class="approach-solution-chip solution-select-link" data-solution-id="{{ linked_solution.id }}">{{ linked_solution.name }}</a>
+                              {% endif %}
+                            {% endfor %}
+                          </div>
                         </div>
-                      </div>
+                      {% endif %}
+                      {% if approach.prompting_technique_ids or approach.other_technique_ids %}
+                        <div class="approach-cluster">
+                          <div class="approach-cluster-title mb-1">Technique Cluster</div>
+                          <div>
+                            {% if approach.prompting_technique_ids %}
+                              <div class="mb-2">
+                                <div class="small text-muted mb-1">Prompting Techniques</div>
+                                {% for tid in approach.prompting_technique_ids %}
+                                  {% set technique = prompting_technique_lookup.get(tid) %}
+                                  {% if technique %}
+                                    <span class="badge bg-secondary me-1">{{ technique.name }}</span>
+                                  {% endif %}
+                                {% endfor %}
+                              </div>
+                            {% endif %}
+                            {% if approach.other_technique_ids %}
+                              <div>
+                                <div class="small text-muted mb-1">Other Techniques</div>
+                                {% for tid in approach.other_technique_ids %}
+                                  {% set technique = other_technique_lookup.get(tid) %}
+                                  {% if technique %}
+                                    <span class="badge bg-warning text-dark me-1">{{ technique.name }}</span>
+                                  {% endif %}
+                                {% endfor %}
+                              </div>
+                            {% endif %}
+                          </div>
+                        </div>
+                      {% endif %}
                     </li>
                   {% else %}
                     <li class="list-group-item text-muted">No Modeling Approaches yet.</li>
@@ -170,7 +201,7 @@
                       {% set linked_approaches = modeling_approaches|selectattr('modeling_task_id', 'equalto', task.id)|list %}
                       <div class="d-flex justify-content-between align-items-start gap-2">
                         <div>
-                          <a href="#" class="fw-semibold text-decoration-none task-select-link" data-task-id="{{ task.id }}" data-modeling-problem-ids="{{ task.modeling_problem_ids|default([])|join(',') }}">{{ task.name }}</a>
+                          <a href="#" class="fw-semibold text-decoration-none task-select-link" data-task-id="{{ task.id }}" data-modeling-problem-ids="{{ task.modeling_problem_ids|default([])|join(',') }}" data-approach-ids="{{ linked_approaches|map(attribute='id')|list|join(',') }}">{{ task.name }}</a>
                           {% if task.model_type_id %}
                             {% set task_model_type = model_type_lookup.get(task.model_type_id) %}
                             {% if task_model_type %}
@@ -182,6 +213,14 @@
                           <span class="badge bg-dark-subtle text-dark border">{{ linked_approaches|length }} approach{% if linked_approaches|length != 1 %}es{% endif %}</span>
                         </div>
                       </div>
+                      {% if linked_approaches %}
+                        <div class="small text-muted mt-1">
+                          Linked Modeling Approaches:
+                          {% for approach in linked_approaches %}
+                            <a href="#" class="badge bg-primary-subtle text-primary-emphasis me-1 mb-1 text-decoration-none approach-select-link" data-approach-id="{{ approach.id }}">{{ approach.name }}</a>
+                          {% endfor %}
+                        </div>
+                      {% endif %}
                       {% if task.modeling_problem_ids %}
                         <div class="small text-muted task-related-problems">
                           Related problems:
@@ -190,13 +229,6 @@
                             {% if prob %}
                               <a href="#problem-{{ prob.id }}" class="badge bg-secondary-subtle text-secondary-emphasis text-decoration-none me-1 problem-select-link" data-problem-id="{{ prob.id }}">{{ prob.name }}</a>
                             {% endif %}
-                          {% endfor %}
-                        </div>
-                      {% endif %}
-                      {% if linked_approaches %}
-                        <div class="mt-2">
-                          {% for approach in linked_approaches %}
-                            <a href="#" class="badge bg-primary-subtle text-primary-emphasis me-1 mb-1 text-decoration-none approach-select-link" data-approach-id="{{ approach.id }}">{{ approach.name }}</a>
                           {% endfor %}
                         </div>
                       {% endif %}
@@ -637,10 +669,19 @@
                         <li class="list-group-item task-list-item" data-task-id="{{ task.id }}">
                           <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
                             <div>
-                              <a href="#" class="fw-semibold text-decoration-none task-select-link" data-task-id="{{ task.id }}" data-modeling-problem-ids="{{ task.modeling_problem_ids|default([])|join(',') }}">{{ task.name }}</a>
+                              <a href="#" class="fw-semibold text-decoration-none task-select-link" data-task-id="{{ task.id }}" data-modeling-problem-ids="{{ task.modeling_problem_ids|default([])|join(',') }}" data-approach-ids="{{ modeling_approaches|selectattr('modeling_task_id', 'equalto', task.id)|map(attribute='id')|list|join(',') }}">{{ task.name }}</a>
                               {% if task.model_type_id %}
                                 {% set mt = model_type_lookup.get(task.model_type_id) %}
                                 {% if mt %}<span class="badge bg-light text-dark border ms-1">{{ mt.notation or mt.name }}</span>{% endif %}
+                              {% endif %}
+                              {% set linked_approaches = modeling_approaches|selectattr('modeling_task_id', 'equalto', task.id)|list %}
+                              {% if linked_approaches %}
+                                <div class="small text-muted mt-1">
+                                  Linked Modeling Approaches:
+                                  {% for approach in linked_approaches %}
+                                    <a href="#" class="badge bg-primary-subtle text-primary-emphasis me-1 mb-1 text-decoration-none approach-select-link" data-approach-id="{{ approach.id }}">{{ approach.name }}</a>
+                                  {% endfor %}
+                                </div>
                               {% endif %}
                               {% if task.modeling_problem_ids %}
                                 <div class="small text-muted mt-1">
@@ -719,6 +760,22 @@
                   <div class="form-text">Optional: select solutions now or link them later.</div>
                 </div>
                 <div class="col-md-3">
+                  <select class="form-select mb-2" name="prompting_technique_ids" multiple size="4">
+                    {% for technique in prompting_techniques %}
+                      <option value="{{ technique.id }}">{{ technique.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Optional: prompting techniques linked to this approach.</div>
+                </div>
+                <div class="col-md-3">
+                  <select class="form-select mb-2" name="other_technique_ids" multiple size="4">
+                    {% for technique in other_techniques %}
+                      <option value="{{ technique.id }}">{{ technique.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Optional: other techniques linked to this approach.</div>
+                </div>
+                <div class="col-md-3">
                   <select class="form-select" name="modeling_problem_ids" multiple size="5">
                     {% for problem in modeling_problems %}
                       <option value="{{ problem.id }}">{{ problem.name }}</option>
@@ -753,17 +810,74 @@
                             N/A
                           {% endif %}
                         </div>
-                        <div class="approach-cluster mt-2">
-                          <div class="approach-cluster-title mb-1">Solution Cluster</div>
-                          <div>
-                            {% for sid in approach.solution_ids %}
-                              {% set linked_solution = solutions|selectattr('id', 'equalto', sid)|list|first %}
-                              {% if linked_solution %}
-                                <a href="#solution-{{ linked_solution.id }}" class="approach-solution-chip solution-select-link" data-solution-id="{{ linked_solution.id }}">{{ linked_solution.name }}</a>
+                        <div class="small text-muted mt-1">
+                          Prompting Techniques:
+                          {% if approach.prompting_technique_ids %}
+                            {% for tid in approach.prompting_technique_ids %}
+                              {% set technique = prompting_technique_lookup.get(tid) %}
+                              {% if technique %}
+                                <span class="badge bg-secondary me-1">{{ technique.name }}</span>
                               {% endif %}
                             {% endfor %}
-                          </div>
+                          {% else %}
+                            <span class="text-muted">None</span>
+                          {% endif %}
                         </div>
+                        <div class="small text-muted mt-1">
+                          Other Techniques:
+                          {% if approach.other_technique_ids %}
+                            {% for tid in approach.other_technique_ids %}
+                              {% set technique = other_technique_lookup.get(tid) %}
+                              {% if technique %}
+                                <span class="badge bg-warning text-dark me-1">{{ technique.name }}</span>
+                              {% endif %}
+                            {% endfor %}
+                          {% else %}
+                            <span class="text-muted">None</span>
+                          {% endif %}
+                        </div>
+                        {% if approach.solution_ids %}
+                          <div class="approach-cluster mt-2 mb-2">
+                            <div class="approach-cluster-title mb-1">Solution Cluster</div>
+                            <div>
+                              {% for sid in approach.solution_ids %}
+                                {% set linked_solution = solutions|selectattr('id', 'equalto', sid)|list|first %}
+                                {% if linked_solution %}
+                                  <a href="#solution-{{ linked_solution.id }}" class="approach-solution-chip solution-select-link" data-solution-id="{{ linked_solution.id }}">{{ linked_solution.name }}</a>
+                                {% endif %}
+                              {% endfor %}
+                            </div>
+                          </div>
+                        {% endif %}
+                        {% if approach.prompting_technique_ids or approach.other_technique_ids %}
+                          <div class="approach-cluster mt-2">
+                            <div class="approach-cluster-title mb-1">Technique Cluster</div>
+                            <div>
+                              {% if approach.prompting_technique_ids %}
+                                <div class="mb-2">
+                                  <div class="small text-muted mb-1">Prompting Techniques</div>
+                                  {% for tid in approach.prompting_technique_ids %}
+                                    {% set technique = prompting_technique_lookup.get(tid) %}
+                                    {% if technique %}
+                                      <span class="badge bg-secondary me-1">{{ technique.name }}</span>
+                                    {% endif %}
+                                  {% endfor %}
+                                </div>
+                              {% endif %}
+                              {% if approach.other_technique_ids %}
+                                <div>
+                                  <div class="small text-muted mb-1">Other Techniques</div>
+                                  {% for tid in approach.other_technique_ids %}
+                                    {% set technique = other_technique_lookup.get(tid) %}
+                                    {% if technique %}
+                                      <span class="badge bg-warning text-dark me-1">{{ technique.name }}</span>
+                                    {% endif %}
+                                  {% endfor %}
+                                </div>
+                              {% endif %}
+                            </div>
+                          </div>
+                        {% endif %}
                       </div>
                       <div class="d-flex gap-2">
                         <a href="/edit_modeling_approach/{{ approach.id }}" class="btn btn-sm btn-outline-primary">Edit</a>
@@ -1141,23 +1255,36 @@
                       {% endif %}
                       {% if effect.modeling_approach_id %}
                         {% set linked_approach = modeling_approaches|selectattr('id', 'equalto', effect.modeling_approach_id)|list|first %}
+                        {% set llm = underlying_llm_lookup.get(effect.underlying_llm_id) %}
                         {% if linked_approach %}
                           <div class="small">Modeling approach: <a href="/edit_modeling_approach/{{ linked_approach.id }}" class="text-decoration-none">{{ linked_approach.name }}</a></div>
-                        {% endif %}
-                      {% endif %}
-                      <div class="small mt-1">
-                        {% set prompting = prompting_technique_lookup.get(effect.prompting_technique_id) %}
-                        {% set other = other_technique_lookup.get(effect.other_technique_id) %}
-                        {% set llm = underlying_llm_lookup.get(effect.underlying_llm_id) %}
-                        {% if prompting %}
-                          <span class="badge bg-secondary me-1">{{ prompting.name }}</span>
-                        {% endif %}
-                        {% if other %}
-                          <span class="badge bg-warning text-dark me-1">{{ other.name }}</span>
+                          {% if linked_approach.prompting_technique_ids %}
+                            <div class="small mt-1">
+                              Prompting Techniques:
+                              {% for tid in linked_approach.prompting_technique_ids %}
+                                {% set prompting = prompting_technique_lookup.get(tid) %}
+                                {% if prompting %}
+                                  <span class="badge bg-secondary me-1">{{ prompting.name }}</span>
+                                {% endif %}
+                              {% endfor %}
+                            </div>
+                          {% endif %}
+                          {% if linked_approach.other_technique_ids %}
+                            <div class="small mt-1">
+                              Other Techniques:
+                              {% for tid in linked_approach.other_technique_ids %}
+                                {% set other = other_technique_lookup.get(tid) %}
+                                {% if other %}
+                                  <span class="badge bg-warning text-dark me-1">{{ other.name }}</span>
+                                {% endif %}
+                              {% endfor %}
+                            </div>
+                          {% endif %}
                         {% endif %}
                         {% if llm %}
                           <span class="badge bg-success-subtle text-success-emphasis">{{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}</span>
                         {% endif %}
+                      {% endif %}
                       </div>
                     </div>
                     <div class="d-flex gap-2">
@@ -1288,6 +1415,7 @@
       let activeProblemId = null;
       let activeTaskId = null;
       let activeTaskProblemIds = [];
+      let activeTaskApproachIds = [];
       let activeApproachId = null;
       let activeSolutionId = '';
 
@@ -1316,7 +1444,8 @@
         });
 
         approachLinks.forEach(function (link) {
-          link.classList.toggle('purpose-link-active', !!activeApproachId && link.dataset.approachId === activeApproachId);
+          const isTaskRelatedApproach = !!activeTaskId && activeTaskApproachIds.includes(link.dataset.approachId);
+          link.classList.toggle('purpose-link-active', (!!activeApproachId && link.dataset.approachId === activeApproachId) || isTaskRelatedApproach);
         });
 
         solutionItems.forEach(function (item) {
@@ -1386,12 +1515,15 @@
           event.preventDefault();
           const clickedTask = this.dataset.taskId;
           const selectedProblems = parseCsvIds(this.dataset.modelingProblemIds || '');
+          const selectedApproaches = parseCsvIds(this.dataset.approachIds || '');
           if (activeTaskId === clickedTask) {
             activeTaskId = null;
             activeTaskProblemIds = [];
+            activeTaskApproachIds = [];
           } else {
             activeTaskId = clickedTask;
             activeTaskProblemIds = selectedProblems;
+            activeTaskApproachIds = selectedApproaches;
           }
           applyHighlight();
         });

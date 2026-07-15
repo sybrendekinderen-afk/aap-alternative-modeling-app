@@ -110,6 +110,18 @@
             <option value="{{ task.id }}" {% if task.id == modeling_approach.modeling_task_id %}selected{% endif %}>{{ task.name }}</option>
           {% endfor %}
         </select>
+        <select class="form-select mb-2" name="prompting_technique_ids" multiple size="8">
+          {% for technique in prompting_techniques %}
+            <option value="{{ technique.id }}" {% if technique.id in modeling_approach.prompting_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text mb-2">Optional: choose prompting techniques linked to this approach.</div>
+        <select class="form-select mb-2" name="other_technique_ids" multiple size="8">
+          {% for technique in other_techniques %}
+            <option value="{{ technique.id }}" {% if technique.id in modeling_approach.other_technique_ids %}selected{% endif %}>{{ technique.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text mb-2">Optional: choose other techniques linked to this approach.</div>
         <select class="form-select mb-2" name="solution_ids" multiple size="8">
           {% for solution in solutions %}
             <option value="{{ solution.id }}" {% if solution.id in modeling_approach.solution_ids %}selected{% endif %}>{{ solution.name }}</option>

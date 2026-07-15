@@ -362,12 +362,28 @@ def load_data():
                 except (TypeError, ValueError):
                     continue
 
+            normalized_prompting_ids = []
+            for prompting_id in approach.get("prompting_technique_ids", []):
+                try:
+                    normalized_prompting_ids.append(int(prompting_id))
+                except (TypeError, ValueError):
+                    continue
+
+            normalized_other_ids = []
+            for other_id in approach.get("other_technique_ids", []):
+                try:
+                    normalized_other_ids.append(int(other_id))
+                except (TypeError, ValueError):
+                    continue
+
             normalized_approaches.append({
                 "id": approach_id,
                 "name": str(approach.get("name", "") or "").strip(),
                 "source_id": parse_optional_int(approach.get("source_id")),
                 "modeling_task_id": parse_optional_int(approach.get("modeling_task_id")),
                 "solution_ids": list(dict.fromkeys(normalized_solution_ids)),
+                "prompting_technique_ids": list(dict.fromkeys(normalized_prompting_ids)),
+                "other_technique_ids": list(dict.fromkeys(normalized_other_ids)),
             })
         store["modeling_approaches"] = normalized_approaches
 
@@ -497,6 +513,16 @@ def load_data():
             problem["solution_ids"] = [
                 sid for sid in problem.get("solution_ids", [])
                 if sid in valid_solution_ids
+            ]
+
+        for approach in store.get("modeling_approaches", []):
+            approach["prompting_technique_ids"] = [
+                tid for tid in approach.get("prompting_technique_ids", [])
+                if tid in valid_prompting_ids
+            ]
+            approach["other_technique_ids"] = [
+                tid for tid in approach.get("other_technique_ids", [])
+                if tid in valid_other_ids
             ]
 
         solution_to_approach = {}
@@ -1123,12 +1149,16 @@ def add_modeling_approach():
     sources = store.get("sources", [])
     modeling_tasks = store.get("modeling_tasks", [])
     solutions = store.get("solutions", [])
+    prompting_techniques = store.get("prompting_techniques", [])
+    other_techniques = store.get("other_techniques", [])
     modeling_problems = store.get("modeling_problems", [])
 
     name = request.form.get("modeling_approach_name", "").strip()
     source_id = parse_optional_int(request.form.get("source_id", ""))
     modeling_task_id = parse_optional_int(request.form.get("modeling_task_id", ""))
     solution_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("solution_ids"))))
+    prompting_technique_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("prompting_technique_ids"))))
+    other_technique_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("other_technique_ids"))))
     modeling_problem_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("modeling_problem_ids"))))
 
     if not name:
@@ -1138,6 +1168,10 @@ def add_modeling_approach():
     if modeling_task_id is None or not any(task.get("id") == modeling_task_id for task in modeling_tasks):
         return redirect("/")
     valid_solution_ids = {solution.get("id") for solution in solutions}
+    valid_prompting_ids = {tech.get("id") for tech in prompting_techniques}
+    valid_other_ids = {tech.get("id") for tech in other_techniques}
+    prompting_technique_ids = [tid for tid in prompting_technique_ids if tid in valid_prompting_ids]
+    other_technique_ids = [tid for tid in other_technique_ids if tid in valid_other_ids]
     solution_ids = [sid for sid in solution_ids if sid in valid_solution_ids]
     valid_problem_ids = {problem.get("id") for problem in modeling_problems}
     modeling_problem_ids = [pid for pid in modeling_problem_ids if pid in valid_problem_ids]
@@ -1149,6 +1183,8 @@ def add_modeling_approach():
         "source_id": source_id,
         "modeling_task_id": modeling_task_id,
         "solution_ids": [],
+        "prompting_technique_ids": prompting_technique_ids,
+        "other_technique_ids": other_technique_ids,
         "modeling_problem_ids": modeling_problem_ids,
     })
 
@@ -1170,12 +1206,24 @@ def update_modeling_approach(modeling_approach_id):
     sources = store.get("sources", [])
     modeling_tasks = store.get("modeling_tasks", [])
     solutions = store.get("solutions", [])
+    prompting_techniques = store.get("prompting_techniques", [])
+    other_techniques = store.get("other_techniques", [])
+    modeling_problems = store.get("modeling_problems", [])
 
     source_id = parse_optional_int(request.form.get("source_id", ""))
     modeling_task_id = parse_optional_int(request.form.get("modeling_task_id", ""))
     solution_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("solution_ids"))))
+    prompting_technique_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("prompting_technique_ids"))))
+    other_technique_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("other_technique_ids"))))
+    modeling_problem_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("modeling_problem_ids"))))
     valid_solution_ids = {solution.get("id") for solution in solutions}
+    valid_prompting_ids = {tech.get("id") for tech in prompting_techniques}
+    valid_other_ids = {tech.get("id") for tech in other_techniques}
+    valid_problem_ids = {problem.get("id") for problem in modeling_problems}
     solution_ids = [sid for sid in solution_ids if sid in valid_solution_ids]
+    prompting_technique_ids = [tid for tid in prompting_technique_ids if tid in valid_prompting_ids]
+    other_technique_ids = [tid for tid in other_technique_ids if tid in valid_other_ids]
+    modeling_problem_ids = [pid for pid in modeling_problem_ids if pid in valid_problem_ids]
 
     for approach in modeling_approaches:
         if approach.get("id") != modeling_approach_id:
@@ -1192,6 +1240,9 @@ def update_modeling_approach(modeling_approach_id):
         approach["name"] = name
         approach["source_id"] = source_id
         approach["modeling_task_id"] = modeling_task_id
+        approach["prompting_technique_ids"] = prompting_technique_ids
+        approach["other_technique_ids"] = other_technique_ids
+        approach["modeling_problem_ids"] = modeling_problem_ids
 
         for solution in solutions:
             if solution.get("modeling_approach_id") == modeling_approach_id:
@@ -1222,6 +1273,10 @@ def delete_modeling_approach(modeling_approach_id):
     for effect in store.get("effects", []):
         if effect.get("modeling_approach_id") == modeling_approach_id:
             effect["modeling_approach_id"] = None
+    for approach in store.get("modeling_approaches", []):
+        if approach.get("id") == modeling_approach_id:
+            approach["prompting_technique_ids"] = list(dict.fromkeys(parse_int_list(approach.get("prompting_technique_ids", []))))
+            approach["other_technique_ids"] = list(dict.fromkeys(parse_int_list(approach.get("other_technique_ids", []))))
     store["modeling_approaches"] = [
         approach for approach in store.get("modeling_approaches", [])
         if approach.get("id") != modeling_approach_id
@@ -1489,6 +1544,12 @@ def delete_prompting_technique(prompting_technique_id):
             if pid != prompting_technique_id
         ]
 
+    for approach in store.get("modeling_approaches", []):
+        approach["prompting_technique_ids"] = [
+            pid for pid in approach.get("prompting_technique_ids", [])
+            if pid != prompting_technique_id
+        ]
+
     for effect in store.get("effects", []):
         if effect.get("prompting_technique_id") == prompting_technique_id:
             effect["prompting_technique_id"] = None
@@ -1539,6 +1600,12 @@ def delete_other_technique(other_technique_id):
     for solution in store.get("solutions", []):
         solution["other_technique_ids"] = [
             tid for tid in solution.get("other_technique_ids", [])
+            if tid != other_technique_id
+        ]
+
+    for approach in store.get("modeling_approaches", []):
+        approach["other_technique_ids"] = [
+            tid for tid in approach.get("other_technique_ids", [])
             if tid != other_technique_id
         ]
 
@@ -1646,6 +1713,8 @@ def edit_modeling_approach(modeling_approach_id):
         sources=store.get("sources", []),
         modeling_tasks=store.get("modeling_tasks", []),
         solutions=store.get("solutions", []),
+        prompting_techniques=store.get("prompting_techniques", []),
+        other_techniques=store.get("other_techniques", []),
     )
 
 
