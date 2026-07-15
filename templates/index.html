@@ -11,6 +11,8 @@
     .subtle-panel { border: 1px solid #e9ecef; background-color: #fcfcfd; }
     .subtle-panel .card-header { background-color: #f8f9fa; }
     .solution-card { border-left: 4px solid #0d6efd; box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05); }
+    .approach-detail-card { display: none; }
+    .approach-detail-card.approach-detail-card-visible { display: block; }
     .purpose-tree-item { border-left: 3px solid #dce7ff; padding-left: .75rem; margin-left: .25rem; }
     .purpose-tree-item .purpose-toggle { width: 1.25rem; height: 1.25rem; padding: 0; line-height: 1; }
     .purpose-tree-item-related { border-color: #9fb6e7 !important; background-color: #f8fbff; }
@@ -287,7 +289,7 @@
     </div>
 
     <div class="alert alert-light border mb-3" id="solution-detail-placeholder">
-      Select a modeling approach or problem to highlight related solutions, then click a modeling solution to view full details.
+      Select a modeling approach or modeling solution to view its details.
     </div>
 
     {% for solution in solutions %}
@@ -423,6 +425,102 @@
                 {% endfor %}
               </ul>
 
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+
+    {% for approach in modeling_approaches %}
+      {% set linked_source = sources|selectattr('id', 'equalto', approach.source_id)|list|first %}
+      {% set linked_task = modeling_task_lookup.get(approach.modeling_task_id) %}
+      {% set related_problem_ids = linked_task.modeling_problem_ids if linked_task else [] %}
+      <div class="card mb-3 shadow-sm approach-detail-card" id="approach-{{ approach.id }}" data-approach-id="{{ approach.id }}" data-solution-ids="{{ approach.solution_ids|join(',') }}" data-prompting-technique-ids="{{ approach.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ approach.other_technique_ids|join(',') }}" data-problem-ids="{{ related_problem_ids|join(',') }}">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>{{ approach.name }}</strong>
+          <div>
+            <a href="/edit_modeling_approach/{{ approach.id }}" class="btn btn-sm btn-outline-primary">Edit Approach</a>
+            <a href="/delete_modeling_approach/{{ approach.id }}" class="btn btn-sm btn-danger">Delete</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <p class="mb-2"><b>Source:</b>
+                {% if linked_source %}
+                  {{ linked_source.title }} — {{ linked_source.author }}{% if linked_source.year %} ({{ linked_source.year }}){% endif %}
+                  {% if linked_source.doi %}
+                    {% set doi_value = linked_source.doi %}
+                    {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
+                    <br>DOI: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </p>
+              <p class="mb-2"><b>Task:</b>
+                {% if linked_task %}
+                  {{ linked_task.name }}
+                  {% if linked_task.model_type_id %}
+                    {% set linked_task_model_type = model_type_lookup.get(linked_task.model_type_id) %}
+                    {% if linked_task_model_type %}
+                      <span class="badge bg-light text-dark border ms-1">{{ linked_task_model_type.notation or linked_task_model_type.name }}</span>
+                    {% endif %}
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </p>
+              <p class="mb-2"><b>Linked Solutions:</b>
+                {% if approach.solution_ids %}
+                  {% for sid in approach.solution_ids %}
+                    {% set linked_solution = solutions|selectattr('id', 'equalto', sid)|list|first %}
+                    {% if linked_solution %}
+                      <a href="#solution-{{ linked_solution.id }}" class="badge bg-dark-subtle text-dark text-decoration-none me-1">{{ linked_solution.name }}</a>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </p>
+            </div>
+            <div class="col-md-6">
+              <p class="mb-2"><b>Prompting Techniques:</b>
+                {% if approach.prompting_technique_ids %}
+                  {% for tid in approach.prompting_technique_ids %}
+                    {% set technique = prompting_technique_lookup.get(tid) %}
+                    {% if technique %}
+                      <span class="badge bg-secondary me-1">{{ technique.name }}</span>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </p>
+              <p class="mb-2"><b>Other Techniques:</b>
+                {% if approach.other_technique_ids %}
+                  {% for tid in approach.other_technique_ids %}
+                    {% set technique = other_technique_lookup.get(tid) %}
+                    {% if technique %}
+                      <span class="badge bg-warning text-dark me-1">{{ technique.name }}</span>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </p>
+              <p class="mb-2"><b>Related Problems via Task:</b>
+                {% if related_problem_ids %}
+                  {% for pid in related_problem_ids %}
+                    {% set problem = modeling_problem_lookup.get(pid|int) %}
+                    {% if problem %}
+                      <a href="#problem-{{ problem.id }}" class="badge bg-secondary-subtle text-secondary-emphasis text-decoration-none me-1">{{ problem.name }}</a>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </p>
             </div>
           </div>
         </div>
@@ -1285,7 +1383,6 @@
                           <span class="badge bg-success-subtle text-success-emphasis">{{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}</span>
                         {% endif %}
                       {% endif %}
-                      </div>
                     </div>
                     <div class="d-flex gap-2">
                       <a href="/edit_effect/{{ effect.id }}" class="btn btn-sm btn-outline-primary">Edit</a>
@@ -1407,7 +1504,9 @@
       const solutionLinks = Array.from(document.querySelectorAll('.solution-select-link[data-solution-id]'));
       const solutionItems = Array.from(document.querySelectorAll('.kb-solution-list-item'));
       const detailCards = Array.from(document.querySelectorAll('.kb-solution-detail'));
+      const approachDetailCards = Array.from(document.querySelectorAll('.approach-detail-card'));
       const placeholder = document.getElementById('solution-detail-placeholder');
+      const approachPlaceholder = document.getElementById('approach-detail-placeholder');
       const modelTypeFilter = document.getElementById('nav-filter-model-type');
       const promptingTechniqueFilter = document.getElementById('nav-filter-technique');
       const otherTechniqueFilter = document.getElementById('nav-filter-other-technique');
@@ -1471,6 +1570,7 @@
         });
 
         showSolutionDetails(activeSolutionId);
+        showApproachDetails(activeApproachId);
       }
 
       function showSolutionDetails(solutionId) {
@@ -1498,6 +1598,23 @@
 
         if (placeholder) {
           placeholder.style.display = shown ? 'none' : 'block';
+        }
+      }
+
+      function showApproachDetails(approachId) {
+        const activeApproach = approachId || '';
+        let shown = false;
+
+        approachDetailCards.forEach(function (card) {
+          const isMatch = card.dataset.approachId === activeApproach;
+          card.classList.toggle('approach-detail-card-visible', isMatch);
+          if (isMatch) {
+            shown = true;
+          }
+        });
+
+        if (approachPlaceholder) {
+          approachPlaceholder.style.display = shown ? 'none' : 'block';
         }
       }
 
@@ -1529,6 +1646,16 @@
         });
       });
 
+      approachLinks.forEach(function (link) {
+        link.addEventListener('click', function (event) {
+          event.preventDefault();
+          const clickedApproach = this.dataset.approachId;
+          activeApproachId = activeApproachId === clickedApproach ? null : clickedApproach;
+          activeSolutionId = '';
+          applyHighlight();
+        });
+      });
+
       if (modelTypeFilter) {
         modelTypeFilter.addEventListener('change', applyHighlight);
       }
@@ -1548,12 +1675,15 @@
       solutionLinks.forEach(function (link) {
         link.addEventListener('click', function (event) {
           event.preventDefault();
+          activeApproachId = null;
           showSolutionDetails(this.dataset.solutionId);
+          applyHighlight();
         });
       });
 
       applyHighlight();
       showSolutionDetails('');
+      showApproachDetails('');
     });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
