@@ -521,6 +521,23 @@
                   <span class="text-muted">None</span>
                 {% endif %}
               </p>
+              <p class="mb-2"><b>Associated Effects:</b></p>
+              <ul class="list-group mb-0">
+                {% set associated_effects = modeling_approach_effect_lookup.get(approach.id, []) %}
+                {% if associated_effects %}
+                  {% for effect in associated_effects %}
+                    <li class="list-group-item">
+                      <div><b>{{ effect.description }}</b></div>
+                      {% if effect.evidence_rigor %}
+                        <div class="small text-muted">Evidence Rigor: {{ effect.evidence_rigor }}</div>
+                      {% endif %}
+                      <div class="small text-muted">Polarity: {{ effect.effect_polarity|default('neutral')|capitalize }}</div>
+                    </li>
+                  {% endfor %}
+                {% else %}
+                  <li class="list-group-item text-muted">None</li>
+                {% endif %}
+              </ul>
             </div>
           </div>
         </div>
@@ -976,6 +993,69 @@
                             </div>
                           </div>
                         {% endif %}
+                        <div class="mt-2">
+                          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#approach-effects-{{ approach.id }}" aria-expanded="false" aria-controls="approach-effects-{{ approach.id }}">Effects</button>
+                          <div class="collapse mt-2" id="approach-effects-{{ approach.id }}">
+                            <div class="small text-muted mb-2">Directly associated effects</div>
+                            <ul class="list-group mb-3">
+                              {% set approach_effects = modeling_approach_effect_lookup.get(approach.id, []) %}
+                              {% if approach_effects %}
+                                {% for effect in approach_effects %}
+                                  <li class="list-group-item py-2">
+                                    <div class="d-flex justify-content-between align-items-start gap-3">
+                                      <div class="flex-grow-1">
+                                        <div><b>{{ effect.description }}</b></div>
+                                        {% if effect.evidence_rigor %}
+                                          <div class="small text-muted">Evidence rigor: {{ effect.evidence_rigor }}</div>
+                                        {% endif %}
+                                        <div class="small text-muted">Polarity: {{ effect.effect_polarity|default('neutral')|capitalize }}</div>
+                                        {% if effect.underlying_llm_id %}
+                                          {% set llm = underlying_llm_lookup.get(effect.underlying_llm_id) %}
+                                          {% if llm %}
+                                            <div class="small mt-1"><span class="badge bg-success-subtle text-success-emphasis">{{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}</span></div>
+                                          {% endif %}
+                                        {% endif %}
+                                      </div>
+                                      <div class="d-flex gap-2 flex-wrap">
+                                        <a href="/edit_effect/{{ effect.id }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                        <a href="/delete_effect/{{ effect.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                                      </div>
+                                    </div>
+                                  </li>
+                                {% endfor %}
+                              {% else %}
+                                <li class="list-group-item text-muted">No direct effects yet.</li>
+                              {% endif %}
+                            </ul>
+                            <form method="post" action="/add_effect" class="row g-2">
+                              <input type="hidden" name="modeling_approach_id" value="{{ approach.id }}">
+                              <div class="col-12">
+                                <textarea class="form-control" name="description" rows="2" placeholder="Effect description" required></textarea>
+                              </div>
+                              <div class="col-md-4">
+                                <input class="form-control" name="evidence_rigor" autocomplete="off" placeholder="Evidence rigor">
+                              </div>
+                              <div class="col-md-4">
+                                <select class="form-select" name="effect_polarity">
+                                  <option value="positive">Positive</option>
+                                  <option value="negative">Negative</option>
+                                  <option value="neutral" selected>Neutral</option>
+                                </select>
+                              </div>
+                              <div class="col-md-4">
+                                <select class="form-select" name="underlying_llm_id">
+                                  <option value="">No underlying LLM</option>
+                                  {% for llm in underlying_llms %}
+                                    <option value="{{ llm.id }}">{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
+                                  {% endfor %}
+                                </select>
+                              </div>
+                              <div class="col-12">
+                                <button class="btn btn-outline-secondary btn-sm">Add effect to this approach</button>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
                       </div>
                       <div class="d-flex gap-2">
                         <a href="/edit_modeling_approach/{{ approach.id }}" class="btn btn-sm btn-outline-primary">Edit</a>

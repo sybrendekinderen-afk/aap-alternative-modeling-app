@@ -921,6 +921,16 @@ def get_solution_effect_lookup(effects):
     return lookup
 
 
+def get_modeling_approach_effect_lookup(effects):
+    lookup = {}
+    for effect in effects:
+        modeling_approach_id = effect.get("modeling_approach_id")
+        if modeling_approach_id is None:
+            continue
+        lookup.setdefault(modeling_approach_id, []).append(effect)
+    return lookup
+
+
 def get_solution_underlying_llm_lookup(solutions, effects):
     lookup = {solution.get("id"): [] for solution in solutions}
     for effect in effects:
@@ -1073,6 +1083,7 @@ def home():
         effects=effects,
         underlying_llms=underlying_llms,
         solution_effect_lookup=get_solution_effect_lookup(effects),
+        modeling_approach_effect_lookup=get_modeling_approach_effect_lookup(effects),
         solution_underlying_llm_lookup=get_solution_underlying_llm_lookup(solutions, effects),
         source_modeling_approach_lookup=get_source_modeling_approach_lookup(modeling_approaches, sources),
         solution_model_type_lookup=get_solution_model_type_lookup(solutions, modeling_approaches, modeling_tasks),
