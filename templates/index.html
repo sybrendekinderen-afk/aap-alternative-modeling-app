@@ -375,7 +375,7 @@
                           {% if source.doi %}
                             {% set doi_value = source.doi %}
                             {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
-                            <br>DOI: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a>
+                              <br>Link: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a>
                           {% endif %}
                         {% else %}
                           <b>Source:</b> <span class="text-muted">None</span>
@@ -452,7 +452,7 @@
                   {% if linked_source.doi %}
                     {% set doi_value = linked_source.doi %}
                     {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
-                    <br>DOI: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a>
+                    <br>Link: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a>
                   {% endif %}
                 {% else %}
                   <span class="text-muted">None</span>
@@ -637,8 +637,8 @@
                         <input class="form-control" name="year" placeholder="Year" inputmode="numeric" type="number" min="0" step="1">
                       </div>
                       <div class="mb-3">
-                        <label class="form-label">DOI</label>
-                        <input class="form-control" name="doi" placeholder="DOI">
+                        <label class="form-label">Link (e.g., DOI)</label>
+                        <input class="form-control" name="doi" placeholder="Link (e.g., DOI)">
                       </div>
                       <button class="btn btn-success">Add to Sources</button>
                     </form>
@@ -662,7 +662,7 @@
                             {% if source.doi %}
                               {% set doi_value = source.doi %}
                               {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
-                              <div class="small">DOI: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a></div>
+                              <div class="small">Link: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a></div>
                             {% endif %}
                             <div class="small mt-1">
                               <b>Linked Modeling Approaches:</b>
