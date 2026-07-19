@@ -579,7 +579,7 @@
                       <option value="{{ technique.id }}">{{ technique.name }}</option>
                     {% endfor %}
                   </select>
-                  <div class="form-text">Hold Ctrl/Cmd to select multiple techniques.</div>
+                  <div class="form-text">Click to select multiple techniques; click a selected item again to deselect it.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Other Techniques</label>
@@ -597,7 +597,7 @@
                       <option value="{{ problem.id }}">{{ problem.name }}</option>
                     {% endfor %}
                   </select>
-                  <div class="form-text">Optional: link one or more modeling problems. Hold Ctrl/Cmd for multiple.</div>
+                  <div class="form-text">Optional: link one or more modeling problems. Click a selected item again to deselect it.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Justification</label>
@@ -1507,6 +1507,23 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+      // Allow single-click toggling of options in multi-select lists (e.g. Knowledge Base
+      // Population forms) so an accidentally clicked item can be deselected just by
+      // clicking it again, without needing to hold Ctrl/Cmd.
+      const kbPopulationPane = document.getElementById('kb-population-pane');
+      if (kbPopulationPane) {
+        kbPopulationPane.querySelectorAll('select[multiple]').forEach(function (selectEl) {
+          Array.from(selectEl.options).forEach(function (optionEl) {
+            optionEl.addEventListener('mousedown', function (event) {
+              event.preventDefault();
+              optionEl.selected = !optionEl.selected;
+              selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+              selectEl.focus();
+            });
+          });
+        });
+      }
+
       const deleteConfirmModalElement = document.getElementById('deleteConfirmModal');
       const deleteConfirmYesButton = document.getElementById('confirm-delete-yes');
       const deleteConfirmModal = deleteConfirmModalElement ? new bootstrap.Modal(deleteConfirmModalElement) : null;
