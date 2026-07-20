@@ -57,31 +57,13 @@
             <option value="{{ value }}" {% if effect.effect_polarity|default('neutral') == value %}selected{% endif %}>{{ value|capitalize }}</option>
           {% endfor %}
         </select>
-        <select class="form-select mb-2" name="solution_id">
-          <option value="">No linked solution</option>
-          {% for solution in solutions %}
-            <option value="{{ solution.id }}" {% if effect.solution_id == solution.id %}selected{% endif %}>{{ solution.name }}</option>
-          {% endfor %}
-        </select>
         <select class="form-select mb-2" name="modeling_approach_id">
           <option value="">No modeling approach</option>
           {% for approach in modeling_approaches %}
             <option value="{{ approach.id }}" {% if effect.modeling_approach_id == approach.id %}selected{% endif %}>{{ approach.name }}</option>
           {% endfor %}
         </select>
-        <select class="form-select mb-2" name="prompting_technique_id">
-          <option value="">No prompting technique</option>
-          {% for technique in prompting_techniques %}
-            <option value="{{ technique.id }}" {% if effect.prompting_technique_id == technique.id %}selected{% endif %}>{{ technique.name }}</option>
-          {% endfor %}
-        </select>
-        <select class="form-select mb-2" name="other_technique_id">
-          <option value="">No other technique</option>
-          {% for technique in other_techniques %}
-            <option value="{{ technique.id }}" {% if effect.other_technique_id == technique.id %}selected{% endif %}>{{ technique.name }}</option>
-          {% endfor %}
-        </select>
-        <div class="form-text mb-2">Constraint: choose at most one of Modeling Solution, Modeling Approach, Prompting Technique, or Other Technique.</div>
+        <div class="form-text mb-2">Associate this effect with a Modeling Approach.</div>
         <select class="form-select mb-2" name="underlying_llm_id">
           <option value="">No underlying LLM</option>
           {% for llm in underlying_llms %}
@@ -138,35 +120,6 @@
   </div>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      const effectForm = document.querySelector('form[action^="/update_effect/"]');
-      if (!effectForm) {
-        return;
-      }
-
-      const solutionSelect = effectForm.querySelector('select[name="solution_id"]');
-      const approachSelect = effectForm.querySelector('select[name="modeling_approach_id"]');
-      const promptingSelect = effectForm.querySelector('select[name="prompting_technique_id"]');
-      const otherSelect = effectForm.querySelector('select[name="other_technique_id"]');
-
-      function enforceExclusiveSelection(changedSelect) {
-        if (!changedSelect || !changedSelect.value) {
-          return;
-        }
-        [solutionSelect, approachSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
-          if (selectEl && selectEl !== changedSelect) {
-            selectEl.value = '';
-          }
-        });
-      }
-
-      [solutionSelect, approachSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
-        if (!selectEl) {
-          return;
-        }
-        selectEl.addEventListener('change', function () {
-          enforceExclusiveSelection(selectEl);
-        });
-      });
     });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

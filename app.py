@@ -481,14 +481,11 @@ def load_data():
         valid_problem_ids = {p.get("id") for p in store.get("modeling_problems", [])}
         valid_task_ids = {task.get("id") for task in store.get("modeling_tasks", [])}
         for effect in store.get("effects", []):
-            if effect.get("solution_id") not in valid_solution_ids:
-                effect["solution_id"] = None
+            effect["solution_id"] = None
+            effect["prompting_technique_id"] = None
+            effect["other_technique_id"] = None
             if effect.get("modeling_approach_id") not in valid_modeling_approach_ids:
                 effect["modeling_approach_id"] = None
-            if effect.get("prompting_technique_id") not in valid_prompting_ids:
-                effect["prompting_technique_id"] = None
-            if effect.get("other_technique_id") not in valid_other_ids:
-                effect["other_technique_id"] = None
             if effect.get("underlying_llm_id") not in valid_underlying_llm_ids:
                 effect["underlying_llm_id"] = None
             enforce_effect_binding_precedence(effect)
@@ -773,29 +770,11 @@ def normalize_effect_record(effect):
     except (TypeError, ValueError):
         effect_id = 0
 
-    solution_id = effect.get("solution_id")
-    try:
-        solution_id = int(solution_id)
-    except (TypeError, ValueError):
-        solution_id = None
-
     modeling_approach_id = effect.get("modeling_approach_id")
     try:
         modeling_approach_id = int(modeling_approach_id)
     except (TypeError, ValueError):
         modeling_approach_id = None
-
-    prompting_technique_id = effect.get("prompting_technique_id")
-    try:
-        prompting_technique_id = int(prompting_technique_id)
-    except (TypeError, ValueError):
-        prompting_technique_id = None
-
-    other_technique_id = effect.get("other_technique_id")
-    try:
-        other_technique_id = int(other_technique_id)
-    except (TypeError, ValueError):
-        other_technique_id = None
 
     underlying_llm_id = effect.get("underlying_llm_id")
     try:
@@ -811,10 +790,10 @@ def normalize_effect_record(effect):
         "id": effect_id,
         "description": str(effect.get("description", "") or "").strip(),
         "evidence_rigor": str(effect.get("evidence_rigor", "") or "").strip(),
-        "solution_id": solution_id,
+        "solution_id": None,
         "modeling_approach_id": modeling_approach_id,
-        "prompting_technique_id": prompting_technique_id,
-        "other_technique_id": other_technique_id,
+        "prompting_technique_id": None,
+        "other_technique_id": None,
         "underlying_llm_id": underlying_llm_id,
         "effect_polarity": effect_polarity,
     }
@@ -829,31 +808,13 @@ def has_exclusive_effect_binding(solution_id, modeling_approach_id, prompting_te
 
 
 def enforce_effect_binding_precedence(effect):
-    solution_id = effect.get("solution_id")
+    effect["solution_id"] = None
+    effect["prompting_technique_id"] = None
+    effect["other_technique_id"] = None
     modeling_approach_id = effect.get("modeling_approach_id")
-    prompting_technique_id = effect.get("prompting_technique_id")
-    other_technique_id = effect.get("other_technique_id")
 
-    if has_exclusive_effect_binding(solution_id, modeling_approach_id, prompting_technique_id, other_technique_id):
+    if has_exclusive_effect_binding(None, modeling_approach_id, None, None):
         return
-
-    # Keep only one selected binding in precedence order.
-    if solution_id is not None:
-        effect["modeling_approach_id"] = None
-        effect["prompting_technique_id"] = None
-        effect["other_technique_id"] = None
-    elif modeling_approach_id is not None:
-        effect["solution_id"] = None
-        effect["prompting_technique_id"] = None
-        effect["other_technique_id"] = None
-    elif prompting_technique_id is not None:
-        effect["solution_id"] = None
-        effect["modeling_approach_id"] = None
-        effect["other_technique_id"] = None
-    else:
-        effect["solution_id"] = None
-        effect["modeling_approach_id"] = None
-        effect["prompting_technique_id"] = None
 
 
 def normalize_underlying_llm_record(llm):
@@ -881,22 +842,16 @@ def get_solution_source_lookup(solutions, sources):
 
 
 def get_source_solution_lookup(solutions, sources):
-    solution_lookup = {solution["id"]: solution for solution in solutions}
-    lookup = {}
-    for source in sources:
-        linked_solutions = []
-        source_id = source.get("id")
-        for solution in solutions:
-            if source_id == solution.get("source_id"):
-                resolved = solution_lookup.get(solution.get("id"))
-                if resolved:
-                    linked_solutions.append(resolved)
-        lookup[source_id] = linked_solutions
+    lookup = {source.get("id"): [] for source in sources}
+    for solution in solutions:
+        source_id = solution.get("source_id")
+        if source_id in lookup:
+            lookup[source_id].append(solution)
     return lookup
 
 
 def get_solution_model_type_lookup(solutions, modeling_approaches, modeling_tasks):
-    task_lookup = {task["id"]: task for task in modeling_tasks}
+    task_lookup = {task.get("id"): task for task in modeling_tasks}
     approach_lookup = {approach.get("id"): approach for approach in modeling_approaches}
     lookup = {}
     for solution in solutions:
@@ -912,13 +867,7 @@ def get_solution_model_type_lookup(solutions, modeling_approaches, modeling_task
 
 
 def get_solution_effect_lookup(effects):
-    lookup = {}
-    for effect in effects:
-        solution_id = effect.get("solution_id")
-        if solution_id is None:
-            continue
-        lookup.setdefault(solution_id, []).append(effect)
-    return lookup
+    return {}
 
 
 def get_modeling_approach_effect_lookup(effects):
@@ -932,17 +881,7 @@ def get_modeling_approach_effect_lookup(effects):
 
 
 def get_solution_underlying_llm_lookup(solutions, effects):
-    lookup = {solution.get("id"): [] for solution in solutions}
-    for effect in effects:
-        solution_id = effect.get("solution_id")
-        underlying_llm_id = effect.get("underlying_llm_id")
-        if solution_id is None or underlying_llm_id in [None, ""]:
-            continue
-        lookup.setdefault(solution_id, []).append(str(underlying_llm_id))
-
-    for solution_id, llm_ids in lookup.items():
-        lookup[solution_id] = list(dict.fromkeys(llm_ids))
-    return lookup
+    return {solution.get("id"): [] for solution in solutions}
 
 
 def build_modeling_problem_tree(modeling_problems):
@@ -1561,10 +1500,6 @@ def delete_prompting_technique(prompting_technique_id):
             if pid != prompting_technique_id
         ]
 
-    for effect in store.get("effects", []):
-        if effect.get("prompting_technique_id") == prompting_technique_id:
-            effect["prompting_technique_id"] = None
-
     save_data(store)
     return redirect("/")
 
@@ -1825,24 +1760,14 @@ def add_effect():
     store = load_data()
     effects = store.get("effects", [])
 
-    solution_id = parse_optional_int(request.form.get("solution_id", ""))
-    if solution_id is not None and not any(solution.get("id") == solution_id for solution in store.get("solutions", [])):
-        solution_id = None
-
     modeling_approach_id = parse_optional_int(request.form.get("modeling_approach_id", ""))
     if modeling_approach_id is not None and not any(approach.get("id") == modeling_approach_id for approach in store.get("modeling_approaches", [])):
         modeling_approach_id = None
 
-    prompting_technique_id = parse_optional_int(request.form.get("prompting_technique_id", ""))
-    other_technique_id = parse_optional_int(request.form.get("other_technique_id", ""))
     underlying_llm_id = parse_optional_int(request.form.get("underlying_llm_id", ""))
-    if prompting_technique_id is not None and not any(tech.get("id") == prompting_technique_id for tech in store.get("prompting_techniques", [])):
-        return redirect("/")
-    if other_technique_id is not None and not any(tech.get("id") == other_technique_id for tech in store.get("other_techniques", [])):
-        return redirect("/")
     if underlying_llm_id is not None and not any(llm.get("id") == underlying_llm_id for llm in store.get("underlying_llms", [])):
         return redirect("/")
-    if not has_exclusive_effect_binding(solution_id, modeling_approach_id, prompting_technique_id, other_technique_id):
+    if not has_exclusive_effect_binding(None, modeling_approach_id, None, None):
         return redirect("/")
 
     new_effect = normalize_effect_record({
@@ -1850,10 +1775,10 @@ def add_effect():
         "description": request.form.get("description", ""),
         "evidence_rigor": request.form.get("evidence_rigor", ""),
         "effect_polarity": request.form.get("effect_polarity", "neutral"),
-        "solution_id": solution_id,
+        "solution_id": None,
         "modeling_approach_id": modeling_approach_id,
-        "prompting_technique_id": prompting_technique_id,
-        "other_technique_id": other_technique_id,
+        "prompting_technique_id": None,
+        "other_technique_id": None,
         "underlying_llm_id": underlying_llm_id,
     })
     if not new_effect.get("description"):
@@ -1894,24 +1819,14 @@ def update_effect(effect_id):
     if not effect:
         return redirect("/")
 
-    solution_id = parse_optional_int(request.form.get("solution_id", ""))
-    if solution_id is not None and not any(solution.get("id") == solution_id for solution in store.get("solutions", [])):
-        solution_id = None
-
     modeling_approach_id = parse_optional_int(request.form.get("modeling_approach_id", ""))
     if modeling_approach_id is not None and not any(approach.get("id") == modeling_approach_id for approach in store.get("modeling_approaches", [])):
         modeling_approach_id = None
 
-    prompting_technique_id = parse_optional_int(request.form.get("prompting_technique_id", ""))
-    other_technique_id = parse_optional_int(request.form.get("other_technique_id", ""))
     underlying_llm_id = parse_optional_int(request.form.get("underlying_llm_id", ""))
-    if prompting_technique_id is not None and not any(tech.get("id") == prompting_technique_id for tech in store.get("prompting_techniques", [])):
-        return redirect("/")
-    if other_technique_id is not None and not any(tech.get("id") == other_technique_id for tech in store.get("other_techniques", [])):
-        return redirect("/")
     if underlying_llm_id is not None and not any(llm.get("id") == underlying_llm_id for llm in store.get("underlying_llms", [])):
         return redirect("/")
-    if not has_exclusive_effect_binding(solution_id, modeling_approach_id, prompting_technique_id, other_technique_id):
+    if not has_exclusive_effect_binding(None, modeling_approach_id, None, None):
         return redirect("/")
 
     updated = normalize_effect_record({
@@ -1919,10 +1834,10 @@ def update_effect(effect_id):
         "description": request.form.get("description", effect.get("description", "")),
         "evidence_rigor": request.form.get("evidence_rigor", effect.get("evidence_rigor", "")),
         "effect_polarity": request.form.get("effect_polarity", effect.get("effect_polarity", "neutral")),
-        "solution_id": solution_id,
+        "solution_id": None,
         "modeling_approach_id": modeling_approach_id,
-        "prompting_technique_id": prompting_technique_id,
-        "other_technique_id": other_technique_id,
+        "prompting_technique_id": None,
+        "other_technique_id": None,
         "underlying_llm_id": underlying_llm_id,
     })
     if not updated.get("description"):
@@ -1948,9 +1863,6 @@ def delete_solution(solution_id):
     store = load_data()
     solutions = store.get("solutions", [])
     store["solutions"] = [s for s in solutions if s["id"] != solution_id]
-    for effect in store.get("effects", []):
-        if effect.get("solution_id") == solution_id:
-            effect["solution_id"] = None
     for problem in store.get("modeling_problems", []):
         problem["solution_ids"] = [
             sid for sid in problem.get("solution_ids", [])

@@ -388,43 +388,6 @@
                 {% endif %}
               </ul>
 
-              <h5 class="h6">Effects</h5>
-              <ul class="list-group mb-3">
-                {% for effect in solution_effect_lookup.get(solution.id, []) %}
-                  <li class="list-group-item">
-                    <div class="d-flex justify-content-between align-items-start gap-3">
-                      <div>
-                        <div><b>{{ effect.description }}</b></div>
-                        {% if effect.evidence_rigor %}
-                          <div class="small text-muted">Evidence Rigor: {{ effect.evidence_rigor }}</div>
-                        {% endif %}
-                        <div class="small text-muted">Polarity: {{ effect.effect_polarity|default('neutral')|capitalize }}</div>
-                        <div class="small mt-1">
-                          {% set prompting = prompting_technique_lookup.get(effect.prompting_technique_id) %}
-                          {% set other = other_technique_lookup.get(effect.other_technique_id) %}
-                          {% set llm = underlying_llm_lookup.get(effect.underlying_llm_id) %}
-                          {% if prompting %}
-                            <span class="badge bg-secondary me-1">{{ prompting.name }}</span>
-                          {% endif %}
-                          {% if other %}
-                            <span class="badge bg-warning text-dark me-1">{{ other.name }}</span>
-                          {% endif %}
-                          {% if llm %}
-                            <span class="badge bg-success-subtle text-success-emphasis">{{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}</span>
-                          {% endif %}
-                        </div>
-                      </div>
-                      <div class="d-flex gap-2">
-                        <a href="/edit_effect/{{ effect.id }}" class="btn btn-sm btn-outline-primary">Edit</a>
-                        <a href="/delete_effect/{{ effect.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
-                      </div>
-                    </div>
-                  </li>
-                {% else %}
-                  <li class="list-group-item text-muted">No Effects linked to this solution.</li>
-                {% endfor %}
-              </ul>
-
             </div>
           </div>
         </div>
@@ -1043,6 +1006,25 @@
                                 </select>
                               </div>
                               <div class="col-md-4">
+                                <select class="form-select" name="modeling_approach_id">
+                                  <option value="">No modeling approach</option>
+                                  {% for approach in modeling_approaches %}
+                                    <option value="{{ approach.id }}">{{ approach.name }}</option>
+                                  {% endfor %}
+                                </select>
+                              </div>
+                              <div class="col-md-4">
+                                <select class="form-select" name="other_technique_id">
+                                  <option value="">No other technique</option>
+                                  {% for technique in other_techniques %}
+                                    <option value="{{ technique.id }}">{{ technique.name }}</option>
+                                  {% endfor %}
+                                </select>
+                              </div>
+                              <div class="col-12">
+                                <div class="form-text">Constraint: choose at most one of Modeling Approach or Other Technique.</div>
+                              </div>
+                              <div class="col-md-4">
                                 <select class="form-select" name="underlying_llm_id">
                                   <option value="">No underlying LLM</option>
                                   {% for llm in underlying_llms %}
@@ -1050,8 +1032,8 @@
                                   {% endfor %}
                                 </select>
                               </div>
-                              <div class="col-12">
-                                <button class="btn btn-outline-secondary btn-sm">Add effect to this approach</button>
+                              <div class="col-md-2">
+                                <button class="btn btn-outline-secondary w-100">Add effect to this approach</button>
                               </div>
                             </form>
                           </div>
@@ -1369,39 +1351,12 @@
                   </select>
                 </div>
                 <div class="col-md-4">
-                  <select class="form-select" name="solution_id">
-                    <option value="">No linked solution</option>
-                    {% for solution in solutions %}
-                      <option value="{{ solution.id }}">{{ solution.name }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <div class="col-md-4">
                   <select class="form-select" name="modeling_approach_id">
                     <option value="">No modeling approach</option>
                     {% for approach in modeling_approaches %}
                       <option value="{{ approach.id }}">{{ approach.name }}</option>
                     {% endfor %}
                   </select>
-                </div>
-                <div class="col-md-4">
-                  <select class="form-select" name="prompting_technique_id">
-                    <option value="">No prompting technique</option>
-                    {% for technique in prompting_techniques %}
-                      <option value="{{ technique.id }}">{{ technique.name }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <div class="col-md-4">
-                  <select class="form-select" name="other_technique_id">
-                    <option value="">No other technique</option>
-                    {% for technique in other_techniques %}
-                      <option value="{{ technique.id }}">{{ technique.name }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <div class="col-12">
-                  <div class="form-text">Constraint: choose at most one of Modeling Solution, Modeling Approach, Prompting Technique, or Other Technique.</div>
                 </div>
                 <div class="col-md-4">
                   <select class="form-select" name="underlying_llm_id">
@@ -1411,7 +1366,10 @@
                     {% endfor %}
                   </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-12">
+                  <div class="form-text">Constraint: choose at most one of Modeling Approach or Other Technique.</div>
+                </div>
+                <div class="col-md-4">
                   <button class="btn btn-outline-secondary w-100">Add</button>
                 </div>
               </form>
@@ -1425,12 +1383,6 @@
                         <div class="small text-muted">Evidence rigor: {{ effect.evidence_rigor }}</div>
                       {% endif %}
                       <div class="small text-muted">Polarity: {{ effect.effect_polarity|default('neutral')|capitalize }}</div>
-                      {% if effect.solution_id %}
-                        {% set linked_solution = solutions|selectattr('id', 'equalto', effect.solution_id)|list|first %}
-                        {% if linked_solution %}
-                          <div class="small">Solution: <a href="#solution-{{ linked_solution.id }}" class="text-decoration-none">{{ linked_solution.name }}</a></div>
-                        {% endif %}
-                      {% endif %}
                       {% if effect.modeling_approach_id %}
                         {% set linked_approach = modeling_approaches|selectattr('id', 'equalto', effect.modeling_approach_id)|list|first %}
                         {% set llm = underlying_llm_lookup.get(effect.underlying_llm_id) %}
@@ -1552,45 +1504,22 @@
       const addEffectForm = document.querySelector('form[action="/add_effect"]');
       if (addEffectForm) {
         const addEffectButton = addEffectForm.querySelector('#add-effect-button');
-        const solutionSelect = addEffectForm.querySelector('select[name="solution_id"]');
         const approachSelect = addEffectForm.querySelector('select[name="modeling_approach_id"]');
-        const promptingSelect = addEffectForm.querySelector('select[name="prompting_technique_id"]');
-        const otherSelect = addEffectForm.querySelector('select[name="other_technique_id"]');
 
         function updateAddEffectButtonState() {
           if (!addEffectButton) {
             return;
           }
-          const hasLinkedEffect = [solutionSelect, approachSelect, promptingSelect, otherSelect].some(function (selectEl) {
-            return selectEl && selectEl.value;
-          });
+          const hasLinkedEffect = !!(approachSelect && approachSelect.value);
           addEffectButton.classList.toggle('btn-outline-secondary', !hasLinkedEffect);
           addEffectButton.classList.toggle('btn-success', hasLinkedEffect);
           addEffectButton.classList.toggle('text-white', hasLinkedEffect);
           addEffectButton.classList.toggle('shadow-sm', hasLinkedEffect);
         }
 
-        function enforceExclusiveSelection(changedSelect) {
-          if (!changedSelect || !changedSelect.value) {
-            updateAddEffectButtonState();
-            return;
-          }
-          [solutionSelect, approachSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
-            if (selectEl && selectEl !== changedSelect) {
-              selectEl.value = '';
-            }
-          });
-          updateAddEffectButtonState();
+        if (approachSelect) {
+          approachSelect.addEventListener('change', updateAddEffectButtonState);
         }
-
-        [solutionSelect, approachSelect, promptingSelect, otherSelect].forEach(function (selectEl) {
-          if (!selectEl) {
-            return;
-          }
-          selectEl.addEventListener('change', function () {
-            enforceExclusiveSelection(selectEl);
-          });
-        });
 
         updateAddEffectButtonState();
       }
@@ -1620,6 +1549,7 @@
         const activePromptingTechnique = promptingTechniqueFilter ? promptingTechniqueFilter.value : '';
         const activeOtherTechnique = otherTechniqueFilter ? otherTechniqueFilter.value : '';
         const activeUnderlyingLlm = underlyingLlmFilter ? underlyingLlmFilter.value : '';
+        let shown = false;
 
         problemLinks.forEach(function (link) {
           link.classList.toggle('purpose-link-active', !!activeProblemId && link.dataset.problemId === activeProblemId);
