@@ -11,12 +11,12 @@
       <h2>Edit</h2>
       <form method="post" action="/update_solution/{{ solution.id }}">
         <input class="form-control mb-2" name="name" value="{{ solution.name }}">
-        <select class="form-select mb-2" name="modeling_approach_id">
-          <option value="">-- No modeling approach --</option>
+        <select class="form-select mb-2" name="modeling_approach_ids" multiple size="5">
           {% for approach in modeling_approaches %}
-            <option value="{{ approach.id }}" {% if approach.id == solution.modeling_approach_id %}selected{% endif %}>{{ approach.name }}</option>
+            <option value="{{ approach.id }}" {% if approach.id in solution.modeling_approach_ids %}selected{% endif %}>{{ approach.name }}</option>
           {% endfor %}
         </select>
+        <div class="form-text mb-2">Optional: select one or more modeling approaches linked to this solution.</div>
         <select class="form-select mb-2" name="prompting_technique_ids" multiple size="5">
           {% for technique in prompting_techniques %}
             <option value="{{ technique.id }}" {% if technique.id in solution.prompting_technique_ids %}selected{% endif %}>{{ technique.name }}</option>

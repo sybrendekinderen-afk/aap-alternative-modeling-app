@@ -10,7 +10,7 @@
       ],
       "justification": "Make the model machine readable.",
       "other_technique_ids": [],
-      "modeling_approach_id": null
+      "modeling_approach_ids": []
     },
     {
       "id": 2,
@@ -22,7 +22,10 @@
       "other_technique_ids": [
         1
       ],
-      "modeling_approach_id": 1
+      "modeling_approach_ids": [
+        1,
+        2
+      ]
     }
   ],
   "sources": [
@@ -46,7 +49,7 @@
       "id": 1,
       "description": "magnificent effect.",
       "evidence_rigor": "informal qualitative sensibility check",
-      "solution_id": 1,
+      "solution_id": null,
       "modeling_approach_id": null,
       "prompting_technique_id": null,
       "other_technique_id": null,
@@ -57,7 +60,7 @@
       "id": 2,
       "description": "test",
       "evidence_rigor": "test",
-      "solution_id": 1,
+      "solution_id": null,
       "modeling_approach_id": null,
       "prompting_technique_id": null,
       "other_technique_id": null,
@@ -192,7 +195,9 @@
       "name": "test",
       "source_id": 1,
       "modeling_task_id": 3,
-      "solution_ids": [],
+      "solution_ids": [
+        2
+      ],
       "prompting_technique_ids": [
         1,
         2,
