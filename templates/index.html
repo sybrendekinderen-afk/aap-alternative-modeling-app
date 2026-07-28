@@ -65,10 +65,13 @@
             <div class="card primary-surface mb-3">
               <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Approaches</h4></div>
               <div class="card-body">
-                <p class="text-muted small mb-3">Primary pane: select an approach to highlight its solution cluster.</p>
-                <ul class="list-group">
+                <p class="text-muted small mb-3">Primary pane: select a modeling task to reveal its approaches, then select an approach to highlight its solution cluster.</p>
+                <div class="alert alert-light border mb-0" id="approach-list-placeholder">
+                  Select a Modeling Task to view its Modeling Approaches.
+                </div>
+                <ul class="list-group" id="kb-approach-list" style="display: none;">
                   {% for approach in modeling_approaches %}
-                    <li class="list-group-item">
+                    <li class="list-group-item kb-approach-list-item" data-approach-id="{{ approach.id }}" style="display: none;">
                       <div>
                         <a href="#" class="fw-semibold text-decoration-none approach-select-link" data-approach-id="{{ approach.id }}">{{ approach.name }}</a>
                       </div>
@@ -177,9 +180,12 @@
                     </div>
                   </div>
                 </div>
-                <ul class="list-group">
+                <div class="alert alert-light border mb-0" id="solution-list-placeholder">
+                  Select a Modeling Approach or Modeling Problem to view matching Modeling Solutions.
+                </div>
+                <ul class="list-group" id="kb-solution-list" style="display: none;">
                   {% for solution in solutions %}
-                    <li class="list-group-item kb-solution-list-item" data-solution-id="{{ solution.id }}" data-problem-ids="{{ solution_problem_lookup.get(solution.id, [])|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}" data-approach-ids="{% for approach in solution_modeling_approach_lookup.get(solution.id, []) %}{{ approach.id }}{% if not loop.last %},{% endif %}{% endfor %}">
+                    <li class="list-group-item kb-solution-list-item" data-solution-id="{{ solution.id }}" data-problem-ids="{{ solution_problem_lookup.get(solution.id, [])|join(',') }}" data-model-type-ids="{{ solution_model_type_lookup.get(solution.id, [])|join(',') }}" data-prompting-technique-ids="{{ solution.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ solution.other_technique_ids|join(',') }}" data-underlying-llm-ids="{{ solution_underlying_llm_lookup.get(solution.id, [])|join(',') }}" data-approach-ids="{% for approach in solution_modeling_approach_lookup.get(solution.id, []) %}{{ approach.id }}{% if not loop.last %},{% endif %}{% endfor %}" style="display: none;">
                       <div class="d-flex justify-content-between align-items-center gap-2">
                         <a href="#solution-{{ solution.id }}" class="fw-semibold text-decoration-none solution-select-link" data-solution-id="{{ solution.id }}">{{ solution.name }}</a>
                       </div>
@@ -243,9 +249,13 @@
             </div>
 
             <div class="card primary-surface">
-              <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Problem</h4></div>
+              <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="h6 mb-0">Modeling Problem</h4>
+                <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" data-bs-target="#kb-problem-list-panel" aria-expanded="false" aria-controls="kb-problem-list-panel">Show</button>
+              </div>
               <div class="card-body">
                 <p class="text-muted small mb-3">Select a problem to highlight solutions addressing it.</p>
+                <div class="collapse" id="kb-problem-list-panel">
                 <ul class="list-group">
                   {% for problem in modeling_problem_tree %}
                     <li class="list-group-item purpose-tree-item">
@@ -281,6 +291,7 @@
                     <li class="list-group-item text-muted">No Modeling Problems yet.</li>
                   {% endfor %}
                 </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -1522,8 +1533,13 @@
       const problemLinks = Array.from(document.querySelectorAll('.problem-select-link[data-problem-id]'));
       const approachLinks = Array.from(document.querySelectorAll('.approach-select-link[data-approach-id]'));
       const taskLinks = Array.from(document.querySelectorAll('.task-select-link[data-task-id]'));
+      const approachListItems = Array.from(document.querySelectorAll('.kb-approach-list-item[data-approach-id]'));
+      const approachListEl = document.getElementById('kb-approach-list');
+      const approachListPlaceholder = document.getElementById('approach-list-placeholder');
       const solutionLinks = Array.from(document.querySelectorAll('.solution-select-link[data-solution-id]'));
       const solutionItems = Array.from(document.querySelectorAll('.kb-solution-list-item'));
+      const solutionListEl = document.getElementById('kb-solution-list');
+      const solutionListPlaceholder = document.getElementById('solution-list-placeholder');
       const detailCards = Array.from(document.querySelectorAll('.kb-solution-detail'));
       const approachDetailCards = Array.from(document.querySelectorAll('.approach-detail-card'));
       const placeholder = document.getElementById('solution-detail-placeholder');
@@ -1544,6 +1560,7 @@
         const activePromptingTechnique = promptingTechniqueFilter ? promptingTechniqueFilter.value : '';
         const activeOtherTechnique = otherTechniqueFilter ? otherTechniqueFilter.value : '';
         const activeUnderlyingLlm = underlyingLlmFilter ? underlyingLlmFilter.value : '';
+        const hasActiveSelection = !!activeProblemId || !!activeApproachId;
         let shown = false;
 
         problemLinks.forEach(function (link) {
@@ -1569,6 +1586,16 @@
           link.classList.toggle('purpose-link-active', (!!activeApproachId && link.dataset.approachId === activeApproachId) || isTaskRelatedApproach);
         });
 
+        if (approachListEl) {
+          approachListEl.style.display = activeTaskId ? '' : 'none';
+        }
+        if (approachListPlaceholder) {
+          approachListPlaceholder.style.display = activeTaskId ? 'none' : '';
+        }
+        approachListItems.forEach(function (item) {
+          item.style.display = (!!activeTaskId && activeTaskApproachIds.includes(item.dataset.approachId)) ? '' : 'none';
+        });
+
         solutionItems.forEach(function (item) {
           const problemIds = parseCsvIds(item.dataset.problemIds);
           const modelTypeIds = parseCsvIds(item.dataset.modelTypeIds);
@@ -1583,13 +1610,18 @@
           const matchesOtherTechnique = !activeOtherTechnique || otherTechniqueIds.includes(activeOtherTechnique);
           const matchesUnderlyingLlm = !activeUnderlyingLlm || underlyingLlmIds.includes(activeUnderlyingLlm);
           const passesFilter = matchesModelType && matchesPromptingTechnique && matchesOtherTechnique && matchesUnderlyingLlm;
-          const hasActiveSelection = !!activeProblemId || !!activeApproachId;
           const matchesSelection = matchesProblem && matchesApproach;
 
-          item.style.display = passesFilter ? '' : 'none';
+          item.style.display = (passesFilter && hasActiveSelection && matchesSelection) ? '' : 'none';
           item.classList.toggle('solution-list-item-highlight', passesFilter && hasActiveSelection && matchesSelection);
-          item.classList.toggle('solution-list-item-dim', passesFilter && hasActiveSelection && !matchesSelection);
         });
+
+        if (solutionListEl) {
+          solutionListEl.style.display = hasActiveSelection ? '' : 'none';
+        }
+        if (solutionListPlaceholder) {
+          solutionListPlaceholder.style.display = hasActiveSelection ? 'none' : '';
+        }
 
         showSolutionDetails(activeSolutionId);
         showApproachDetails(activeApproachId);
