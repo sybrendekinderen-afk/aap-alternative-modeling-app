@@ -30,6 +30,8 @@
     .task-select-link { text-decoration: none; }
     .task-select-link.task-select-active { text-decoration: underline; font-weight: 700; }
     .task-pane-highlight { border-color: #9fb6e7 !important; background-color: #f8fbff; }
+    .task-list-scroll { max-height: 320px; overflow-y: auto; }
+    .task-problems-toggle { width: 1.25rem; height: 1.25rem; padding: 0; line-height: 1; }
   </style>
 </head>
 <body>
@@ -203,9 +205,19 @@
               <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Task</h4></div>
               <div class="card-body">
                 <p class="text-muted small mb-3">Inspect tasks, their linked modeling approaches, and related modeling problems.</p>
+                <div class="mb-2">
+                  <label for="task-filter-notation" class="form-label form-label-sm mb-1">Filter by Modeling Notation</label>
+                  <select id="task-filter-notation" class="form-select form-select-sm">
+                    <option value="">All Modeling Notations</option>
+                    {% for model_type in model_types %}
+                      <option value="{{ model_type.id }}">{{ model_type.notation or model_type.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="task-list-scroll">
                 <ul class="list-group">
                   {% for task in modeling_tasks %}
-                    <li class="list-group-item task-list-item">
+                    <li class="list-group-item task-list-item" data-task-id="{{ task.id }}" data-model-type-id="{{ task.model_type_id or '' }}">
                       {% set linked_approaches = modeling_approaches|selectattr('modeling_task_id', 'equalto', task.id)|list %}
                       <div class="d-flex justify-content-between align-items-start gap-2">
                         <div>
@@ -217,8 +229,11 @@
                             {% endif %}
                           {% endif %}
                         </div>
-                        <div class="text-nowrap">
+                        <div class="text-nowrap d-flex align-items-center gap-1">
                           <span class="badge bg-dark-subtle text-dark border">{{ linked_approaches|length }} approach{% if linked_approaches|length != 1 %}es{% endif %}</span>
+                          {% if task.modeling_problem_ids %}
+                            <button class="btn btn-outline-secondary btn-sm task-problems-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#kb-task-problems-{{ task.id }}" aria-expanded="false" aria-controls="kb-task-problems-{{ task.id }}" title="Toggle related problems">▾</button>
+                          {% endif %}
                         </div>
                       </div>
                       {% if linked_approaches %}
@@ -230,14 +245,16 @@
                         </div>
                       {% endif %}
                       {% if task.modeling_problem_ids %}
-                        <div class="small text-muted task-related-problems">
-                          Related problems:
-                          {% for pid in task.modeling_problem_ids %}
-                            {% set prob = modeling_problem_lookup.get(pid) %}
-                            {% if prob %}
-                              <a href="#problem-{{ prob.id }}" class="badge bg-secondary-subtle text-secondary-emphasis text-decoration-none me-1 problem-select-link" data-problem-id="{{ prob.id }}">{{ prob.name }}</a>
-                            {% endif %}
-                          {% endfor %}
+                        <div class="collapse" id="kb-task-problems-{{ task.id }}">
+                          <div class="small text-muted task-related-problems">
+                            Related problems:
+                            {% for pid in task.modeling_problem_ids %}
+                              {% set prob = modeling_problem_lookup.get(pid) %}
+                              {% if prob %}
+                                <a href="#problem-{{ prob.id }}" class="badge bg-secondary-subtle text-secondary-emphasis text-decoration-none me-1 problem-select-link" data-problem-id="{{ prob.id }}">{{ prob.name }}</a>
+                              {% endif %}
+                            {% endfor %}
+                          </div>
                         </div>
                       {% endif %}
                     </li>
@@ -245,6 +262,7 @@
                     <li class="list-group-item text-muted">No Modeling Tasks yet.</li>
                   {% endfor %}
                 </ul>
+                </div>
               </div>
             </div>
 
@@ -1533,6 +1551,8 @@
       const problemLinks = Array.from(document.querySelectorAll('.problem-select-link[data-problem-id]'));
       const approachLinks = Array.from(document.querySelectorAll('.approach-select-link[data-approach-id]'));
       const taskLinks = Array.from(document.querySelectorAll('.task-select-link[data-task-id]'));
+      const taskItems = Array.from(document.querySelectorAll('.task-list-item[data-task-id]'));
+      const taskNotationFilter = document.getElementById('task-filter-notation');
       const approachListItems = Array.from(document.querySelectorAll('.kb-approach-list-item[data-approach-id]'));
       const approachListEl = document.getElementById('kb-approach-list');
       const approachListPlaceholder = document.getElementById('approach-list-placeholder');
@@ -1681,6 +1701,18 @@
         });
       });
 
+      function applyTaskNotationFilter() {
+        const activeNotation = taskNotationFilter ? taskNotationFilter.value : '';
+        taskItems.forEach(function (item) {
+          const matches = !activeNotation || item.dataset.modelTypeId === activeNotation;
+          item.style.display = matches ? '' : 'none';
+        });
+      }
+
+      if (taskNotationFilter) {
+        taskNotationFilter.addEventListener('change', applyTaskNotationFilter);
+      }
+
       taskLinks.forEach(function (link) {
         link.addEventListener('click', function (event) {
           event.preventDefault();
@@ -1738,6 +1770,7 @@
       applyHighlight();
       showSolutionDetails('');
       showApproachDetails('');
+      applyTaskNotationFilter();
     });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
