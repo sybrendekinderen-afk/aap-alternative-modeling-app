@@ -1570,6 +1570,7 @@
                 scales: {
                   x: {
                     beginAtZero: true,
+                    position: 'top',
                     ticks: {
                       precision: 0,
                     },
@@ -1594,6 +1595,26 @@
           const notationCanvas = document.getElementById('notation-approach-chart');
           const notationWrapper = document.getElementById('notation-chart-wrapper');
           if (notationCanvas) {
+            function wrapAxisLabel(labelText, maxCharsPerLine) {
+              const words = String(labelText || '').trim().split(/\s+/).filter(Boolean);
+              if (words.length <= 1) {
+                return words.length ? words : [''];
+              }
+              const lines = [];
+              let current = words[0];
+              for (let i = 1; i < words.length; i += 1) {
+                const candidate = current + ' ' + words[i];
+                if (candidate.length <= maxCharsPerLine) {
+                  current = candidate;
+                } else {
+                  lines.push(current);
+                  current = words[i];
+                }
+              }
+              lines.push(current);
+              return lines;
+            }
+
             const notationCount = approachCountByNotation.length;
             const notationCanvasWidth = Math.max(
               760,
@@ -1606,7 +1627,7 @@
             new Chart(notationCanvas, {
               type: 'bar',
               data: {
-                labels: approachCountByNotation.map(function (item) { return item.label; }),
+                labels: approachCountByNotation.map(function (item) { return wrapAxisLabel(item.label, 12); }),
                 datasets: [{
                   label: 'Approach count',
                   data: approachCountByNotation.map(function (item) { return item.count; }),
@@ -1621,8 +1642,8 @@
                   x: {
                     ticks: {
                       autoSkip: false,
-                      maxRotation: 55,
-                      minRotation: 55,
+                      maxRotation: 0,
+                      minRotation: 0,
                     },
                   },
                   y: {

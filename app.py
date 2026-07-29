@@ -716,9 +716,8 @@ def get_source_modeling_approach_lookup(modeling_approaches, sources):
     return lookup
 
 
-def get_llm_technique_usage_counts(solutions, modeling_approaches, modeling_problems, prompting_techniques, other_techniques):
+def get_llm_technique_usage_counts(solutions, modeling_approaches, modeling_problems, prompting_techniques):
     prompting_lookup = {technique.get("id"): technique for technique in prompting_techniques}
-    other_lookup = {technique.get("id"): technique for technique in other_techniques}
     counts = {}
 
     def add_count(bucket_label):
@@ -732,23 +731,14 @@ def get_llm_technique_usage_counts(solutions, modeling_approaches, modeling_prob
             if technique:
                 add_count(f"Prompting: {technique.get('name', '').strip()}")
 
-    def register_other_ids(ids):
-        for tid in list(dict.fromkeys(ids or [])):
-            technique = other_lookup.get(tid)
-            if technique:
-                add_count(f"Other: {technique.get('name', '').strip()}")
-
     for solution in solutions:
         register_prompting_ids(solution.get("prompting_technique_ids", []))
-        register_other_ids(solution.get("other_technique_ids", []))
 
     for approach in modeling_approaches:
         register_prompting_ids(approach.get("prompting_technique_ids", []))
-        register_other_ids(approach.get("other_technique_ids", []))
 
     for problem in modeling_problems:
         register_prompting_ids(problem.get("prompting_technique_ids", []))
-        register_other_ids(problem.get("other_technique_ids", []))
 
     return [
         {"label": label, "count": count}
@@ -1088,7 +1078,6 @@ def home():
         modeling_approaches,
         modeling_problems,
         prompting_techniques,
-        other_techniques,
     )
     approach_count_by_notation = get_approach_count_by_notation(
         modeling_approaches,
