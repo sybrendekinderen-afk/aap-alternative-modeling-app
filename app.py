@@ -1,11 +1,8 @@
 from flask import Flask, render_template, request, redirect, g
-import base64
 import importlib
 import json
 import os
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
-
-import requests as http_requests
 
 app = Flask(__name__)
 
@@ -30,8 +27,6 @@ DEFAULT_EVIDENCE_RIGOR_VALUES = [
 ]
 EFFECT_POLARITY_VALUES = ["positive", "negative", "neutral"]
 
-_BLOB_STORE = "app-data"
-_BLOB_KEY = "store"
 _PG_TABLE = "app_data_store"
 _PG_KEY = "store"
 
@@ -184,45 +179,12 @@ def _save_data_to_postgres(data):
         return False
 
 
-def _get_blob_context():
-    """Parse the Netlify Blobs context injected at runtime."""
-    if not _remote_persistence_enabled():
-        return None
-
-    ctx_raw = os.environ.get("NETLIFY_BLOBS_CONTEXT", "")
-    if not ctx_raw:
-        return None
-    try:
-        padding = (4 - len(ctx_raw) % 4) % 4
-        return json.loads(base64.b64decode(ctx_raw + "=" * padding))
-    except Exception:
-        return None
-
-
-def _blob_url(ctx):
-    return f"{ctx['edgeURL']}/{ctx['siteID']}/{_BLOB_STORE}/{_BLOB_KEY}"
-
-
 def _load_raw_data():
-    """Return parsed JSON from Postgres, Netlify Blobs, or the local data file."""
+    """Return parsed JSON from Postgres or the local data file."""
 
     pg_data = _load_data_from_postgres()
     if pg_data is not None:
         return pg_data
-
-    ctx = _get_blob_context()
-    if ctx:
-        try:
-            resp = http_requests.get(
-                _blob_url(ctx),
-                headers={"Authorization": f"Bearer {ctx['token']}"},
-                timeout=10,
-            )
-            if resp.status_code == 200:
-                return resp.json()
-        except Exception:
-            pass
-        return None
 
     if not os.path.exists(DATA_FILE):
         return None
@@ -601,21 +563,6 @@ def save_data(data):
     if _save_data_to_postgres(data):
         return
 
-    ctx = _get_blob_context()
-    if ctx:
-        try:
-            http_requests.put(
-                _blob_url(ctx),
-                data=json.dumps(data),
-                headers={
-                    "Authorization": f"Bearer {ctx['token']}",
-                    "Content-Type": "application/json",
-                },
-                timeout=10,
-            )
-            return
-        except Exception:
-            pass
     # On Vercel, filesystem writes are ephemeral and can fail. Avoid surfacing a 500
     # if remote persistence had a transient failure.
     if _is_vercel_runtime():
