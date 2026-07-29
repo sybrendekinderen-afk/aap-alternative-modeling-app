@@ -32,6 +32,8 @@
     .task-pane-highlight { border-color: #9fb6e7 !important; background-color: #f8fbff; }
     .task-list-scroll { max-height: 320px; overflow-y: auto; }
     .task-problems-toggle { width: 1.25rem; height: 1.25rem; padding: 0; line-height: 1; }
+    .chart-scroll-vertical { height: 320px; overflow-y: auto; overflow-x: hidden; }
+    .chart-scroll-horizontal { height: 320px; overflow-x: auto; overflow-y: hidden; }
   </style>
 </head>
 <body>
@@ -550,7 +552,7 @@
                 <div class="alert alert-light border" id="technique-chart-empty" {% if technique_usage_counts %}style="display: none;"{% endif %}>
                   No LLM technique usage data available yet.
                 </div>
-                <div style="height: 320px;" {% if not technique_usage_counts %}class="d-none"{% endif %} id="technique-chart-wrapper">
+                <div class="chart-scroll-vertical{% if not technique_usage_counts %} d-none{% endif %}" id="technique-chart-wrapper">
                   <canvas id="technique-usage-chart" aria-label="Bar chart of LLM technique usage counts" role="img"></canvas>
                 </div>
               </div>
@@ -564,7 +566,7 @@
                 <div class="alert alert-light border" id="notation-chart-empty" {% if approach_count_by_notation %}style="display: none;"{% endif %}>
                   No modeling notation data available yet.
                 </div>
-                <div style="height: 320px;" {% if not approach_count_by_notation %}class="d-none"{% endif %} id="notation-chart-wrapper">
+                <div class="chart-scroll-horizontal{% if not approach_count_by_notation %} d-none{% endif %}" id="notation-chart-wrapper">
                   <canvas id="notation-approach-chart" aria-label="Bar chart of approach counts by modeling notation" role="img"></canvas>
                 </div>
               </div>
@@ -1537,7 +1539,14 @@
       if (window.Chart) {
         if (Array.isArray(techniqueUsageCounts) && techniqueUsageCounts.length > 0) {
           const techniqueCanvas = document.getElementById('technique-usage-chart');
+          const techniqueWrapper = document.getElementById('technique-chart-wrapper');
           if (techniqueCanvas) {
+            const techniqueCount = techniqueUsageCounts.length;
+            const techniqueCanvasHeight = Math.max(320, techniqueCount * 38);
+            const techniqueCanvasWidth = Math.max(820, (techniqueWrapper && techniqueWrapper.clientWidth) ? techniqueWrapper.clientWidth : 820);
+            techniqueCanvas.height = techniqueCanvasHeight;
+            techniqueCanvas.width = techniqueCanvasWidth;
+
             new Chart(techniqueCanvas, {
               type: 'bar',
               data: {
@@ -1551,14 +1560,23 @@
                 }],
               },
               options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: false,
                 indexAxis: 'y',
+                layout: {
+                  padding: {
+                    right: 12,
+                  },
+                },
                 scales: {
                   x: {
                     beginAtZero: true,
                     ticks: {
                       precision: 0,
+                    },
+                  },
+                  y: {
+                    ticks: {
+                      autoSkip: false,
                     },
                   },
                 },
@@ -1574,7 +1592,17 @@
 
         if (Array.isArray(approachCountByNotation) && approachCountByNotation.length > 0) {
           const notationCanvas = document.getElementById('notation-approach-chart');
+          const notationWrapper = document.getElementById('notation-chart-wrapper');
           if (notationCanvas) {
+            const notationCount = approachCountByNotation.length;
+            const notationCanvasWidth = Math.max(
+              760,
+              notationCount * 110,
+              (notationWrapper && notationWrapper.clientWidth) ? notationWrapper.clientWidth : 0
+            );
+            notationCanvas.width = notationCanvasWidth;
+            notationCanvas.height = 320;
+
             new Chart(notationCanvas, {
               type: 'bar',
               data: {
@@ -1588,9 +1616,15 @@
                 }],
               },
               options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: false,
                 scales: {
+                  x: {
+                    ticks: {
+                      autoSkip: false,
+                      maxRotation: 55,
+                      minRotation: 55,
+                    },
+                  },
                   y: {
                     beginAtZero: true,
                     ticks: {
