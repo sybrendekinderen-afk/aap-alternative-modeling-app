@@ -1,0 +1,36 @@
+					flowchart LR
+  U[User Browser]
+
+  subgraph AppRuntime[Flask App Runtime]
+    R[Flask Routes and Controllers]
+    L[Data Access and Normalization Layer]
+    A[Analytics Aggregation]
+    T[Jinja2 Template Rendering]
+  end
+
+  subgraph Frontend[Client-Side UI]
+    H[Rendered HTML and Tabs]
+    J[Embedded JSON Script Blocks]
+    C[Chart.js Renderer]
+  end
+
+  subgraph Persistence[Persistence Backends]
+    P[(Postgres JSONB Store)]
+    F[(Local data.json Fallback)]
+  end
+
+  U -->|HTTP GET/POST| R
+  R --> L
+  L -->|Primary read/write| P
+  L -->|Fallback read/write| F
+
+  R --> A
+  L --> T
+  A --> T
+  T -->|HTML response| U
+
+  T --> H
+  T --> J
+  J -->|Parse datasets| C
+  C -->|Render charts| U
+				

@@ -1,0 +1,1019 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   id="my-svg"
+   width="100%"
+   class="flowchart"
+   style="max-width: 2231.06px; background-color: white;"
+   viewBox="0 0 2231.0625 702.0460205078125"
+   role="graphics-document document"
+   aria-roledescription="flowchart-v2"
+   version="1.1"
+   sodipodi:docname="kb_architecture.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview60"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="0.89329636"
+     inkscape:cx="500.95357"
+     inkscape:cy="99.071265"
+     inkscape:window-width="2880"
+     inkscape:window-height="1514"
+     inkscape:window-x="2869"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="my-svg" />
+  <style
+     id="style1">#my-svg{font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;font-size:16px;fill:#000000;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#my-svg .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#my-svg .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#my-svg .error-icon{fill:#552222;}#my-svg .error-text{fill:#552222;stroke:#552222;}#my-svg .edge-thickness-normal{stroke-width:1px;}#my-svg .edge-thickness-thick{stroke-width:3.5px;}#my-svg .edge-pattern-solid{stroke-dasharray:0;}#my-svg .edge-thickness-invisible{stroke-width:0;fill:none;}#my-svg .edge-pattern-dashed{stroke-dasharray:3;}#my-svg .edge-pattern-dotted{stroke-dasharray:2;}#my-svg .marker{fill:#666;stroke:#666;}#my-svg .marker.cross{stroke:#666;}#my-svg svg{font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;font-size:16px;}#my-svg p{margin:0;}#my-svg .label{font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;color:#000000;}#my-svg .cluster-label text{fill:#333;}#my-svg .cluster-label span{color:#333;}#my-svg .cluster-label span p{background-color:transparent;}#my-svg .label text,#my-svg span{fill:#000000;color:#000000;}#my-svg .node rect,#my-svg .node circle,#my-svg .node ellipse,#my-svg .node polygon,#my-svg .node path{fill:#eee;stroke:#999;stroke-width:1px;}#my-svg .rough-node .label text,#my-svg .node .label text,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-anchor:middle;}#my-svg .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#my-svg .rough-node .label,#my-svg .node .label,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-align:center;}#my-svg .node.clickable{cursor:pointer;}#my-svg .root .anchor path{fill:#666!important;stroke-width:0;stroke:#666;}#my-svg .arrowheadPath{fill:#333333;}#my-svg .edgePath .path{stroke:#666;stroke-width:1px;}#my-svg .flowchart-link{stroke:#666;fill:none;}#my-svg .edgeLabel{background-color:white;text-align:center;}#my-svg .edgeLabel p{background-color:white;}#my-svg .edgeLabel rect{opacity:0.5;background-color:white;fill:white;}#my-svg .labelBkg{background-color:rgba(255, 255, 255, 0.5);}#my-svg .cluster rect{fill:hsl(0, 0%, 98.9215686275%);stroke:#707070;stroke-width:1px;}#my-svg .cluster text{fill:#333;}#my-svg .cluster span{color:#333;}#my-svg div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;font-size:12px;background:hsl(-160, 0%, 93.3333333333%);border:1px solid #707070;border-radius:2px;pointer-events:none;z-index:100;}#my-svg .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#000000;}#my-svg rect.text{fill:none;stroke-width:0;}#my-svg .icon-shape,#my-svg .image-shape{background-color:white;text-align:center;}#my-svg .icon-shape p,#my-svg .image-shape p{background-color:white;padding:2px;}#my-svg .icon-shape .label rect,#my-svg .image-shape .label rect{opacity:0.5;background-color:white;fill:white;}#my-svg .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#my-svg .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#my-svg .node .neo-node{stroke:#999;}#my-svg [data-look=&quot;neo&quot;].node rect,#my-svg [data-look=&quot;neo&quot;].cluster rect,#my-svg [data-look=&quot;neo&quot;].node polygon{stroke:url(#my-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#my-svg [data-look=&quot;neo&quot;].swimlane.cluster rect{filter:none;}#my-svg [data-look=&quot;neo&quot;].node path{stroke:url(#my-svg-gradient);stroke-width:1px;}#my-svg [data-look=&quot;neo&quot;].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#my-svg [data-look=&quot;neo&quot;].node .neo-line path{stroke:#999;filter:none;}#my-svg [data-look=&quot;neo&quot;].node circle{stroke:url(#my-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#my-svg [data-look=&quot;neo&quot;].node circle .state-start{fill:#000000;}#my-svg [data-look=&quot;neo&quot;].icon-shape .icon{fill:url(#my-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#my-svg [data-look=&quot;neo&quot;].icon-shape .icon-neo path{stroke:url(#my-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#my-svg :root{--mermaid-font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;}</style>
+  <marker
+     id="my-svg_flowchart-v2-pointEnd"
+     class="marker flowchart-v2"
+     viewBox="0 0 10 10"
+     refX="5"
+     refY="5"
+     markerUnits="userSpaceOnUse"
+     markerWidth="8"
+     markerHeight="8"
+     orient="auto">
+    <path
+       d="M 0,0 10,5 0,10 Z"
+       class="arrowMarkerPath"
+       style="stroke-width:1;stroke-dasharray:1, 0"
+       id="path1" />
+  </marker>
+  <marker
+     id="my-svg_flowchart-v2-pointStart"
+     class="marker flowchart-v2"
+     viewBox="0 0 10 10"
+     refX="4.5"
+     refY="5"
+     markerUnits="userSpaceOnUse"
+     markerWidth="8"
+     markerHeight="8"
+     orient="auto">
+    <path
+       d="m 0,5 10,5 V 0 Z"
+       class="arrowMarkerPath"
+       style="stroke-width:1;stroke-dasharray:1, 0"
+       id="path2" />
+  </marker>
+  <marker
+     id="my-svg_flowchart-v2-pointEnd-margin"
+     class="marker flowchart-v2"
+     viewBox="0 0 11.5 14"
+     refX="11.5"
+     refY="7"
+     markerUnits="userSpaceOnUse"
+     markerWidth="10.5"
+     markerHeight="14"
+     orient="auto">
+    <path
+       d="M 0,0 11.5,7 0,14 Z"
+       class="arrowMarkerPath"
+       style="stroke-width:0;stroke-dasharray:1, 0"
+       id="path3" />
+  </marker>
+  <marker
+     id="my-svg_flowchart-v2-pointStart-margin"
+     class="marker flowchart-v2"
+     viewBox="0 0 11.5 14"
+     refX="1"
+     refY="7"
+     markerUnits="userSpaceOnUse"
+     markerWidth="11.5"
+     markerHeight="14"
+     orient="auto">
+    <polygon
+       points="11.5,0 0,7 11.5,14 "
+       class="arrowMarkerPath"
+       style="stroke-width:0;stroke-dasharray:1, 0"
+       id="polygon3" />
+  </marker>
+  <marker
+     id="my-svg_flowchart-v2-circleEnd"
+     class="marker flowchart-v2"
+     viewBox="0 0 10 10"
+     refX="11"
+     refY="5"
+     markerUnits="userSpaceOnUse"
+     markerWidth="11"
+     markerHeight="11"
+     orient="auto">
+    <circle
+       cx="5"
+       cy="5"
+       r="5"
+       class="arrowMarkerPath"
+       style="stroke-width:1;stroke-dasharray:1, 0"
+       id="circle3" />
+  </marker>
+  <marker
+     id="my-svg_flowchart-v2-circleStart"
+     class="marker flowchart-v2"
+     viewBox="0 0 10 10"
+     refX="-1"
+     refY="5"
+     markerUnits="userSpaceOnUse"
+     markerWidth="11"
+     markerHeight="11"
+     orient="auto">
+    <circle
+       cx="5"
+       cy="5"
+       r="5"
+       class="arrowMarkerPath"
+       style="stroke-width:1;stroke-dasharray:1, 0"
+       id="circle4" />
+  </marker>
+  <marker
+     id="my-svg_flowchart-v2-circleEnd-margin"
+     class="marker flowchart-v2"
+     viewBox="0 0 10 10"
+     refY="5"
+     refX="12.25"
+     markerUnits="userSpaceOnUse"
+     markerWidth="14"
+     markerHeight="14"
+     orient="auto">
+    <circle
+       cx="5"
+       cy="5"
+       r="5"
+       class="arrowMarkerPath"
+       style="stroke-width:0;stroke-dasharray:1, 0"
+       id="circle5" />
+  </marker>
+  <marker
+     id="my-svg_flowchart-v2-circleStart-margin"
+     class="marker flowchart-v2"
+     viewBox="0 0 10 10"
+     refX="-2"
+     refY="5"
+     markerUnits="userSpaceOnUse"
+     markerWidth="14"
+     markerHeight="14"
+     orient="auto">
+    <circle
+       cx="5"
+       cy="5"
+       r="5"
+       class="arrowMarkerPath"
+       style="stroke-width:0;stroke-dasharray:1, 0"
+       id="circle6" />
+  </marker>
+  <marker
+     id="my-svg_flowchart-v2-crossEnd"
+     class="marker cross flowchart-v2"
+     viewBox="0 0 11 11"
+     refX="12"
+     refY="5.1999998"
+     markerUnits="userSpaceOnUse"
+     markerWidth="11"
+     markerHeight="11"
+     orient="auto">
+    <path
+       d="m 1,1 9,9 m 0,-9 -9,9"
+       class="arrowMarkerPath"
+       style="stroke-width:2;stroke-dasharray:1, 0"
+       id="path6" />
+  </marker>
+  <marker
+     id="my-svg_flowchart-v2-crossStart"
+     class="marker cross flowchart-v2"
+     viewBox="0 0 11 11"
+     refX="-1"
+     refY="5.1999998"
+     markerUnits="userSpaceOnUse"
+     markerWidth="11"
+     markerHeight="11"
+     orient="auto">
+    <path
+       d="m 1,1 9,9 m 0,-9 -9,9"
+       class="arrowMarkerPath"
+       style="stroke-width:2;stroke-dasharray:1, 0"
+       id="path7" />
+  </marker>
+  <marker
+     id="my-svg_flowchart-v2-crossEnd-margin"
+     class="marker cross flowchart-v2"
+     viewBox="0 0 15 15"
+     refX="17.700001"
+     refY="7.5"
+     markerUnits="userSpaceOnUse"
+     markerWidth="12"
+     markerHeight="12"
+     orient="auto">
+    <path
+       d="M 1,1 14,14 M 1,14 14,1"
+       class="arrowMarkerPath"
+       style="stroke-width:2.5"
+       id="path8" />
+  </marker>
+  <marker
+     id="my-svg_flowchart-v2-crossStart-margin"
+     class="marker cross flowchart-v2"
+     viewBox="0 0 15 15"
+     refX="-3.5"
+     refY="7.5"
+     markerUnits="userSpaceOnUse"
+     markerWidth="12"
+     markerHeight="12"
+     orient="auto">
+    <path
+       d="M 1,1 14,14 M 1,14 14,1"
+       class="arrowMarkerPath"
+       style="stroke-width:2.5;stroke-dasharray:1, 0"
+       id="path9" />
+  </marker>
+  <g
+     class="cluster"
+     id="my-svg-Persistence"
+     data-look="classic"
+     transform="translate(-889.96221,3.358348)">
+    <rect
+       x="1222.1875"
+       y="8"
+       width="300.6875"
+       height="286.04605"
+       id="rect9" />
+    <g
+       class="cluster-label"
+       transform="translate(1296.4141,8)"
+       id="g9">
+      <text
+         x="76.117188"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text9">Persistence Backends</text>
+    </g>
+  </g>
+  <g
+     class="cluster"
+     id="my-svg-Frontend"
+     data-look="classic"
+     transform="translate(-698.16492,-386.28626)">
+    <rect
+       x="1572.875"
+       y="391.04605"
+       width="650.1875"
+       height="303"
+       id="rect10" />
+    <g
+       class="cluster-label"
+       transform="translate(1848.9219,391.04605)"
+       id="g10">
+      <text
+         x="49.046875"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text10">Client-Side UI</text>
+    </g>
+  </g>
+  <g
+     class="cluster"
+     id="my-svg-AppRuntime"
+     data-look="classic">
+    <rect
+       x="328.07812"
+       y="314.04605"
+       width="1194.7969"
+       height="307"
+       id="rect11" />
+    <g
+       class="cluster-label"
+       transform="translate(859.80469,314.04605)"
+       id="g11">
+      <text
+         x="65.671875"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text11">Flask App Runtime</text>
+    </g>
+  </g>
+  <path
+     d="m 119.2,547.046 20.958,-16.5 c 20.957,-16.5 62.872,-49.5 97.685,-66 34.813,-16.5 62.524,-16.5 79.88,-16.5 17.355,0 24.355,0 27.855,0 h 3.5"
+     id="my-svg-L_U_R_0"
+     class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link"
+     data-edge="true"
+     data-et="edge"
+     data-id="L_U_R_0"
+     data-points="W3sieCI6MTE5LjIwMDMzNDgyMTQyODU3LCJ5Ijo1NDcuMDQ2MDUxMDI1MzkwNn0seyJ4IjoyNDQuOTQ1MzEyNSwieSI6NDQ4LjA0NjA1MTAyNTM5MDZ9LHsieCI6MzI4LjA3ODEyNSwieSI6NDQ4LjA0NjA1MTAyNTM5MDZ9LHsieCI6MzUzLjA3ODEyNSwieSI6NDQ4LjA0NjA1MTAyNTM5MDZ9XQ=="
+     data-look="classic"
+     marker-end="url(#my-svg_flowchart-v2-pointEnd)" />
+  <path
+     d="m 613.078,420.567 13.026,-2.754 c 13.026,-2.753 39.078,-8.26 64.464,-11.014 25.385,-2.753 50.104,-2.753 62.463,-2.753 h 12.36"
+     id="my-svg-L_R_L_0"
+     class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link"
+     data-edge="true"
+     data-et="edge"
+     data-id="L_R_L_0"
+     data-points="W3sieCI6NjEzLjA3ODEyNSwieSI6NDIwLjU2NjY5MzU3MTU1NDl9LHsieCI6NjkxLjIzNDM3NSwieSI6NDA0LjA0NjA1MTAyNTM5MDZ9LHsieCI6NzY5LjM5MDYyNSwieSI6NDA0LjA0NjA1MTAyNTM5MDZ9XQ=="
+     data-look="classic"
+     marker-end="url(#my-svg_flowchart-v2-pointEnd)" />
+  <path
+     d="M 787.1705,364.40944 C 764.64048,209.35421 813.31778,211.43478 580.83202,206.10945"
+     id="my-svg-L_L_P_0"
+     class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link"
+     data-edge="true"
+     data-et="edge"
+     data-id="L_L_P_0"
+     data-points="W3sieCI6MTAyOS4zOTA2MjUsInkiOjM3MC43NDE5MzQyNTExNzQ4fSx7IngiOjExMjUuNzg5MDYyNSwieSI6MzQ2LjA0NjA1MTAyNTM5MDZ9LHsieCI6MTIyMi4xODc1LCJ5IjozNDYuMDQ2MDUxMDI1MzkwNn0seyJ4IjoxMzQ5LjA1Nzc4NDUwNTUwOTUsInkiOjEyNC4yNzIwNDM0MjcxMDgwM31d"
+     data-look="classic"
+     marker-end="url(#my-svg_flowchart-v2-pointEnd)"
+     sodipodi:nodetypes="cc" />
+  <path
+     d="m 816.45861,365.13576 c 0,0 26.03378,-277.211478 -131.71949,-277.428035 L 575.03374,87.557126"
+     id="my-svg-L_L_F_0"
+     class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link"
+     data-edge="true"
+     data-et="edge"
+     data-id="L_L_F_0"
+     data-points="W3sieCI6MTAyOS4zOTA2MjUsInkiOjM5Ni4wMDcxMjYyODY3ODY4fSx7IngiOjExMjUuNzg5MDYyNSwieSI6MzkwLjA0NjA1MTAyNTM5MDZ9LHsieCI6MTIyMi4xODc1LCJ5IjozOTAuMDQ2MDUxMDI1MzkwNn0seyJ4IjoxMzM1Ljk2NzQxMTU4OTA0MDIsInkiOjI1Ny44Nzk3MzM0MTc0NjI0fV0="
+     data-look="classic"
+     marker-end="url(#my-svg_flowchart-v2-pointEnd)"
+     sodipodi:nodetypes="csc" />
+  <path
+     d="m 595.829,487.046 15.901,5.5 c 15.901,5.5 47.703,16.5 79.833,22 32.13,5.5 64.588,5.5 80.817,5.5 h 16.229"
+     id="my-svg-L_R_A_0"
+     class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link"
+     data-edge="true"
+     data-et="edge"
+     data-id="L_R_A_0"
+     data-points="W3sieCI6NTk1LjgyOTQyNzA4MzMzMzQsInkiOjQ4Ny4wNDYwNTEwMjUzOTA2fSx7IngiOjY5MS4yMzQzNzUsInkiOjUyMC4wNDYwNTEwMjUzOTA2fSx7IngiOjc5Mi42MDkzNzUsInkiOjUyMC4wNDYwNTEwMjUzOTA2fV0="
+     data-look="classic"
+     marker-end="url(#my-svg_flowchart-v2-pointEnd)" />
+  <path
+     d="m 1029.391,420.124 16.066,1.987 c 16.066,1.987 48.199,5.961 80.332,7.948 32.133,1.987 64.266,1.987 96.753,11.162 32.488,9.175 65.33,27.524 81.751,36.699 l 16.422,9.175"
+     id="my-svg-L_L_T_0"
+     class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link"
+     data-edge="true"
+     data-et="edge"
+     data-id="L_L_T_0"
+     data-points="W3sieCI6MTAyOS4zOTA2MjUsInkiOjQyMC4xMjM5MDA1MDI1OTgyNX0seyJ4IjoxMTI1Ljc4OTA2MjUsInkiOjQzMi4wNDYwNTEwMjUzOTA2fSx7IngiOjEyMjIuMTg3NSwieSI6NDMyLjA0NjA1MTAyNTM5MDZ9LHsieCI6MTMyNC4yMDY0NzMyMTQyODU4LCJ5Ijo0ODkuMDQ2MDUxMDI1MzkwNn1d"
+     data-look="classic"
+     marker-end="url(#my-svg_flowchart-v2-pointEnd)" />
+  <path
+     d="m 1006.172,520.046 h 19.936 c 19.936,0 59.809,0 95.811,0 36.003,0 68.136,0 87.702,-0.093 19.567,-0.093 26.567,-0.279 30.068,-0.373 l 3.5,-0.093"
+     id="my-svg-L_A_T_0"
+     class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link"
+     data-edge="true"
+     data-et="edge"
+     data-id="L_A_T_0"
+     data-points="W3sieCI6MTAwNi4xNzE4NzUsInkiOjUyMC4wNDYwNTEwMjUzOTA2fSx7IngiOjExMjUuNzg5MDYyNSwieSI6NTIwLjA0NjA1MTAyNTM5MDZ9LHsieCI6MTIyMi4xODc1LCJ5Ijo1MjAuMDQ2MDUxMDI1MzkwNn0seyJ4IjoxMjQ3LjE4NzUsInkiOjUxOS4zODA5MDg2NDMzNDk1fV0="
+     data-look="classic"
+     marker-end="url(#my-svg_flowchart-v2-pointEnd)" />
+  <path
+     d="m 1316.925,543.046 -15.79,7.667 c -15.789,7.666 -47.368,23 -79.224,30.666 -31.856,7.667 -63.989,7.667 -117.789,7.667 -53.799,0 -129.265,0 -201.691,0 -72.426,0 -141.811,0 -211.197,0 -69.385,0 -138.77,0 -199.296,0 -60.527,0 -112.193,0 -151.882,0 -39.689,0 -67.4,0 -94.447,-1.236 -27.047,-1.237 -53.431,-3.71 -66.622,-4.946 l -13.192,-1.236"
+     id="my-svg-L_T_U_0"
+     class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link"
+     data-edge="true"
+     data-et="edge"
+     data-id="L_T_U_0"
+     data-points="W3sieCI6MTMxNi45MjQ2NTc1MzQyNDY1LCJ5Ijo1NDMuMDQ2MDUxMDI1MzkwNn0seyJ4IjoxMjIyLjE4NzUsInkiOjU4OS4wNDYwNTEwMjUzOTA2fSx7IngiOjExMjUuNzg5MDYyNSwieSI6NTg5LjA0NjA1MTAyNTM5MDZ9LHsieCI6ODk5LjM5MDYyNSwieSI6NTg5LjA0NjA1MTAyNTM5MDZ9LHsieCI6NjkxLjIzNDM3NSwieSI6NTg5LjA0NjA1MTAyNTM5MDZ9LHsieCI6NDgzLjA3ODEyNSwieSI6NTg5LjA0NjA1MTAyNTM5MDZ9LHsieCI6MzI4LjA3ODEyNSwieSI6NTg5LjA0NjA1MTAyNTM5MDZ9LHsieCI6MjQ0Ljk0NTMxMjUsInkiOjU4OS4wNDYwNTEwMjUzOTA2fSx7IngiOjE2MS44MTI1LCJ5Ijo1ODEuMjU0MjUyMTQ4MTYzM31d"
+     data-look="classic"
+     marker-end="url(#my-svg_flowchart-v2-pointEnd)" />
+  <path
+     d="M 1371.2637,488.25443 C 891.15326,297.76822 672.83158,156.61436 901.38009,69.926019"
+     id="my-svg-L_T_H_0"
+     class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link"
+     data-edge="true"
+     data-et="edge"
+     data-id="L_T_H_0"
+     data-points="W3sieCI6MTQzNi45NjQyODU3MTQyODU4LCJ5Ijo0ODkuMDQ2MDUxMDI1MzkwNn0seyJ4IjoxNTIyLjg3NSwieSI6NDUzLjA0NjA1MTAyNTM5MDZ9LHsieCI6MTU0Ny44NzUsInkiOjQ1My4wNDYwNTEwMjUzOTA2fSx7IngiOjE1NzIuODc1LCJ5Ijo0NTMuMDQ2MDUxMDI1MzkwNn0seyJ4IjoxNjA5LjA4NTkzNzUsInkiOjQ1My4wNDYwNTEwMjUzOTA2fV0="
+     data-look="classic"
+     marker-end="url(#my-svg_flowchart-v2-pointEnd)"
+     sodipodi:nodetypes="cc" />
+  <path
+     d="M 1402.4184,486.05295 C 1605.7619,637.5413 940.6252,74.173408 1214.7129,80.647178"
+     id="my-svg-L_T_J_0"
+     class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link"
+     data-edge="true"
+     data-et="edge"
+     data-id="L_T_J_0"
+     data-points="W3sieCI6MTQ0OS4xMjE0NjIyNjQxNTEsInkiOjU0My4wNDYwNTEwMjUzOTA2fSx7IngiOjE1MjIuODc1LCJ5Ijo1NjkuMDQ2MDUxMDI1MzkwNn0seyJ4IjoxNTQ3Ljg3NSwieSI6NTY5LjA0NjA1MTAyNTM5MDZ9LHsieCI6MTU3Mi44NzUsInkiOjU2OS4wNDYwNTEwMjUzOTA2fSx7IngiOjE1OTcuODc1LCJ5Ijo1NjkuMDQ2MDUxMDI1MzkwNn1d"
+     data-look="classic"
+     marker-end="url(#my-svg_flowchart-v2-pointEnd)"
+     sodipodi:nodetypes="cc" />
+  <path
+     d="m 1333.199,127.97362 c 1.3996,40.87601 66.7659,31.83245 67.6585,71.5868"
+     id="my-svg-L_J_C_0"
+     class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link"
+     data-edge="true"
+     data-et="edge"
+     data-id="L_J_C_0"
+     data-points="W3sieCI6MTg1Ny44NzUsInkiOjU2OS4wNDYwNTEwMjUzOTA2fSx7IngiOjE5MzQuMzM1OTM3NSwieSI6NTY5LjA0NjA1MTAyNTM5MDZ9LHsieCI6MjAzMS41MzIzNjYwNzE0Mjg3LCJ5Ijo2MDUuMDQ2MDUxMDI1MzkwNn1d"
+     data-look="classic"
+     marker-end="url(#my-svg_flowchart-v2-pointEnd)"
+     sodipodi:nodetypes="cc" />
+  <path
+     d="m 1503.6865,228.2903 c 0,0 194.012,424.7557 44.1885,424.7557 H 1501.984 1372.531 1231.178 1104.122 902.431 691.234 491.938 340.056 c -39.689,0 -67.4,0 -98.214,-8.372 -30.815,-8.371 -64.734,-25.114 -81.693,-33.486 l -16.959,-8.371"
+     id="my-svg-L_C_U_0"
+     class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link"
+     data-edge="true"
+     data-et="edge"
+     data-id="L_C_U_0"
+     data-points="W3sieCI6MjAxMC43OTY4NzUsInkiOjY0My42MDYwODIyNTgxNjY3fSx7IngiOjE5MzQuMzM1OTM3NSwieSI6NjUzLjA0NjA1MTAyNTM5MDZ9LHsieCI6MTcyNy44NzUsInkiOjY1My4wNDYwNTEwMjUzOTA2fSx7IngiOjE1NzIuODc1LCJ5Ijo2NTMuMDQ2MDUxMDI1MzkwNn0seyJ4IjoxNTQ3Ljg3NSwieSI6NjUzLjA0NjA1MTAyNTM5MDZ9LHsieCI6MTUyMi44NzUsInkiOjY1My4wNDYwNTEwMjUzOTA2fSx7IngiOjEzNzIuNTMxMjUsInkiOjY1My4wNDYwNTEwMjUzOTA2fSx7IngiOjEyMjIuMTg3NSwieSI6NjUzLjA0NjA1MTAyNTM5MDZ9LHsieCI6MTEyNS43ODkwNjI1LCJ5Ijo2NTMuMDQ2MDUxMDI1MzkwNn0seyJ4Ijo4OTkuMzkwNjI1LCJ5Ijo2NTMuMDQ2MDUxMDI1MzkwNn0seyJ4Ijo2OTEuMjM0Mzc1LCJ5Ijo2NTMuMDQ2MDUxMDI1MzkwNn0seyJ4Ijo0ODMuMDc4MTI1LCJ5Ijo2NTMuMDQ2MDUxMDI1MzkwNn0seyJ4IjozMjguMDc4MTI1LCJ5Ijo2NTMuMDQ2MDUxMDI1MzkwNn0seyJ4IjoyNDQuOTQ1MzEyNSwieSI6NjUzLjA0NjA1MTAyNTM5MDZ9LHsieCI6MTM5LjYwMzE0NDc3ODQ4MSwieSI6NjAxLjA0NjA1MTAyNTM5MDZ9XQ=="
+     data-look="classic"
+     marker-end="url(#my-svg_flowchart-v2-pointEnd)"
+     sodipodi:nodetypes="cccccccccsccc" />
+  <g
+     class="edgeLabel"
+     transform="translate(264.73457,437.75564)"
+     id="g15">
+    <g
+       class="label"
+       data-id="L_U_R_0"
+       transform="translate(-58.132812,-12)"
+       id="g14">
+      <text
+         x="58.132812"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text13">HTTP GET/POST</text>
+    </g>
+  </g>
+  <g
+     class="edgeLabel"
+     id="g17">
+    <g
+       class="label"
+       data-id="L_R_L_0"
+       id="g16">
+      <text
+         x="0"
+         y="0"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text15" />
+    </g>
+  </g>
+  <g
+     class="edgeLabel"
+     transform="translate(1125.7891,346.04605)"
+     id="g19">
+    <g
+       class="label"
+       data-id="L_L_P_0"
+       transform="translate(-68.992187,-12)"
+       id="g18">
+      <text
+         x="68.992188"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text17">Primary read/write</text>
+    </g>
+  </g>
+  <g
+     class="edgeLabel"
+     transform="translate(1125.7891,390.04605)"
+     id="g21">
+    <g
+       class="label"
+       data-id="L_L_F_0"
+       transform="translate(-71.398437,-12)"
+       id="g20">
+      <text
+         x="71.398438"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text19">Fallback read/write</text>
+    </g>
+  </g>
+  <g
+     class="edgeLabel"
+     id="g23">
+    <g
+       class="label"
+       data-id="L_R_A_0"
+       id="g22">
+      <text
+         x="0"
+         y="0"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text21" />
+    </g>
+  </g>
+  <g
+     class="edgeLabel"
+     id="g25">
+    <g
+       class="label"
+       data-id="L_L_T_0"
+       id="g24">
+      <text
+         x="0"
+         y="0"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text23" />
+    </g>
+  </g>
+  <g
+     class="edgeLabel"
+     id="g27">
+    <g
+       class="label"
+       data-id="L_A_T_0"
+       id="g26">
+      <text
+         x="0"
+         y="0"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text25" />
+    </g>
+  </g>
+  <g
+     class="edgeLabel"
+     transform="translate(691.23437,589.04605)"
+     id="g29">
+    <g
+       class="label"
+       data-id="L_T_U_0"
+       transform="translate(-53.15625,-12)"
+       id="g28">
+      <text
+         x="53.15625"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text27">HTML response</text>
+    </g>
+  </g>
+  <g
+     class="edgeLabel"
+     id="g31">
+    <g
+       class="label"
+       data-id="L_T_H_0"
+       id="g30">
+      <text
+         x="0"
+         y="0"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text29" />
+    </g>
+  </g>
+  <g
+     class="edgeLabel"
+     id="g33">
+    <g
+       class="label"
+       data-id="L_T_J_0"
+       id="g32">
+      <text
+         x="0"
+         y="0"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text31" />
+    </g>
+  </g>
+  <g
+     class="edgeLabel"
+     transform="translate(1117.8734,641.1725)"
+     id="g37">
+    <g
+       class="label"
+       data-id="L_C_U_0"
+       transform="translate(-49.460937,-12)"
+       id="g36">
+      <text
+         x="49.460938"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text35">Render charts</text>
+    </g>
+  </g>
+  <g
+     class="node default"
+     id="my-svg-flowchart-U-0"
+     data-look="classic"
+     transform="translate(84.90625,574.04605)">
+    <rect
+       class="basic label-container"
+       x="-76.90625"
+       y="-27"
+       width="153.8125"
+       height="54"
+       id="rect38" />
+    <g
+       class="label"
+       transform="translate(-46.90625,-12)"
+       id="g39">
+      <rect
+         id="rect39"
+         width="0"
+         height="0"
+         x="0"
+         y="0" />
+      <text
+         x="46.90625"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text39">User Browser</text>
+    </g>
+  </g>
+  <g
+     class="node default"
+     id="my-svg-flowchart-R-1"
+     data-look="classic"
+     transform="translate(483.07812,448.04605)">
+    <rect
+       class="basic label-container"
+       x="-130"
+       y="-39"
+       width="260"
+       height="78"
+       id="rect40" />
+    <g
+       class="label"
+       transform="translate(-100,-24)"
+       id="g41">
+      <rect
+         id="rect41"
+         width="0"
+         height="0"
+         x="0"
+         y="0" />
+      <text
+         x="100"
+         y="24"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text41">Flask Routes and Controllers</text>
+    </g>
+  </g>
+  <g
+     class="node default"
+     id="my-svg-flowchart-L-2"
+     data-look="classic"
+     transform="translate(899.39062,404.04605)">
+    <rect
+       class="basic label-container"
+       x="-130"
+       y="-39"
+       width="260"
+       height="78"
+       id="rect42" />
+    <g
+       class="label"
+       transform="translate(-100,-24)"
+       id="g43">
+      <rect
+         id="rect43"
+         width="0"
+         height="0"
+         x="0"
+         y="0" />
+      <text
+         x="100"
+         y="24"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text43">Data Access and Normalization Layer</text>
+    </g>
+  </g>
+  <g
+     class="node default"
+     id="my-svg-flowchart-A-3"
+     data-look="classic"
+     transform="translate(899.39062,520.04605)">
+    <rect
+       class="basic label-container"
+       x="-106.78125"
+       y="-27"
+       width="213.5625"
+       height="54"
+       id="rect44" />
+    <g
+       class="label"
+       transform="translate(-76.78125,-12)"
+       id="g45">
+      <rect
+         id="rect45"
+         width="0"
+         height="0"
+         x="0"
+         y="0" />
+      <text
+         x="76.78125"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text45">Analytics Aggregation</text>
+    </g>
+  </g>
+  <g
+     class="node default"
+     id="my-svg-flowchart-T-4"
+     data-look="classic"
+     transform="translate(1372.5313,516.04605)">
+    <rect
+       class="basic label-container"
+       x="-125.34375"
+       y="-27"
+       width="250.6875"
+       height="54"
+       id="rect46" />
+    <g
+       class="label"
+       transform="translate(-95.34375,-12)"
+       id="g47">
+      <rect
+         id="rect47"
+         width="0"
+         height="0"
+         x="0"
+         y="0" />
+      <text
+         x="95.34375"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text47">Jinja2 Template Rendering</text>
+    </g>
+  </g>
+  <g
+     class="node default"
+     id="my-svg-flowchart-H-5"
+     data-look="classic"
+     transform="translate(1024.1691,77.841774)">
+    <rect
+       class="basic label-container"
+       x="-118.78906"
+       y="-27"
+       width="237.57812"
+       height="54"
+       id="rect48" />
+    <g
+       class="label"
+       transform="translate(-88.789062,-12)"
+       id="g49">
+      <rect
+         id="rect49"
+         width="0"
+         height="0"
+         x="0"
+         y="0" />
+      <text
+         x="88.789062"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text49">Rendered HTML and Tabs</text>
+    </g>
+  </g>
+  <g
+     class="node default"
+     id="my-svg-flowchart-J-6"
+     data-look="classic"
+     transform="translate(1353.4624,89.354511)">
+    <rect
+       class="basic label-container"
+       x="-130"
+       y="-39"
+       width="260"
+       height="78"
+       id="rect50" />
+    <g
+       class="label"
+       transform="translate(-100,-24)"
+       id="g51">
+      <rect
+         id="rect51"
+         width="0"
+         height="0"
+         x="0"
+         y="0" />
+      <text
+         x="100"
+         y="24"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text51">Embedded JSON Script Blocks</text>
+    </g>
+  </g>
+  <g
+     class="node default"
+     id="my-svg-flowchart-C-7"
+     data-look="classic"
+     transform="translate(1411.8058,229.92839)">
+    <rect
+       class="basic label-container"
+       x="-93.632812"
+       y="-27"
+       width="187.26562"
+       height="54"
+       id="rect52" />
+    <g
+       class="label"
+       transform="translate(-63.632812,-12)"
+       id="g53">
+      <rect
+         id="rect53"
+         width="0"
+         height="0"
+         x="0"
+         y="0" />
+      <text
+         x="63.632812"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text53">Chart.js Renderer</text>
+    </g>
+  </g>
+  <g
+     class="node default"
+     id="my-svg-flowchart-P-8"
+     data-look="classic"
+     transform="translate(487.04689,86.16431)">
+    <path
+       d="m 0,14.283609 a 83.304687,14.283609 0 0 0 166.60937,0 83.304687,14.283609 0 0 0 -166.60937,0 v 53.28361 a 83.304687,14.283609 0 0 0 166.60937,0 v -53.28361"
+       class="basic label-container outer-path"
+       transform="translate(-83.304687,-40.925414)"
+       id="path53" />
+    <g
+       class="label"
+       transform="translate(-75.804687,-2)"
+       id="g54">
+      <rect
+         id="rect54"
+         width="0"
+         height="0"
+         x="0"
+         y="0" />
+      <text
+         x="75.804688"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text54">Postgres JSONB Store</text>
+    </g>
+  </g>
+  <g
+     class="node default"
+     id="my-svg-flowchart-F-9"
+     data-look="classic"
+     transform="translate(483.68854,209.11229)">
+    <path
+       d="m 0,15.065074 a 94.773437,15.065074 0 0 0 189.54687,0 94.773437,15.065074 0 0 0 -189.54687,0 v 54.065074 a 94.773437,15.065074 0 0 0 189.54687,0 V 15.065074"
+       class="basic label-container outer-path"
+       transform="translate(-94.773437,-42.097611)"
+       id="path54" />
+    <g
+       class="label"
+       transform="translate(-87.273437,-2)"
+       id="g55">
+      <rect
+         id="rect55"
+         width="0"
+         height="0"
+         x="0"
+         y="0" />
+      <text
+         x="87.273438"
+         y="12"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text55">Local data.json Fallback</text>
+    </g>
+  </g>
+  <defs
+     id="defs58">
+    <filter
+       id="my-svg-drop-shadow"
+       height="130%"
+       width="130%">
+      <feDropShadow
+         dx="4"
+         dy="4"
+         stdDeviation="0"
+         flood-opacity="0.06"
+         flood-color="#000000" />
+    </filter>
+  </defs>
+  <defs
+     id="defs59">
+    <filter
+       id="my-svg-drop-shadow-small"
+       height="150%"
+       width="150%">
+      <feDropShadow
+         dx="2"
+         dy="2"
+         stdDeviation="0"
+         flood-opacity="0.06"
+         flood-color="#000000" />
+    </filter>
+  </defs>
+  <linearGradient
+     id="my-svg-gradient"
+     gradientUnits="objectBoundingBox"
+     x1="0%"
+     y1="0%"
+     x2="100%"
+     y2="0%">
+    <stop
+       offset="0%"
+       stop-color="hsl(0, 0%, 83.3333333333%)"
+       stop-opacity="1"
+       id="stop59" />
+    <stop
+       offset="100%"
+       stop-color="hsl(0, 0%, 88.9215686275%)"
+       stop-opacity="1"
+       id="stop60" />
+  </linearGradient>
+  <g
+     class="edgeLabel"
+     transform="translate(1262.8698,154.65607)"
+     id="g35"
+     style="text-align:center">
+    <g
+       class="label"
+       data-id="L_J_C_0"
+       transform="translate(-51.460937,-12)"
+       id="g34"
+       style="color:#000000;font-family:'trebuchet ms', verdana, arial, sans-serif">
+      <text
+         x="105.28771"
+         y="25.852478"
+         text-anchor="middle"
+         dominant-baseline="middle"
+         font-family="Arial"
+         font-size="14px"
+         id="text33"
+         style="color:#000000;fill:#000000">Parse datasets</text>
+    </g>
+  </g>
+</svg>

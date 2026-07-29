@@ -22,6 +22,7 @@
     .solution-list-item-dim { opacity: .45; }
     .kb-solution-detail { display: none; }
     .kb-solution-detail.kb-solution-detail-visible { display: block; }
+    .kb-solution-detail, .approach-detail-card { scroll-margin-top: 1rem; }
     .approach-cluster { border: 1px dashed #b6c8ea; border-radius: .65rem; background: #f8fbff; padding: .6rem; }
     .approach-cluster-title { font-size: .82rem; letter-spacing: .02em; text-transform: uppercase; color: #31508d; font-weight: 700; }
     .approach-solution-chip { display: inline-block; margin: .2rem .35rem .2rem 0; padding: .3rem .6rem; border-radius: 999px; border: 1px solid #9fb6e7; background: #eaf1ff; color: #193463; text-decoration: none; font-size: .86rem; }
@@ -1756,7 +1757,15 @@
       let activeApproachId = null;
       let activeSolutionId = '';
 
-      function applyHighlight() {
+      function scrollActiveSelectionIntoView() {
+        const activeDetail = document.querySelector('.kb-solution-detail-visible, .approach-detail-card-visible');
+        if (activeDetail) {
+          activeDetail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+
+      function applyHighlight(options = {}) {
+        const { scrollSelection = false } = options;
         const activeModelType = modelTypeFilter ? modelTypeFilter.value : '';
         const activePromptingTechnique = promptingTechniqueFilter ? promptingTechniqueFilter.value : '';
         const activeOtherTechnique = otherTechniqueFilter ? otherTechniqueFilter.value : '';
@@ -1824,11 +1833,12 @@
           solutionListPlaceholder.style.display = hasActiveSelection ? 'none' : '';
         }
 
-        showSolutionDetails(activeSolutionId);
-        showApproachDetails(activeApproachId);
+        showSolutionDetails(activeSolutionId, { shouldScroll: scrollSelection });
+        showApproachDetails(activeApproachId, { shouldScroll: scrollSelection });
       }
 
-      function showSolutionDetails(solutionId) {
+      function showSolutionDetails(solutionId, options = {}) {
+        const { shouldScroll = false } = options;
         activeSolutionId = solutionId || '';
         const activeModelType = modelTypeFilter ? modelTypeFilter.value : '';
         const activePromptingTechnique = promptingTechniqueFilter ? promptingTechniqueFilter.value : '';
@@ -1854,9 +1864,14 @@
         if (placeholder) {
           placeholder.style.display = shown ? 'none' : 'block';
         }
+
+        if (shown && shouldScroll) {
+          requestAnimationFrame(scrollActiveSelectionIntoView);
+        }
       }
 
-      function showApproachDetails(approachId) {
+      function showApproachDetails(approachId, options = {}) {
+        const { shouldScroll = false } = options;
         const activeApproach = approachId || '';
         let shown = false;
 
@@ -1870,6 +1885,10 @@
 
         if (approachPlaceholder) {
           approachPlaceholder.style.display = shown ? 'none' : 'block';
+        }
+
+        if (shown && shouldScroll) {
+          requestAnimationFrame(scrollActiveSelectionIntoView);
         }
       }
 
@@ -1919,7 +1938,7 @@
           const clickedApproach = this.dataset.approachId;
           activeApproachId = activeApproachId === clickedApproach ? null : clickedApproach;
           activeSolutionId = '';
-          applyHighlight();
+          applyHighlight({ scrollSelection: true });
         });
       });
 
@@ -1943,8 +1962,8 @@
         link.addEventListener('click', function (event) {
           event.preventDefault();
           activeApproachId = null;
-          showSolutionDetails(this.dataset.solutionId);
-          applyHighlight();
+          showSolutionDetails(this.dataset.solutionId, { shouldScroll: true });
+          applyHighlight({ scrollSelection: true });
         });
       });
 
