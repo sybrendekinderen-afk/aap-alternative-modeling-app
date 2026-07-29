@@ -53,6 +53,9 @@
         <button class="nav-link active" id="kb-navigation-tab" data-bs-toggle="tab" data-bs-target="#kb-navigation-pane" type="button" role="tab" aria-controls="kb-navigation-pane" aria-selected="true">Knowledge Base Navigation</button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link" id="kb-visualization-tab" data-bs-toggle="tab" data-bs-target="#kb-visualization-pane" type="button" role="tab" aria-controls="kb-visualization-pane" aria-selected="false">Knowledge Base Statistics</button>
+      </li>
+      <li class="nav-item" role="presentation">
         <button class="nav-link" id="kb-population-tab" data-bs-toggle="tab" data-bs-target="#kb-population-pane" type="button" role="tab" aria-controls="kb-population-pane" aria-selected="false">Knowledge Base Population</button>
       </li>
     </ul>
@@ -531,6 +534,45 @@
         </div>
       </div>
     {% endfor %}
+
+      </div>
+
+      <div class="tab-pane fade" id="kb-visualization-pane" role="tabpanel" aria-labelledby="kb-visualization-tab" tabindex="0">
+    <div class="card mb-4">
+      <div class="card-header"><h3 class="h5 mb-0">Knowledge Base Statistics</h3></div>
+      <div class="card-body">
+        <div class="row g-4">
+          <div class="col-lg-6">
+            <div class="card subtle-panel h-100">
+              <div class="card-header"><h4 class="h6 mb-0">LLM Technique Usage Count</h4></div>
+              <div class="card-body">
+                <p class="text-muted small">Number of times each LLM technique is used across solutions, modeling approaches, and modeling problems.</p>
+                <div class="alert alert-light border" id="technique-chart-empty" {% if technique_usage_counts %}style="display: none;"{% endif %}>
+                  No LLM technique usage data available yet.
+                </div>
+                <div style="height: 320px;" {% if not technique_usage_counts %}class="d-none"{% endif %} id="technique-chart-wrapper">
+                  <canvas id="technique-usage-chart" aria-label="Bar chart of LLM technique usage counts" role="img"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-6">
+            <div class="card subtle-panel h-100">
+              <div class="card-header"><h4 class="h6 mb-0">Approach Count by Modeling Notation</h4></div>
+              <div class="card-body">
+                <p class="text-muted small">Number of modeling approaches per notation, inferred via each approach's linked modeling task.</p>
+                <div class="alert alert-light border" id="notation-chart-empty" {% if approach_count_by_notation %}style="display: none;"{% endif %}>
+                  No modeling notation data available yet.
+                </div>
+                <div style="height: 320px;" {% if not approach_count_by_notation %}class="d-none"{% endif %} id="notation-chart-wrapper">
+                  <canvas id="notation-approach-chart" aria-label="Bar chart of approach counts by modeling notation" role="img"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
       </div>
 
@@ -1460,6 +1502,9 @@
 
   </div>
 
+  <script type="application/json" id="technique-usage-data">{{ technique_usage_counts|tojson }}</script>
+  <script type="application/json" id="notation-approach-data">{{ approach_count_by_notation|tojson }}</script>
+
   <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -1476,6 +1521,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script>
     function parseCsvIds(rawValue) {
       if (!rawValue) return [];
@@ -1483,6 +1529,86 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+      const techniqueUsageDataElement = document.getElementById('technique-usage-data');
+      const notationApproachDataElement = document.getElementById('notation-approach-data');
+      const techniqueUsageCounts = techniqueUsageDataElement ? JSON.parse(techniqueUsageDataElement.textContent || '[]') : [];
+      const approachCountByNotation = notationApproachDataElement ? JSON.parse(notationApproachDataElement.textContent || '[]') : [];
+
+      if (window.Chart) {
+        if (Array.isArray(techniqueUsageCounts) && techniqueUsageCounts.length > 0) {
+          const techniqueCanvas = document.getElementById('technique-usage-chart');
+          if (techniqueCanvas) {
+            new Chart(techniqueCanvas, {
+              type: 'bar',
+              data: {
+                labels: techniqueUsageCounts.map(function (item) { return item.label; }),
+                datasets: [{
+                  label: 'Usage count',
+                  data: techniqueUsageCounts.map(function (item) { return item.count; }),
+                  backgroundColor: 'rgba(13, 110, 253, 0.6)',
+                  borderColor: 'rgba(13, 110, 253, 1)',
+                  borderWidth: 1,
+                }],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                  x: {
+                    beginAtZero: true,
+                    ticks: {
+                      precision: 0,
+                    },
+                  },
+                },
+                plugins: {
+                  legend: {
+                    display: false,
+                  },
+                },
+              },
+            });
+          }
+        }
+
+        if (Array.isArray(approachCountByNotation) && approachCountByNotation.length > 0) {
+          const notationCanvas = document.getElementById('notation-approach-chart');
+          if (notationCanvas) {
+            new Chart(notationCanvas, {
+              type: 'bar',
+              data: {
+                labels: approachCountByNotation.map(function (item) { return item.label; }),
+                datasets: [{
+                  label: 'Approach count',
+                  data: approachCountByNotation.map(function (item) { return item.count; }),
+                  backgroundColor: 'rgba(25, 135, 84, 0.6)',
+                  borderColor: 'rgba(25, 135, 84, 1)',
+                  borderWidth: 1,
+                }],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      precision: 0,
+                    },
+                  },
+                },
+                plugins: {
+                  legend: {
+                    display: false,
+                  },
+                },
+              },
+            });
+          }
+        }
+      }
+
       // Allow single-click toggling of options in multi-select lists (e.g. Knowledge Base
       // Population forms) so an accidentally clicked item can be deselected just by
       // clicking it again, without needing to hold Ctrl/Cmd.

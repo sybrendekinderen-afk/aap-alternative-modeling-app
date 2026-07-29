@@ -716,6 +716,68 @@ def get_source_modeling_approach_lookup(modeling_approaches, sources):
     return lookup
 
 
+def get_llm_technique_usage_counts(solutions, modeling_approaches, modeling_problems, prompting_techniques, other_techniques):
+    prompting_lookup = {technique.get("id"): technique for technique in prompting_techniques}
+    other_lookup = {technique.get("id"): technique for technique in other_techniques}
+    counts = {}
+
+    def add_count(bucket_label):
+        if not bucket_label:
+            return
+        counts[bucket_label] = counts.get(bucket_label, 0) + 1
+
+    def register_prompting_ids(ids):
+        for tid in list(dict.fromkeys(ids or [])):
+            technique = prompting_lookup.get(tid)
+            if technique:
+                add_count(f"Prompting: {technique.get('name', '').strip()}")
+
+    def register_other_ids(ids):
+        for tid in list(dict.fromkeys(ids or [])):
+            technique = other_lookup.get(tid)
+            if technique:
+                add_count(f"Other: {technique.get('name', '').strip()}")
+
+    for solution in solutions:
+        register_prompting_ids(solution.get("prompting_technique_ids", []))
+        register_other_ids(solution.get("other_technique_ids", []))
+
+    for approach in modeling_approaches:
+        register_prompting_ids(approach.get("prompting_technique_ids", []))
+        register_other_ids(approach.get("other_technique_ids", []))
+
+    for problem in modeling_problems:
+        register_prompting_ids(problem.get("prompting_technique_ids", []))
+        register_other_ids(problem.get("other_technique_ids", []))
+
+    return [
+        {"label": label, "count": count}
+        for label, count in sorted(counts.items(), key=lambda item: (-item[1], item[0].lower()))
+        if label.strip()
+    ]
+
+
+def get_approach_count_by_notation(modeling_approaches, modeling_tasks, model_types):
+    task_lookup = {task.get("id"): task for task in modeling_tasks}
+    model_type_lookup = {model_type.get("id"): model_type for model_type in model_types}
+    counts = {}
+
+    for approach in modeling_approaches:
+        task = task_lookup.get(approach.get("modeling_task_id"))
+        if not task:
+            continue
+        model_type = model_type_lookup.get(task.get("model_type_id"))
+        notation = "Unspecified"
+        if model_type:
+            notation = str(model_type.get("notation") or model_type.get("name") or "Unspecified").strip() or "Unspecified"
+        counts[notation] = counts.get(notation, 0) + 1
+
+    return [
+        {"label": notation, "count": count}
+        for notation, count in sorted(counts.items(), key=lambda item: (-item[1], item[0].lower()))
+    ]
+
+
 def get_next_source_id(sources):
     return max([source.get("id", 0) for source in sources], default=0) + 1
 
@@ -1021,6 +1083,18 @@ def home():
     modeling_tasks = store.get("modeling_tasks", [])
     modeling_problems = store.get("modeling_problems", [])
     modeling_approaches = store.get("modeling_approaches", [])
+    technique_usage_counts = get_llm_technique_usage_counts(
+        solutions,
+        modeling_approaches,
+        modeling_problems,
+        prompting_techniques,
+        other_techniques,
+    )
+    approach_count_by_notation = get_approach_count_by_notation(
+        modeling_approaches,
+        modeling_tasks,
+        model_types,
+    )
     return render_template(
         "index.html",
         solutions=solutions,
@@ -1050,7 +1124,9 @@ def home():
         modeling_approach_lookup=get_modeling_approach_lookup(modeling_approaches),
         modeling_problem_tree=build_modeling_problem_tree(modeling_problems),
         modeling_problem_solution_lookup=get_modeling_problem_solution_lookup(solutions, modeling_problems),
-        evidence_rigor_values=store.get("evidence_rigor_values", DEFAULT_EVIDENCE_RIGOR_VALUES)
+        evidence_rigor_values=store.get("evidence_rigor_values", DEFAULT_EVIDENCE_RIGOR_VALUES),
+        technique_usage_counts=technique_usage_counts,
+        approach_count_by_notation=approach_count_by_notation,
     )
 
 
