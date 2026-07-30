@@ -676,7 +676,7 @@ def get_llm_technique_usage_counts(solutions, modeling_approaches, modeling_prob
         for tid in list(dict.fromkeys(ids or [])):
             technique = prompting_lookup.get(tid)
             if technique:
-                add_count(f"Prompting: {technique.get('name', '').strip()}")
+                add_count(technique.get("name", "").strip())
 
     for solution in solutions:
         register_prompting_ids(solution.get("prompting_technique_ids", []))

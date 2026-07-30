@@ -470,7 +470,7 @@
                   {% for sid in approach.solution_ids %}
                     {% set linked_solution = solutions|selectattr('id', 'equalto', sid)|list|first %}
                     {% if linked_solution %}
-                      <a href="#solution-{{ linked_solution.id }}" class="badge bg-dark-subtle text-dark text-decoration-none me-1">{{ linked_solution.name }}</a>
+                      <a href="#solution-{{ linked_solution.id }}" class="badge bg-dark-subtle text-dark text-decoration-none me-1 solution-select-link" data-solution-id="{{ linked_solution.id }}">{{ linked_solution.name }}</a>
                     {% endif %}
                   {% endfor %}
                 {% else %}
@@ -1542,6 +1542,7 @@
           const techniqueCanvas = document.getElementById('technique-usage-chart');
           const techniqueWrapper = document.getElementById('technique-chart-wrapper');
           if (techniqueCanvas) {
+            const maxTechniqueCount = Math.max.apply(null, techniqueUsageCounts.map(function (item) { return Number(item.count) || 0; }));
             const techniqueCount = techniqueUsageCounts.length;
             const techniqueCanvasHeight = Math.max(320, techniqueCount * 38);
             const techniqueCanvasWidth = Math.max(820, (techniqueWrapper && techniqueWrapper.clientWidth) ? techniqueWrapper.clientWidth : 820);
@@ -1565,13 +1566,14 @@
                 indexAxis: 'y',
                 layout: {
                   padding: {
-                    right: 12,
+                    right: 48,
                   },
                 },
                 scales: {
                   x: {
                     beginAtZero: true,
                     position: 'top',
+                    max: maxTechniqueCount + 1,
                     ticks: {
                       precision: 0,
                     },
