@@ -33,7 +33,7 @@
     .task-pane-highlight { border-color: #9fb6e7 !important; background-color: #f8fbff; }
     .task-list-scroll { max-height: 320px; overflow-y: auto; }
     .task-problems-toggle { width: 1.25rem; height: 1.25rem; padding: 0; line-height: 1; }
-    .chart-scroll-vertical { height: 320px; overflow-y: auto; overflow-x: hidden; }
+    .chart-scroll-vertical { height: 320px; overflow-y: auto; overflow-x: auto; }
     .chart-scroll-horizontal { height: 320px; overflow-x: auto; overflow-y: hidden; }
   </style>
 </head>
@@ -1543,9 +1543,13 @@
           const techniqueWrapper = document.getElementById('technique-chart-wrapper');
           if (techniqueCanvas) {
             const maxTechniqueCount = Math.max.apply(null, techniqueUsageCounts.map(function (item) { return Number(item.count) || 0; }));
+            const techniqueHeadroom = Math.max(2, Math.ceil(maxTechniqueCount * 0.2));
             const techniqueCount = techniqueUsageCounts.length;
             const techniqueCanvasHeight = Math.max(320, techniqueCount * 38);
-            const techniqueCanvasWidth = Math.max(820, (techniqueWrapper && techniqueWrapper.clientWidth) ? techniqueWrapper.clientWidth : 820);
+            const techniqueCanvasWidth = Math.max(
+              920,
+              ((techniqueWrapper && techniqueWrapper.clientWidth) ? techniqueWrapper.clientWidth : 820) + 140
+            );
             techniqueCanvas.height = techniqueCanvasHeight;
             techniqueCanvas.width = techniqueCanvasWidth;
 
@@ -1566,14 +1570,14 @@
                 indexAxis: 'y',
                 layout: {
                   padding: {
-                    right: 48,
+                    right: 88,
                   },
                 },
                 scales: {
                   x: {
                     beginAtZero: true,
                     position: 'top',
-                    max: maxTechniqueCount + 1,
+                    max: maxTechniqueCount + techniqueHeadroom,
                     ticks: {
                       precision: 0,
                     },
