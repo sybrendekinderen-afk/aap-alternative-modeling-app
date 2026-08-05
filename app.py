@@ -885,6 +885,55 @@ def get_modeling_approach_effect_lookup(effects):
     return lookup
 
 
+def get_modeling_approach_prompting_technique_lookup(modeling_approaches, solutions):
+    solution_lookup = {solution.get("id"): solution for solution in solutions}
+    lookup = {}
+    for approach in modeling_approaches:
+        technique_ids = list(approach.get("prompting_technique_ids", []))
+        for solution_id in approach.get("solution_ids", []):
+            solution = solution_lookup.get(solution_id)
+            if solution:
+                technique_ids.extend(solution.get("prompting_technique_ids", []))
+        lookup[approach.get("id")] = list(dict.fromkeys(technique_ids))
+    return lookup
+
+
+def get_modeling_approach_other_technique_lookup(modeling_approaches, solutions):
+    solution_lookup = {solution.get("id"): solution for solution in solutions}
+    lookup = {}
+    for approach in modeling_approaches:
+        technique_ids = list(approach.get("other_technique_ids", []))
+        for solution_id in approach.get("solution_ids", []):
+            solution = solution_lookup.get(solution_id)
+            if solution:
+                technique_ids.extend(solution.get("other_technique_ids", []))
+        lookup[approach.get("id")] = list(dict.fromkeys(technique_ids))
+    return lookup
+
+
+def get_modeling_approach_underlying_llm_lookup(modeling_approaches, effects):
+    approach_effect_lookup = get_modeling_approach_effect_lookup(effects)
+    lookup = {}
+    for approach in modeling_approaches:
+        llm_ids = []
+        for effect in approach_effect_lookup.get(approach.get("id"), []):
+            underlying_llm_id = effect.get("underlying_llm_id")
+            if underlying_llm_id is not None:
+                llm_ids.append(underlying_llm_id)
+        lookup[approach.get("id")] = list(dict.fromkeys(llm_ids))
+    return lookup
+
+
+def get_modeling_approach_model_type_lookup(modeling_approaches, modeling_tasks):
+    task_lookup = {task.get("id"): task for task in modeling_tasks}
+    lookup = {}
+    for approach in modeling_approaches:
+        task = task_lookup.get(approach.get("modeling_task_id"))
+        model_type_id = task.get("model_type_id") if task else None
+        lookup[approach.get("id")] = [model_type_id] if model_type_id is not None else []
+    return lookup
+
+
 def get_solution_underlying_llm_lookup(solutions, effects):
     return {solution.get("id"): [] for solution in solutions}
 
@@ -1039,6 +1088,10 @@ def home():
         underlying_llms=underlying_llms,
         solution_effect_lookup=get_solution_effect_lookup(effects),
         modeling_approach_effect_lookup=get_modeling_approach_effect_lookup(effects),
+        modeling_approach_prompting_technique_lookup=get_modeling_approach_prompting_technique_lookup(modeling_approaches, solutions),
+        modeling_approach_other_technique_lookup=get_modeling_approach_other_technique_lookup(modeling_approaches, solutions),
+        modeling_approach_underlying_llm_lookup=get_modeling_approach_underlying_llm_lookup(modeling_approaches, effects),
+        modeling_approach_model_type_lookup=get_modeling_approach_model_type_lookup(modeling_approaches, modeling_tasks),
         solution_underlying_llm_lookup=get_solution_underlying_llm_lookup(solutions, effects),
         source_modeling_approach_lookup=get_source_modeling_approach_lookup(modeling_approaches, sources),
         solution_model_type_lookup=get_solution_model_type_lookup(solutions, modeling_approaches, modeling_tasks),

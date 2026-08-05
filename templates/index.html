@@ -73,13 +73,57 @@
             <div class="card primary-surface mb-3">
               <div class="card-header bg-primary text-white"><h4 class="h6 mb-0">Modeling Approaches</h4></div>
               <div class="card-body">
-                <p class="text-muted small mb-3">Primary pane: select a modeling task to reveal its approaches, then select an approach to highlight its solution cluster.</p>
+                <p class="text-muted small mb-3">Primary pane: select a modeling task to reveal its approaches, then select an approach to highlight its solution cluster. Filters below can also be applied to browse all Modeling Approaches without selecting a task.</p>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h5 class="h6 mb-0">Filters</h5>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#approach-filters-panel" aria-expanded="false" aria-controls="approach-filters-panel">Show</button>
+                </div>
+                <div class="collapse mb-3" id="approach-filters-panel">
+                  <div class="row g-2">
+                    <div class="col-12">
+                      <label for="approach-filter-technique" class="form-label form-label-sm mb-1">Filter by Prompting Technique (direct or via Solution)</label>
+                      <select id="approach-filter-technique" class="form-select form-select-sm">
+                        <option value="">All Prompting Techniques</option>
+                        {% for technique in prompting_techniques %}
+                          <option value="{{ technique.id }}">{{ technique.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="approach-filter-other-technique" class="form-label form-label-sm mb-1">Filter by Other Technique (direct or via Solution)</label>
+                      <select id="approach-filter-other-technique" class="form-select form-select-sm">
+                        <option value="">All Other Techniques</option>
+                        {% for technique in other_techniques %}
+                          <option value="{{ technique.id }}">{{ technique.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="approach-filter-model-type" class="form-label form-label-sm mb-1">Model Type (via Task)</label>
+                      <select id="approach-filter-model-type" class="form-select form-select-sm">
+                        <option value="">All Model Types</option>
+                        {% for model_type in model_types %}
+                          <option value="{{ model_type.id }}">{{ model_type.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="approach-filter-underlying-llm" class="form-label form-label-sm mb-1">Underlying LLM (via Effect)</label>
+                      <select id="approach-filter-underlying-llm" class="form-select form-select-sm">
+                        <option value="">All Underlying LLMs</option>
+                        {% for llm in underlying_llms %}
+                          <option value="{{ llm.id }}">{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+                </div>
                 <div class="alert alert-light border mb-0" id="approach-list-placeholder">
-                  Select a Modeling Task to view its Modeling Approaches.
+                  Select a Modeling Task, or apply a filter above, to view Modeling Approaches.
                 </div>
                 <ul class="list-group" id="kb-approach-list" style="display: none;">
                   {% for approach in modeling_approaches %}
-                    <li class="list-group-item kb-approach-list-item" data-approach-id="{{ approach.id }}" style="display: none;">
+                    <li class="list-group-item kb-approach-list-item" data-approach-id="{{ approach.id }}" data-prompting-technique-ids="{{ modeling_approach_prompting_technique_lookup.get(approach.id, [])|join(',') }}" data-other-technique-ids="{{ modeling_approach_other_technique_lookup.get(approach.id, [])|join(',') }}" data-model-type-ids="{{ modeling_approach_model_type_lookup.get(approach.id, [])|join(',') }}" data-underlying-llm-ids="{{ modeling_approach_underlying_llm_lookup.get(approach.id, [])|join(',') }}" style="display: none;">
                       <div>
                         <a href="#" class="fw-semibold text-decoration-none approach-select-link" data-approach-id="{{ approach.id }}">{{ approach.name }}</a>
                       </div>
@@ -1756,6 +1800,10 @@
       const promptingTechniqueFilter = document.getElementById('nav-filter-technique');
       const otherTechniqueFilter = document.getElementById('nav-filter-other-technique');
       const underlyingLlmFilter = document.getElementById('nav-filter-underlying-llm');
+      const approachModelTypeFilter = document.getElementById('approach-filter-model-type');
+      const approachPromptingTechniqueFilter = document.getElementById('approach-filter-technique');
+      const approachOtherTechniqueFilter = document.getElementById('approach-filter-other-technique');
+      const approachUnderlyingLlmFilter = document.getElementById('approach-filter-underlying-llm');
       let activeProblemId = null;
       let activeTaskId = null;
       let activeTaskProblemIds = [];
@@ -1776,6 +1824,11 @@
         const activePromptingTechnique = promptingTechniqueFilter ? promptingTechniqueFilter.value : '';
         const activeOtherTechnique = otherTechniqueFilter ? otherTechniqueFilter.value : '';
         const activeUnderlyingLlm = underlyingLlmFilter ? underlyingLlmFilter.value : '';
+        const activeApproachModelType = approachModelTypeFilter ? approachModelTypeFilter.value : '';
+        const activeApproachPromptingTechnique = approachPromptingTechniqueFilter ? approachPromptingTechniqueFilter.value : '';
+        const activeApproachOtherTechnique = approachOtherTechniqueFilter ? approachOtherTechniqueFilter.value : '';
+        const activeApproachUnderlyingLlm = approachUnderlyingLlmFilter ? approachUnderlyingLlmFilter.value : '';
+        const hasActiveApproachFilters = !!activeApproachModelType || !!activeApproachPromptingTechnique || !!activeApproachOtherTechnique || !!activeApproachUnderlyingLlm;
         const hasActiveSelection = !!activeProblemId || !!activeApproachId;
         let shown = false;
 
@@ -1803,13 +1856,24 @@
         });
 
         if (approachListEl) {
-          approachListEl.style.display = activeTaskId ? '' : 'none';
+          approachListEl.style.display = (activeTaskId || hasActiveApproachFilters) ? '' : 'none';
         }
         if (approachListPlaceholder) {
-          approachListPlaceholder.style.display = activeTaskId ? 'none' : '';
+          approachListPlaceholder.style.display = (activeTaskId || hasActiveApproachFilters) ? 'none' : '';
         }
         approachListItems.forEach(function (item) {
-          item.style.display = (!!activeTaskId && activeTaskApproachIds.includes(item.dataset.approachId)) ? '' : 'none';
+          const promptingTechniqueIds = parseCsvIds(item.dataset.promptingTechniqueIds);
+          const otherTechniqueIds = parseCsvIds(item.dataset.otherTechniqueIds);
+          const modelTypeIds = parseCsvIds(item.dataset.modelTypeIds);
+          const underlyingLlmIds = parseCsvIds(item.dataset.underlyingLlmIds);
+          const matchesTask = !activeTaskId || activeTaskApproachIds.includes(item.dataset.approachId);
+          const matchesPromptingTechnique = !activeApproachPromptingTechnique || promptingTechniqueIds.includes(activeApproachPromptingTechnique);
+          const matchesOtherTechnique = !activeApproachOtherTechnique || otherTechniqueIds.includes(activeApproachOtherTechnique);
+          const matchesModelType = !activeApproachModelType || modelTypeIds.includes(activeApproachModelType);
+          const matchesUnderlyingLlm = !activeApproachUnderlyingLlm || underlyingLlmIds.includes(activeApproachUnderlyingLlm);
+          const passesApproachFilters = matchesPromptingTechnique && matchesOtherTechnique && matchesModelType && matchesUnderlyingLlm;
+          const shouldShowApproach = (activeTaskId ? matchesTask : true) && (activeTaskId || hasActiveApproachFilters) && passesApproachFilters;
+          item.style.display = shouldShowApproach ? '' : 'none';
         });
 
         solutionItems.forEach(function (item) {
@@ -1965,6 +2029,22 @@
 
       if (underlyingLlmFilter) {
         underlyingLlmFilter.addEventListener('change', applyHighlight);
+      }
+
+      if (approachModelTypeFilter) {
+        approachModelTypeFilter.addEventListener('change', applyHighlight);
+      }
+
+      if (approachPromptingTechniqueFilter) {
+        approachPromptingTechniqueFilter.addEventListener('change', applyHighlight);
+      }
+
+      if (approachOtherTechniqueFilter) {
+        approachOtherTechniqueFilter.addEventListener('change', applyHighlight);
+      }
+
+      if (approachUnderlyingLlmFilter) {
+        approachUnderlyingLlmFilter.addEventListener('change', applyHighlight);
       }
 
       solutionLinks.forEach(function (link) {
