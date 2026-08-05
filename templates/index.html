@@ -187,7 +187,7 @@
             <div class="card solution-card">
               <div class="card-header"><h4 class="h6 mb-0">Modeling Solutions</h4></div>
               <div class="card-body">
-                <p class="text-muted small mb-3">Secondary pane: inspect solutions after selecting approaches, tasks, or problems.</p>
+                <p class="text-muted small mb-3">Secondary pane: inspect solutions after selecting approaches, tasks, or problems. Filters below can also be applied to browse all Modeling Solutions without selecting one of these first.</p>
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <h5 class="h6 mb-0">Filters</h5>
                   <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#solution-filters-panel" aria-expanded="false" aria-controls="solution-filters-panel">Show</button>
@@ -233,7 +233,7 @@
                   </div>
                 </div>
                 <div class="alert alert-light border mb-0" id="solution-list-placeholder">
-                  Select a Modeling Approach or Modeling Problem to view matching Modeling Solutions.
+                  Select a Modeling Approach or Modeling Problem, or apply a filter above, to view Modeling Solutions.
                 </div>
                 <ul class="list-group" id="kb-solution-list" style="display: none;">
                   {% for solution in solutions %}
@@ -1829,7 +1829,8 @@
         const activeApproachOtherTechnique = approachOtherTechniqueFilter ? approachOtherTechniqueFilter.value : '';
         const activeApproachUnderlyingLlm = approachUnderlyingLlmFilter ? approachUnderlyingLlmFilter.value : '';
         const hasActiveApproachFilters = !!activeApproachModelType || !!activeApproachPromptingTechnique || !!activeApproachOtherTechnique || !!activeApproachUnderlyingLlm;
-        const hasActiveSelection = !!activeProblemId || !!activeApproachId;
+        const hasActiveSolutionFilters = !!activeModelType || !!activePromptingTechnique || !!activeOtherTechnique || !!activeUnderlyingLlm;
+        const hasActiveSelection = !!activeProblemId || !!activeApproachId || hasActiveSolutionFilters;
         let shown = false;
 
         problemLinks.forEach(function (link) {
