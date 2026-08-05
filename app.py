@@ -715,6 +715,33 @@ def get_approach_count_by_notation(modeling_approaches, modeling_tasks, model_ty
     ]
 
 
+def get_approach_other_technique_count_by_year(modeling_approaches, sources):
+    source_lookup = {source.get("id"): source for source in sources}
+    other_technique_counts = {}
+    total_counts = {}
+
+    for approach in modeling_approaches:
+        source = source_lookup.get(approach.get("source_id"))
+        if not source:
+            continue
+        year = normalize_source_year(source.get("year"))
+        if not year:
+            continue
+        total_counts[year] = total_counts.get(year, 0) + 1
+        other_technique_counts.setdefault(year, 0)
+        if approach.get("other_technique_ids"):
+            other_technique_counts[year] += 1
+
+    return [
+        {
+            "year": year,
+            "count": other_technique_counts[year],
+            "total_count": total_counts.get(year, 0),
+        }
+        for year in sorted(total_counts.keys(), key=lambda value: int(value))
+    ]
+
+
 def get_next_source_id(sources):
     return max([source.get("id", 0) for source in sources], default=0) + 1
 
@@ -1080,6 +1107,10 @@ def home():
         modeling_tasks,
         model_types,
     )
+    approach_other_technique_count_by_year = get_approach_other_technique_count_by_year(
+        modeling_approaches,
+        sources,
+    )
     return render_template(
         "index.html",
         solutions=solutions,
@@ -1116,6 +1147,7 @@ def home():
         evidence_rigor_values=store.get("evidence_rigor_values", DEFAULT_EVIDENCE_RIGOR_VALUES),
         technique_usage_counts=technique_usage_counts,
         approach_count_by_notation=approach_count_by_notation,
+        approach_other_technique_count_by_year=approach_other_technique_count_by_year,
     )
 
 
