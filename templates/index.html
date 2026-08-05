@@ -1903,7 +1903,9 @@
           event.preventDefault();
           const clickedProblem = this.dataset.problemId;
           activeProblemId = activeProblemId === clickedProblem ? null : clickedProblem;
-          applyHighlight();
+          activeApproachId = null;
+          activeSolutionId = '';
+          applyHighlight({ scrollSelection: true });
         });
       });
 
@@ -1943,6 +1945,7 @@
           event.preventDefault();
           const clickedApproach = this.dataset.approachId;
           activeApproachId = activeApproachId === clickedApproach ? null : clickedApproach;
+          activeProblemId = null;
           activeSolutionId = '';
           applyHighlight({ scrollSelection: true });
         });
