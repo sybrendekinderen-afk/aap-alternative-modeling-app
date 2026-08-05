@@ -621,14 +621,14 @@
         <div class="row g-4 mt-1">
           <div class="col-lg-12">
             <div class="card subtle-panel h-100">
-              <div class="card-header"><h4 class="h6 mb-0">Approaches Using Other Techniques by Source Year</h4></div>
+              <div class="card-header"><h4 class="h6 mb-0">Approaches per Source Year</h4></div>
               <div class="card-body">
                 <p class="text-muted small">Number of modeling approaches, grouped by the publication year of their linked source, that use one or more Other Techniques, alongside the total number of approaches per year (year ascending).</p>
                 <div class="alert alert-light border" id="other-technique-year-chart-empty" {% if approach_other_technique_count_by_year %}style="display: none;"{% endif %}>
                   No source year data available yet.
                 </div>
                 <div class="chart-scroll-horizontal{% if not approach_other_technique_count_by_year %} d-none{% endif %}" id="other-technique-year-chart-wrapper">
-                  <canvas id="other-technique-year-chart" aria-label="Line chart of approaches using other techniques by source year" role="img"></canvas>
+                  <canvas id="other-technique-year-chart" aria-label="Line chart of approaches per source year" role="img"></canvas>
                 </div>
               </div>
             </div>
