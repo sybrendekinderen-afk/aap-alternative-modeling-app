@@ -35,6 +35,10 @@
     .task-problems-toggle { width: 1.25rem; height: 1.25rem; padding: 0; line-height: 1; }
     .chart-scroll-vertical { height: 320px; overflow-y: auto; overflow-x: auto; }
     .chart-scroll-horizontal { height: 320px; overflow-x: auto; overflow-y: hidden; }
+    .technique-select-chip { border: 0; cursor: pointer; }
+    .technique-select-chip:focus-visible { outline: 2px solid #0d6efd; outline-offset: 2px; }
+    .solution-technique-panel { display: none; }
+    .solution-technique-panel.solution-technique-panel-visible { display: block; }
   </style>
 </head>
 <body>
@@ -399,7 +403,7 @@
                   {% for pid in solution.prompting_technique_ids %}
                     {% set technique = prompting_technique_lookup.get(pid) %}
                     {% if technique %}
-                      <span class="badge bg-secondary me-1">{{ technique.name }}</span>
+                      <button type="button" class="badge bg-secondary me-1 mb-1 technique-select-chip" data-technique-category="LLM Technique" data-technique-name="{{ technique.name|e }}" data-technique-description="{{ technique.description|default('')|e }}">{{ technique.name }}</button>
                     {% endif %}
                   {% endfor %}
                 {% else %}
@@ -411,7 +415,7 @@
                   {% for tid in solution.other_technique_ids %}
                     {% set technique = other_technique_lookup.get(tid) %}
                     {% if technique %}
-                      <span class="badge bg-warning text-dark me-1">{{ technique.name }}</span>
+                      <button type="button" class="badge bg-warning text-dark me-1 mb-1 technique-select-chip" data-technique-category="Other Technique" data-technique-name="{{ technique.name|e }}" data-technique-description="{{ technique.description|default('')|e }}">{{ technique.name }}</button>
                     {% endif %}
                   {% endfor %}
                 {% else %}
@@ -434,34 +438,48 @@
               <p><b>Justification:</b> {{ solution.justification }}</p>
             </div>
             <div class="col-md-6">
-              <h5 class="h6">Approach and Source</h5>
-              <ul class="list-group mb-3">
-                {% if linked_approaches %}
-                  {% for linked_solution_approach in linked_approaches %}
-                    {% set source = sources|selectattr('id', 'equalto', linked_solution_approach.source_id)|list|first %}
-                    <li class="list-group-item">
-                      <div>
+              <div class="solution-sources-panel">
+                <h5 class="h6">Approach and Source</h5>
+                <ul class="list-group mb-3">
+                  {% if linked_approaches %}
+                    {% for linked_solution_approach in linked_approaches %}
+                      {% set source = sources|selectattr('id', 'equalto', linked_solution_approach.source_id)|list|first %}
+                      <li class="list-group-item">
                         <div>
-                          <b>Approach:</b> {{ linked_solution_approach.name }}
-                          <br>
-                          {% if source %}
-                            <b>Source:</b> {{ source.title }} — {{ source.author }}{% if source.year %} ({{ source.year }}){% endif %}
-                            {% if source.doi %}
-                              {% set doi_value = source.doi %}
-                              {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
-                                <br>Link: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a>
+                          <div>
+                            <b>Approach:</b> {{ linked_solution_approach.name }}
+                            <br>
+                            {% if source %}
+                              <b>Source:</b> {{ source.title }} — {{ source.author }}{% if source.year %} ({{ source.year }}){% endif %}
+                              {% if source.doi %}
+                                {% set doi_value = source.doi %}
+                                {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
+                                  <br>Link: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a>
+                              {% endif %}
+                            {% else %}
+                              <b>Source:</b> <span class="text-muted">None</span>
                             {% endif %}
-                          {% else %}
-                            <b>Source:</b> <span class="text-muted">None</span>
-                          {% endif %}
+                          </div>
                         </div>
-                      </div>
-                    </li>
-                  {% endfor %}
-                {% else %}
-                  <li class="list-group-item text-muted">No approach assigned.</li>
-                {% endif %}
-              </ul>
+                      </li>
+                    {% endfor %}
+                  {% else %}
+                    <li class="list-group-item text-muted">No approach assigned.</li>
+                  {% endif %}
+                </ul>
+              </div>
+
+              <div class="solution-technique-panel">
+                <h5 class="h6">Selected Technique</h5>
+                <div class="card border-warning-subtle bg-warning-subtle">
+                  <div class="card-body">
+                    <div class="small text-muted solution-technique-category"></div>
+                    <div class="fw-semibold solution-technique-name"></div>
+                    <div class="small mt-2 solution-technique-description"></div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-2 technique-back-to-sources">Show approach and source</button>
+              </div>
 
             </div>
           </div>
@@ -484,43 +502,56 @@
         <div class="card-body">
           <div class="row g-3">
             <div class="col-md-6">
-              <p class="mb-2"><b>Source:</b>
-                {% if linked_source %}
-                  {{ linked_source.title }} — {{ linked_source.author }}{% if linked_source.year %} ({{ linked_source.year }}){% endif %}
-                  {% if linked_source.doi %}
-                    {% set doi_value = linked_source.doi %}
-                    {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
-                    <br>Link: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a>
-                  {% endif %}
-                {% else %}
-                  <span class="text-muted">None</span>
-                {% endif %}
-              </p>
-              <p class="mb-2"><b>Task:</b>
-                {% if linked_task %}
-                  {{ linked_task.name }}
-                  {% if linked_task.model_type_id %}
-                    {% set linked_task_model_type = model_type_lookup.get(linked_task.model_type_id) %}
-                    {% if linked_task_model_type %}
-                      <span class="badge bg-light text-dark border ms-1">{{ linked_task_model_type.notation or linked_task_model_type.name }}</span>
+              <div class="approach-sources-panel">
+                <p class="mb-2"><b>Source:</b>
+                  {% if linked_source %}
+                    {{ linked_source.title }} — {{ linked_source.author }}{% if linked_source.year %} ({{ linked_source.year }}){% endif %}
+                    {% if linked_source.doi %}
+                      {% set doi_value = linked_source.doi %}
+                      {% set doi_url = doi_value if doi_value.startswith('http://') or doi_value.startswith('https://') else 'https://doi.org/' ~ doi_value %}
+                      <br>Link: <a href="{{ doi_url }}" target="_blank" rel="noopener noreferrer">{{ doi_value }}</a>
                     {% endif %}
+                  {% else %}
+                    <span class="text-muted">None</span>
                   {% endif %}
-                {% else %}
-                  <span class="text-muted">None</span>
-                {% endif %}
-              </p>
-              <p class="mb-2"><b>Linked Solutions:</b>
-                {% if approach.solution_ids %}
-                  {% for sid in approach.solution_ids %}
-                    {% set linked_solution = solutions|selectattr('id', 'equalto', sid)|list|first %}
-                    {% if linked_solution %}
-                      <a href="#solution-{{ linked_solution.id }}" class="badge bg-dark-subtle text-dark text-decoration-none me-1 solution-select-link" data-solution-id="{{ linked_solution.id }}">{{ linked_solution.name }}</a>
+                </p>
+                <p class="mb-2"><b>Task:</b>
+                  {% if linked_task %}
+                    {{ linked_task.name }}
+                    {% if linked_task.model_type_id %}
+                      {% set linked_task_model_type = model_type_lookup.get(linked_task.model_type_id) %}
+                      {% if linked_task_model_type %}
+                        <span class="badge bg-light text-dark border ms-1">{{ linked_task_model_type.notation or linked_task_model_type.name }}</span>
+                      {% endif %}
                     {% endif %}
-                  {% endfor %}
-                {% else %}
-                  <span class="text-muted">None</span>
-                {% endif %}
-              </p>
+                  {% else %}
+                    <span class="text-muted">None</span>
+                  {% endif %}
+                </p>
+                <p class="mb-2"><b>Linked Solutions:</b>
+                  {% if approach.solution_ids %}
+                    {% for sid in approach.solution_ids %}
+                      {% set linked_solution = solutions|selectattr('id', 'equalto', sid)|list|first %}
+                      {% if linked_solution %}
+                        <a href="#solution-{{ linked_solution.id }}" class="badge bg-dark-subtle text-dark text-decoration-none me-1 solution-select-link" data-solution-id="{{ linked_solution.id }}">{{ linked_solution.name }}</a>
+                      {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    <span class="text-muted">None</span>
+                  {% endif %}
+                </p>
+              </div>
+              <div class="solution-technique-panel approach-technique-panel">
+                <h5 class="h6">Selected Technique</h5>
+                <div class="card border-warning-subtle bg-warning-subtle">
+                  <div class="card-body">
+                    <div class="small text-muted approach-technique-category"></div>
+                    <div class="fw-semibold approach-technique-name"></div>
+                    <div class="small mt-2 approach-technique-description"></div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-2 technique-back-to-sources">Show source and task</button>
+              </div>
             </div>
             <div class="col-md-6">
               <p class="mb-2"><b>Prompting Techniques:</b>
@@ -528,7 +559,7 @@
                   {% for tid in approach.prompting_technique_ids %}
                     {% set technique = prompting_technique_lookup.get(tid) %}
                     {% if technique %}
-                      <span class="badge bg-secondary me-1">{{ technique.name }}</span>
+                      <button type="button" class="badge bg-secondary me-1 mb-1 technique-select-chip" data-technique-category="LLM Technique" data-technique-name="{{ technique.name|e }}" data-technique-description="{{ technique.description|default('')|e }}">{{ technique.name }}</button>
                     {% endif %}
                   {% endfor %}
                 {% else %}
@@ -540,7 +571,7 @@
                   {% for tid in approach.other_technique_ids %}
                     {% set technique = other_technique_lookup.get(tid) %}
                     {% if technique %}
-                      <span class="badge bg-warning text-dark me-1">{{ technique.name }}</span>
+                      <button type="button" class="badge bg-warning text-dark me-1 mb-1 technique-select-chip" data-technique-category="Other Technique" data-technique-name="{{ technique.name|e }}" data-technique-description="{{ technique.description|default('')|e }}">{{ technique.name }}</button>
                     {% endif %}
                   {% endfor %}
                 {% else %}
@@ -1901,12 +1932,47 @@
       const approachPromptingTechniqueFilter = document.getElementById('approach-filter-technique');
       const approachOtherTechniqueFilter = document.getElementById('approach-filter-other-technique');
       const approachUnderlyingLlmFilter = document.getElementById('approach-filter-underlying-llm');
+      const techniqueSourceFallbackText = 'No description provided for this technique.';
       let activeProblemId = null;
       let activeTaskId = null;
       let activeTaskProblemIds = [];
       let activeTaskApproachIds = [];
       let activeApproachId = null;
       let activeSolutionId = '';
+
+      function showTechniquePanelForCard(containerCard, technique) {
+        if (!containerCard) {
+          return;
+        }
+        const sourcesPanel = containerCard.querySelector('.solution-sources-panel, .approach-sources-panel');
+        const techniquePanel = containerCard.querySelector('.solution-technique-panel, .approach-technique-panel');
+        const categoryEl = containerCard.querySelector('.solution-technique-category, .approach-technique-category');
+        const nameEl = containerCard.querySelector('.solution-technique-name, .approach-technique-name');
+        const descriptionEl = containerCard.querySelector('.solution-technique-description, .approach-technique-description');
+        if (!sourcesPanel || !techniquePanel || !categoryEl || !nameEl || !descriptionEl) {
+          return;
+        }
+
+        categoryEl.textContent = technique.category || 'Technique';
+        nameEl.textContent = technique.name || '';
+        descriptionEl.textContent = technique.description || techniqueSourceFallbackText;
+
+        sourcesPanel.style.display = 'none';
+        techniquePanel.classList.add('solution-technique-panel-visible');
+      }
+
+      function showSourcesPanelForCard(containerCard) {
+        if (!containerCard) {
+          return;
+        }
+        const sourcesPanel = containerCard.querySelector('.solution-sources-panel, .approach-sources-panel');
+        const techniquePanel = containerCard.querySelector('.solution-technique-panel, .approach-technique-panel');
+        if (!sourcesPanel || !techniquePanel) {
+          return;
+        }
+        sourcesPanel.style.display = '';
+        techniquePanel.classList.remove('solution-technique-panel-visible');
+      }
 
       function scrollActiveSelectionIntoView() {
         const activeDetail = document.querySelector('.kb-solution-detail-visible, .approach-detail-card-visible');
@@ -2111,6 +2177,30 @@
           activeSolutionId = '';
           applyHighlight({ scrollSelection: true });
         });
+      });
+
+      document.addEventListener('click', function (event) {
+        const techniqueChip = event.target.closest('.technique-select-chip');
+        if (!techniqueChip) {
+          return;
+        }
+        event.preventDefault();
+        const containerCard = techniqueChip.closest('.kb-solution-detail[data-solution-id], .approach-detail-card[data-approach-id]');
+        showTechniquePanelForCard(containerCard, {
+          category: techniqueChip.dataset.techniqueCategory || 'Technique',
+          name: techniqueChip.dataset.techniqueName || '',
+          description: techniqueChip.dataset.techniqueDescription || '',
+        });
+      });
+
+      document.addEventListener('click', function (event) {
+        const showSourcesButton = event.target.closest('.technique-back-to-sources');
+        if (!showSourcesButton) {
+          return;
+        }
+        event.preventDefault();
+        const containerCard = showSourcesButton.closest('.kb-solution-detail[data-solution-id], .approach-detail-card[data-approach-id]');
+        showSourcesPanelForCard(containerCard);
       });
 
       if (modelTypeFilter) {
