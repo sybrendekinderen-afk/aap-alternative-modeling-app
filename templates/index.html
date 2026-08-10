@@ -392,7 +392,7 @@
                 {% set linked_approaches = solution_modeling_approach_lookup.get(solution.id, []) %}
                 {% if linked_approaches %}
                   {% for approach in linked_approaches %}
-                    <span class="badge bg-dark-subtle text-dark me-1">{{ approach.name }}</span>
+                    <a href="#approach-{{ approach.id }}" class="badge bg-dark-subtle text-dark text-decoration-none me-1 approach-select-link" data-approach-id="{{ approach.id }}">{{ approach.name }}</a>
                   {% endfor %}
                 {% else %}
                   <span class="text-muted">None</span>
