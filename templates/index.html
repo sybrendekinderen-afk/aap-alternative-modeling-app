@@ -578,18 +578,6 @@
                   <span class="text-muted">None</span>
                 {% endif %}
               </p>
-              <p class="mb-2"><b>Related Problems via Task:</b>
-                {% if related_problem_ids %}
-                  {% for pid in related_problem_ids %}
-                    {% set problem = modeling_problem_lookup.get(pid|int) %}
-                    {% if problem %}
-                      <a href="#problem-{{ problem.id }}" class="badge bg-secondary-subtle text-secondary-emphasis text-decoration-none me-1">{{ problem.name }}</a>
-                    {% endif %}
-                  {% endfor %}
-                {% else %}
-                  <span class="text-muted">None</span>
-                {% endif %}
-              </p>
               <p class="mb-2"><b>Associated Effects:</b></p>
               <ul class="list-group mb-0">
                 {% set associated_effects = modeling_approach_effect_lookup.get(approach.id, []) %}
