@@ -7,6 +7,10 @@
   <style>
     .effect-row { border: 1px solid #dee2e6; border-radius: .5rem; padding: .75rem; margin-bottom: .5rem; }
     .effect-row .form-label { font-size: .9rem; }
+    .polarity-icon { display: inline-block; width: 0; height: 0; margin-right: .35rem; vertical-align: middle; }
+    .polarity-icon-positive { border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 9px solid #198754; }
+    .polarity-icon-negative { border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 9px solid #dc3545; }
+    .polarity-icon-neutral { width: 10px; height: 3px; background-color: #6c757d; border-radius: 1px; }
     .primary-surface { border: 2px solid #0d6efd; box-shadow: 0 .5rem 1rem rgba(13, 110, 253, .12); }
     .subtle-panel { border: 1px solid #e9ecef; background-color: #fcfcfd; }
     .subtle-panel .card-header { background-color: #f8f9fa; }
@@ -120,6 +124,14 @@
                         {% endfor %}
                       </select>
                     </div>
+                    <div class="col-12">
+                      <label for="approach-filter-effect-polarity" class="form-label form-label-sm mb-1">Associated Effects</label>
+                      <select id="approach-filter-effect-polarity" class="form-select form-select-sm">
+                        <option value="">All effects</option>
+                        <option value="neutral">Having at least one neutral effect</option>
+                        <option value="negative">Having at least one negative effect</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
                 <div class="alert alert-light border mb-0" id="approach-list-placeholder">
@@ -127,7 +139,7 @@
                 </div>
                 <ul class="list-group" id="kb-approach-list" style="display: none;">
                   {% for approach in modeling_approaches %}
-                    <li class="list-group-item kb-approach-list-item" data-approach-id="{{ approach.id }}" data-prompting-technique-ids="{{ modeling_approach_prompting_technique_lookup.get(approach.id, [])|join(',') }}" data-other-technique-ids="{{ modeling_approach_other_technique_lookup.get(approach.id, [])|join(',') }}" data-model-type-ids="{{ modeling_approach_model_type_lookup.get(approach.id, [])|join(',') }}" data-underlying-llm-ids="{{ modeling_approach_underlying_llm_lookup.get(approach.id, [])|join(',') }}" style="display: none;">
+                    <li class="list-group-item kb-approach-list-item" data-approach-id="{{ approach.id }}" data-prompting-technique-ids="{{ modeling_approach_prompting_technique_lookup.get(approach.id, [])|join(',') }}" data-other-technique-ids="{{ modeling_approach_other_technique_lookup.get(approach.id, [])|join(',') }}" data-model-type-ids="{{ modeling_approach_model_type_lookup.get(approach.id, [])|join(',') }}" data-underlying-llm-ids="{{ modeling_approach_underlying_llm_lookup.get(approach.id, [])|join(',') }}" data-effect-polarities="{{ modeling_approach_effect_lookup.get(approach.id, [])|map(attribute='effect_polarity')|unique|join(',') }}" style="display: none;">
                       <div>
                         <a href="#" class="fw-semibold text-decoration-none approach-select-link" data-approach-id="{{ approach.id }}">{{ approach.name }}</a>
                       </div>
@@ -588,7 +600,7 @@
                       {% if effect.evidence_rigor %}
                         <div class="small text-muted">Evidence Rigor: {{ effect.evidence_rigor }}</div>
                       {% endif %}
-                      <div class="small text-muted">Polarity: {{ effect.effect_polarity|default('neutral')|capitalize }}</div>
+                      <div class="small text-muted"><span class="polarity-icon polarity-icon-{{ effect.effect_polarity|default('neutral') }}"></span>Polarity: {{ effect.effect_polarity|default('neutral')|capitalize }}</div>
                     </li>
                   {% endfor %}
                 {% else %}
@@ -1920,6 +1932,7 @@
       const approachPromptingTechniqueFilter = document.getElementById('approach-filter-technique');
       const approachOtherTechniqueFilter = document.getElementById('approach-filter-other-technique');
       const approachUnderlyingLlmFilter = document.getElementById('approach-filter-underlying-llm');
+      const approachEffectPolarityFilter = document.getElementById('approach-filter-effect-polarity');
       const techniqueSourceFallbackText = 'No description provided for this technique.';
       let activeProblemId = null;
       let activeTaskId = null;
@@ -1979,7 +1992,8 @@
         const activeApproachPromptingTechnique = approachPromptingTechniqueFilter ? approachPromptingTechniqueFilter.value : '';
         const activeApproachOtherTechnique = approachOtherTechniqueFilter ? approachOtherTechniqueFilter.value : '';
         const activeApproachUnderlyingLlm = approachUnderlyingLlmFilter ? approachUnderlyingLlmFilter.value : '';
-        const hasActiveApproachFilters = !!activeApproachModelType || !!activeApproachPromptingTechnique || !!activeApproachOtherTechnique || !!activeApproachUnderlyingLlm;
+        const activeApproachEffectPolarity = approachEffectPolarityFilter ? approachEffectPolarityFilter.value : '';
+        const hasActiveApproachFilters = !!activeApproachModelType || !!activeApproachPromptingTechnique || !!activeApproachOtherTechnique || !!activeApproachUnderlyingLlm || !!activeApproachEffectPolarity;
         const hasActiveSolutionFilters = !!activeModelType || !!activePromptingTechnique || !!activeOtherTechnique || !!activeUnderlyingLlm;
         const hasActiveSelection = !!activeProblemId || !!activeApproachId || hasActiveSolutionFilters;
         let shown = false;
@@ -2018,12 +2032,14 @@
           const otherTechniqueIds = parseCsvIds(item.dataset.otherTechniqueIds);
           const modelTypeIds = parseCsvIds(item.dataset.modelTypeIds);
           const underlyingLlmIds = parseCsvIds(item.dataset.underlyingLlmIds);
+          const effectPolarities = parseCsvIds(item.dataset.effectPolarities);
           const matchesTask = !activeTaskId || activeTaskApproachIds.includes(item.dataset.approachId);
           const matchesPromptingTechnique = !activeApproachPromptingTechnique || promptingTechniqueIds.includes(activeApproachPromptingTechnique);
           const matchesOtherTechnique = !activeApproachOtherTechnique || otherTechniqueIds.includes(activeApproachOtherTechnique);
           const matchesModelType = !activeApproachModelType || modelTypeIds.includes(activeApproachModelType);
           const matchesUnderlyingLlm = !activeApproachUnderlyingLlm || underlyingLlmIds.includes(activeApproachUnderlyingLlm);
-          const passesApproachFilters = matchesPromptingTechnique && matchesOtherTechnique && matchesModelType && matchesUnderlyingLlm;
+          const matchesEffectPolarity = !activeApproachEffectPolarity || effectPolarities.includes(activeApproachEffectPolarity);
+          const passesApproachFilters = matchesPromptingTechnique && matchesOtherTechnique && matchesModelType && matchesUnderlyingLlm && matchesEffectPolarity;
           const shouldShowApproach = (activeTaskId ? matchesTask : true) && (activeTaskId || hasActiveApproachFilters) && passesApproachFilters;
           item.style.display = shouldShowApproach ? '' : 'none';
         });
@@ -2221,6 +2237,10 @@
 
       if (approachUnderlyingLlmFilter) {
         approachUnderlyingLlmFilter.addEventListener('change', applyHighlight);
+      }
+
+      if (approachEffectPolarityFilter) {
+        approachEffectPolarityFilter.addEventListener('change', applyHighlight);
       }
 
       solutionLinks.forEach(function (link) {

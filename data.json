@@ -50,11 +50,11 @@
       "description": "magnificent effect.",
       "evidence_rigor": "informal qualitative sensibility check",
       "solution_id": null,
-      "modeling_approach_id": null,
+      "modeling_approach_id": 1,
       "prompting_technique_id": null,
       "other_technique_id": null,
       "underlying_llm_id": 1,
-      "effect_polarity": "neutral"
+      "effect_polarity": "positive"
     },
     {
       "id": 2,
