@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, redirect, g
+from flask import Flask, jsonify, render_template, request, redirect, g
 import importlib
+import hmac
 import json
 import os
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -179,6 +180,36 @@ def _save_data_to_postgres(data):
         return False
 
 
+@app.route("/api/keepalive", methods=["GET"])
+def database_keepalive():
+    """Run a minimal scheduled query so the hosted database stays active."""
+
+    cron_secret = os.environ.get("CRON_SECRET", "").strip()
+    if cron_secret:
+        authorization = request.headers.get("Authorization", "")
+        expected = f"Bearer {cron_secret}"
+        if not hmac.compare_digest(authorization, expected):
+            return jsonify({"ok": False}), 401
+
+    if not _remote_persistence_enabled():
+        return jsonify({"ok": False, "reason": "remote persistence disabled"}), 503
+
+    db_url = _get_database_url()
+    psycopg = _get_psycopg_module()
+    if not db_url or psycopg is None:
+        return jsonify({"ok": False, "reason": "database unavailable"}), 503
+
+    try:
+        with psycopg.connect(db_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                cur.fetchone()
+        return jsonify({"ok": True})
+    except Exception as exc:
+        print(f"Database keepalive failed: {type(exc).__name__}: {exc}")
+        return jsonify({"ok": False, "reason": "database query failed"}), 503
+
+
 def _load_raw_data():
     """Return parsed JSON from Postgres or the local data file."""
 
@@ -325,6 +356,15 @@ def load_data():
             except (TypeError, ValueError):
                 approach_id = get_next_modeling_approach_id(normalized_approaches)
 
+            normalized_task_ids = []
+            legacy_task_id = parse_optional_int(approach.pop("modeling_task_id", None))
+            if legacy_task_id is not None:
+                normalized_task_ids.append(legacy_task_id)
+            raw_task_ids = approach.get("modeling_task_ids", [])
+            if not isinstance(raw_task_ids, list):
+                raw_task_ids = [raw_task_ids]
+            normalized_task_ids.extend(parse_int_list(raw_task_ids))
+
             normalized_solution_ids = []
             for solution_id in approach.get("solution_ids", []):
                 try:
@@ -350,7 +390,7 @@ def load_data():
                 "id": approach_id,
                 "name": str(approach.get("name", "") or "").strip(),
                 "source_id": parse_optional_int(approach.get("source_id")),
-                "modeling_task_id": parse_optional_int(approach.get("modeling_task_id")),
+                "modeling_task_ids": list(dict.fromkeys(normalized_task_ids)),
                 "solution_ids": list(dict.fromkeys(normalized_solution_ids)),
                 "prompting_technique_ids": list(dict.fromkeys(normalized_prompting_ids)),
                 "other_technique_ids": list(dict.fromkeys(normalized_other_ids)),
@@ -483,6 +523,10 @@ def load_data():
             ]
 
         for approach in store.get("modeling_approaches", []):
+            approach["modeling_task_ids"] = [
+                task_id for task_id in approach.get("modeling_task_ids", [])
+                if task_id in valid_task_ids
+            ]
             approach["prompting_technique_ids"] = [
                 tid for tid in approach.get("prompting_technique_ids", [])
                 if tid in valid_prompting_ids
@@ -498,7 +542,7 @@ def load_data():
                 continue
             if approach.get("source_id") not in valid_source_ids:
                 continue
-            if approach.get("modeling_task_id") not in valid_task_ids:
+            if not approach.get("modeling_task_ids"):
                 continue
             filtered_approaches.append(approach)
         store["modeling_approaches"] = filtered_approaches
@@ -619,6 +663,40 @@ def get_modeling_approach_lookup(modeling_approaches):
     return {approach["id"]: approach for approach in modeling_approaches}
 
 
+def get_modeling_approach_task_lookup(modeling_approaches, modeling_tasks):
+    task_lookup = {task.get("id"): task for task in modeling_tasks}
+    lookup = {}
+    for approach in modeling_approaches:
+        lookup[approach.get("id")] = [
+            task_lookup[task_id]
+            for task_id in approach.get("modeling_task_ids", [])
+            if task_id in task_lookup
+        ]
+    return lookup
+
+
+def get_modeling_task_approach_lookup(modeling_approaches, modeling_tasks):
+    lookup = {task.get("id"): [] for task in modeling_tasks}
+    for approach in modeling_approaches:
+        for task_id in approach.get("modeling_task_ids", []):
+            if task_id in lookup:
+                lookup[task_id].append(approach)
+    return lookup
+
+
+def get_modeling_approach_problem_lookup(modeling_approaches, modeling_tasks):
+    task_lookup = {task.get("id"): task for task in modeling_tasks}
+    lookup = {}
+    for approach in modeling_approaches:
+        problem_ids = []
+        for task_id in approach.get("modeling_task_ids", []):
+            task = task_lookup.get(task_id)
+            if task:
+                problem_ids.extend(task.get("modeling_problem_ids", []))
+        lookup[approach.get("id")] = list(dict.fromkeys(problem_ids))
+    return lookup
+
+
 def get_modeling_problem_solution_lookup(solutions, modeling_problems):
     solution_lookup = {solution.get("id"): solution for solution in solutions}
     lookup = {}
@@ -700,14 +778,18 @@ def get_approach_count_by_notation(modeling_approaches, modeling_tasks, model_ty
     counts = {}
 
     for approach in modeling_approaches:
-        task = task_lookup.get(approach.get("modeling_task_id"))
-        if not task:
-            continue
-        model_type = model_type_lookup.get(task.get("model_type_id"))
-        notation = "Unspecified"
-        if model_type:
-            notation = str(model_type.get("notation") or model_type.get("name") or "Unspecified").strip() or "Unspecified"
-        counts[notation] = counts.get(notation, 0) + 1
+        approach_notations = set()
+        for task_id in approach.get("modeling_task_ids", []):
+            task = task_lookup.get(task_id)
+            if not task:
+                continue
+            model_type = model_type_lookup.get(task.get("model_type_id"))
+            notation = "Unspecified"
+            if model_type:
+                notation = str(model_type.get("notation") or model_type.get("name") or "Unspecified").strip() or "Unspecified"
+            approach_notations.add(notation)
+        for notation in approach_notations:
+            counts[notation] = counts.get(notation, 0) + 1
 
     return [
         {"label": notation, "count": count}
@@ -891,9 +973,10 @@ def get_solution_model_type_lookup(solutions, modeling_approaches, modeling_task
         for approach_id in solution.get("modeling_approach_ids", []):
             approach = approach_lookup.get(approach_id)
             if approach:
-                task = task_lookup.get(approach.get("modeling_task_id"))
-                if task and task.get("model_type_id") is not None:
-                    model_type_ids.append(str(task["model_type_id"]))
+                for task_id in approach.get("modeling_task_ids", []):
+                    task = task_lookup.get(task_id)
+                    if task and task.get("model_type_id") is not None:
+                        model_type_ids.append(str(task["model_type_id"]))
         lookup[solution.get("id")] = list(dict.fromkeys(model_type_ids))
     return lookup
 
@@ -955,9 +1038,11 @@ def get_modeling_approach_model_type_lookup(modeling_approaches, modeling_tasks)
     task_lookup = {task.get("id"): task for task in modeling_tasks}
     lookup = {}
     for approach in modeling_approaches:
-        task = task_lookup.get(approach.get("modeling_task_id"))
-        model_type_id = task.get("model_type_id") if task else None
-        lookup[approach.get("id")] = [model_type_id] if model_type_id is not None else []
+        lookup[approach.get("id")] = list(dict.fromkeys(
+            task_lookup[task_id].get("model_type_id")
+            for task_id in approach.get("modeling_task_ids", [])
+            if task_id in task_lookup and task_lookup[task_id].get("model_type_id") is not None
+        ))
     return lookup
 
 
@@ -1137,6 +1222,9 @@ def home():
         underlying_llm_lookup=get_underlying_llm_lookup(underlying_llms),
         modeling_tasks=modeling_tasks,
         modeling_task_lookup=get_modeling_task_lookup(modeling_tasks),
+        modeling_approach_task_lookup=get_modeling_approach_task_lookup(modeling_approaches, modeling_tasks),
+        modeling_task_approach_lookup=get_modeling_task_approach_lookup(modeling_approaches, modeling_tasks),
+        modeling_approach_problem_lookup=get_modeling_approach_problem_lookup(modeling_approaches, modeling_tasks),
         modeling_task_solution_lookup=get_modeling_task_solution_lookup(solutions),
         modeling_problems=modeling_problems,
         modeling_problem_lookup=get_modeling_problem_lookup(modeling_problems),
@@ -1210,7 +1298,7 @@ def add_modeling_approach():
 
     name = request.form.get("modeling_approach_name", "").strip()
     source_id = parse_optional_int(request.form.get("source_id", ""))
-    modeling_task_id = parse_optional_int(request.form.get("modeling_task_id", ""))
+    modeling_task_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("modeling_task_ids"))))
     solution_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("solution_ids"))))
     prompting_technique_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("prompting_technique_ids"))))
     other_technique_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("other_technique_ids"))))
@@ -1220,7 +1308,9 @@ def add_modeling_approach():
         return redirect("/")
     if source_id is None or not any(source.get("id") == source_id for source in sources):
         return redirect("/")
-    if modeling_task_id is None or not any(task.get("id") == modeling_task_id for task in modeling_tasks):
+    valid_task_ids = {task.get("id") for task in modeling_tasks}
+    modeling_task_ids = [task_id for task_id in modeling_task_ids if task_id in valid_task_ids]
+    if not modeling_task_ids:
         return redirect("/")
     valid_solution_ids = {solution.get("id") for solution in solutions}
     valid_prompting_ids = {tech.get("id") for tech in prompting_techniques}
@@ -1236,7 +1326,7 @@ def add_modeling_approach():
         "id": new_id,
         "name": name,
         "source_id": source_id,
-        "modeling_task_id": modeling_task_id,
+        "modeling_task_ids": modeling_task_ids,
         "solution_ids": [],
         "prompting_technique_ids": prompting_technique_ids,
         "other_technique_ids": other_technique_ids,
@@ -1269,7 +1359,7 @@ def update_modeling_approach(modeling_approach_id):
     modeling_problems = store.get("modeling_problems", [])
 
     source_id = parse_optional_int(request.form.get("source_id", ""))
-    modeling_task_id = parse_optional_int(request.form.get("modeling_task_id", ""))
+    modeling_task_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("modeling_task_ids"))))
     solution_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("solution_ids"))))
     prompting_technique_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("prompting_technique_ids"))))
     other_technique_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("other_technique_ids"))))
@@ -1278,10 +1368,12 @@ def update_modeling_approach(modeling_approach_id):
     valid_prompting_ids = {tech.get("id") for tech in prompting_techniques}
     valid_other_ids = {tech.get("id") for tech in other_techniques}
     valid_problem_ids = {problem.get("id") for problem in modeling_problems}
+    valid_task_ids = {task.get("id") for task in modeling_tasks}
     solution_ids = [sid for sid in solution_ids if sid in valid_solution_ids]
     prompting_technique_ids = [tid for tid in prompting_technique_ids if tid in valid_prompting_ids]
     other_technique_ids = [tid for tid in other_technique_ids if tid in valid_other_ids]
     modeling_problem_ids = [pid for pid in modeling_problem_ids if pid in valid_problem_ids]
+    modeling_task_ids = [task_id for task_id in modeling_task_ids if task_id in valid_task_ids]
 
     for approach in modeling_approaches:
         if approach.get("id") != modeling_approach_id:
@@ -1292,12 +1384,12 @@ def update_modeling_approach(modeling_approach_id):
             return redirect("/")
         if source_id is None or not any(source.get("id") == source_id for source in sources):
             return redirect("/")
-        if modeling_task_id is None or not any(task.get("id") == modeling_task_id for task in modeling_tasks):
+        if not modeling_task_ids:
             return redirect("/")
 
         approach["name"] = name
         approach["source_id"] = source_id
-        approach["modeling_task_id"] = modeling_task_id
+        approach["modeling_task_ids"] = modeling_task_ids
         approach["prompting_technique_ids"] = prompting_technique_ids
         approach["other_technique_ids"] = other_technique_ids
         approach["modeling_problem_ids"] = modeling_problem_ids
@@ -1404,14 +1496,14 @@ def delete_modeling_task(modeling_task_id):
     store = load_data()
     linked_approaches = [
         approach for approach in store.get("modeling_approaches", [])
-        if approach.get("modeling_task_id") == modeling_task_id
+        if modeling_task_id in approach.get("modeling_task_ids", [])
     ]
     if linked_approaches:
         return redirect("/")
     removed_approach_ids = {
         approach.get("id")
         for approach in store.get("modeling_approaches", [])
-        if approach.get("modeling_task_id") == modeling_task_id
+        if modeling_task_id in approach.get("modeling_task_ids", [])
     }
     store["modeling_tasks"] = [
         mt for mt in store.get("modeling_tasks", [])
@@ -1424,7 +1516,7 @@ def delete_modeling_task(modeling_task_id):
         ]
     store["modeling_approaches"] = [
         approach for approach in store.get("modeling_approaches", [])
-        if approach.get("modeling_task_id") != modeling_task_id
+        if modeling_task_id not in approach.get("modeling_task_ids", [])
     ]
     for solution in store.get("solutions", []):
         solution["modeling_approach_ids"] = [

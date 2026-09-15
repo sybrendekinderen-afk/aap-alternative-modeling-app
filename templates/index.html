@@ -145,10 +145,11 @@
                       </div>
                       <div class="small text-muted mb-2">
                         {% set linked_source = sources|selectattr('id', 'equalto', approach.source_id)|list|first %}
-                        {% set linked_task = modeling_task_lookup.get(approach.modeling_task_id) %}
                         {% if linked_source %}{{ linked_source.title }}{% else %}Unknown source{% endif %}
                         ·
-                        {% if linked_task %}{{ linked_task.name }}{% else %}Unknown task{% endif %}
+                        {% if modeling_approach_task_lookup.get(approach.id) %}
+                          {{ modeling_approach_task_lookup.get(approach.id)|map(attribute='name')|join(', ') }}
+                        {% else %}Unknown task{% endif %}
                       </div>
                       {% if approach.solution_ids %}
                         <div class="approach-cluster mb-2">
@@ -284,7 +285,7 @@
                 <ul class="list-group">
                   {% for task in modeling_tasks %}
                     <li class="list-group-item task-list-item" data-task-id="{{ task.id }}" data-model-type-id="{{ task.model_type_id or '' }}">
-                      {% set linked_approaches = modeling_approaches|selectattr('modeling_task_id', 'equalto', task.id)|list %}
+                      {% set linked_approaches = modeling_task_approach_lookup.get(task.id, []) %}
                       <div class="d-flex justify-content-between align-items-start gap-2">
                         <div>
                           <a href="#" class="fw-semibold text-decoration-none task-select-link" data-task-id="{{ task.id }}" data-modeling-problem-ids="{{ task.modeling_problem_ids|default([])|join(',') }}" data-approach-ids="{{ linked_approaches|map(attribute='id')|list|join(',') }}">{{ task.name }}</a>
@@ -501,8 +502,8 @@
 
     {% for approach in modeling_approaches %}
       {% set linked_source = sources|selectattr('id', 'equalto', approach.source_id)|list|first %}
-      {% set linked_task = modeling_task_lookup.get(approach.modeling_task_id) %}
-      {% set related_problem_ids = linked_task.modeling_problem_ids if linked_task else [] %}
+      {% set linked_tasks = modeling_approach_task_lookup.get(approach.id, []) %}
+      {% set related_problem_ids = modeling_approach_problem_lookup.get(approach.id, []) %}
       <div class="card mb-3 shadow-sm approach-detail-card" id="approach-{{ approach.id }}" data-approach-id="{{ approach.id }}" data-solution-ids="{{ approach.solution_ids|join(',') }}" data-prompting-technique-ids="{{ approach.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ approach.other_technique_ids|join(',') }}" data-problem-ids="{{ related_problem_ids|join(',') }}">
         <div class="card-header d-flex justify-content-between align-items-center">
           <strong>{{ approach.name }}</strong>
@@ -907,12 +908,12 @@
                         <li class="list-group-item task-list-item" data-task-id="{{ task.id }}">
                           <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
                             <div>
-                              <a href="#" class="fw-semibold text-decoration-none task-select-link" data-task-id="{{ task.id }}" data-modeling-problem-ids="{{ task.modeling_problem_ids|default([])|join(',') }}" data-approach-ids="{{ modeling_approaches|selectattr('modeling_task_id', 'equalto', task.id)|map(attribute='id')|list|join(',') }}">{{ task.name }}</a>
+                              <a href="#" class="fw-semibold text-decoration-none task-select-link" data-task-id="{{ task.id }}" data-modeling-problem-ids="{{ task.modeling_problem_ids|default([])|join(',') }}" data-approach-ids="{{ modeling_task_approach_lookup.get(task.id, [])|map(attribute='id')|list|join(',') }}">{{ task.name }}</a>
                               {% if task.model_type_id %}
                                 {% set mt = model_type_lookup.get(task.model_type_id) %}
                                 {% if mt %}<span class="badge bg-light text-dark border ms-1">{{ mt.notation or mt.name }}</span>{% endif %}
                               {% endif %}
-                              {% set linked_approaches = modeling_approaches|selectattr('modeling_task_id', 'equalto', task.id)|list %}
+                              {% set linked_approaches = modeling_task_approach_lookup.get(task.id, []) %}
                               {% if linked_approaches %}
                                 <div class="small text-muted mt-1">
                                   Linked Modeling Approaches:
@@ -982,12 +983,12 @@
                   </select>
                 </div>
                 <div class="col-md-3">
-                  <select class="form-select" name="modeling_task_id" required>
-                    <option value="">-- Select modeling task --</option>
+                  <select class="form-select" name="modeling_task_ids" multiple size="4" required>
                     {% for task in modeling_tasks %}
                       <option value="{{ task.id }}">{{ task.name }}</option>
                     {% endfor %}
                   </select>
+                  <div class="form-text">Required: select one or more modeling tasks.</div>
                 </div>
                 <div class="col-md-3">
                   <select class="form-select" name="solution_ids" multiple size="4">
@@ -1034,16 +1035,16 @@
                         <div><b>{{ approach.name }}</b></div>
                         <div class="small text-muted mt-1">
                           {% set linked_source = sources|selectattr('id', 'equalto', approach.source_id)|list|first %}
-                          {% set linked_task = modeling_task_lookup.get(approach.modeling_task_id) %}
+                          {% set linked_tasks = modeling_approach_task_lookup.get(approach.id, []) %}
                           Source:
                           {% if linked_source %}
                             {{ linked_source.title }}
                           {% else %}
                             N/A
                           {% endif %}
-                          | Modeling Task:
-                          {% if linked_task %}
-                            {{ linked_task.name }}
+                          | Modeling Tasks:
+                          {% if linked_tasks %}
+                            {{ linked_tasks|map(attribute='name')|join(', ') }}
                           {% else %}
                             N/A
                           {% endif %}
