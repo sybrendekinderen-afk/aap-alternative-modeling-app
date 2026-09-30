@@ -416,7 +416,7 @@ def load_data():
                     "modeling_approach_id": None,
                     "prompting_technique_id": None,
                     "other_technique_id": None,
-                    "underlying_llm_id": None,
+                    "underlying_llm_ids": [],
                 })
                 normalized_effects.append(effect_payload)
                 next_effect_id += 1
@@ -491,6 +491,9 @@ def load_data():
         valid_prompting_ids = {tech.get("id") for tech in store.get("prompting_techniques", [])}
         valid_other_ids = {tech.get("id") for tech in store.get("other_techniques", [])}
         valid_underlying_llm_ids = {llm.get("id") for llm in store.get("underlying_llms", [])}
+        # underlying_llm is mandatory (1..*): fall back to the lowest-id LLM for any effect left
+        # without a valid reference (e.g. legacy data or a deleted LLM).
+        fallback_underlying_llm_id = min(valid_underlying_llm_ids) if valid_underlying_llm_ids else None
         valid_problem_ids = {p.get("id") for p in store.get("modeling_problems", [])}
         valid_task_ids = {task.get("id") for task in store.get("modeling_tasks", [])}
         for effect in store.get("effects", []):
@@ -499,8 +502,12 @@ def load_data():
             effect["other_technique_id"] = None
             if effect.get("modeling_approach_id") not in valid_modeling_approach_ids:
                 effect["modeling_approach_id"] = None
-            if effect.get("underlying_llm_id") not in valid_underlying_llm_ids:
-                effect["underlying_llm_id"] = None
+            effect["underlying_llm_ids"] = [
+                llm_id for llm_id in effect.get("underlying_llm_ids", [])
+                if llm_id in valid_underlying_llm_ids
+            ]
+            if not effect["underlying_llm_ids"] and fallback_underlying_llm_id is not None:
+                effect["underlying_llm_ids"] = [fallback_underlying_llm_id]
             enforce_effect_binding_precedence(effect)
 
         for modeling_task in store.get("modeling_tasks", []):
@@ -893,11 +900,20 @@ def normalize_effect_record(effect):
     except (TypeError, ValueError):
         modeling_approach_id = None
 
-    underlying_llm_id = effect.get("underlying_llm_id")
-    try:
-        underlying_llm_id = int(underlying_llm_id)
-    except (TypeError, ValueError):
-        underlying_llm_id = None
+    # underlying_llm is mandatory (1..*): an effect must reference at least one LLM, but may reference several.
+    raw_underlying_llm_ids = effect.get("underlying_llm_ids", [])
+    if not isinstance(raw_underlying_llm_ids, list):
+        raw_underlying_llm_ids = [raw_underlying_llm_ids]
+    legacy_underlying_llm_id = effect.get("underlying_llm_id")
+    if legacy_underlying_llm_id is not None:
+        raw_underlying_llm_ids = [legacy_underlying_llm_id] + raw_underlying_llm_ids
+    normalized_underlying_llm_ids = []
+    for llm_id in raw_underlying_llm_ids:
+        try:
+            normalized_underlying_llm_ids.append(int(llm_id))
+        except (TypeError, ValueError):
+            continue
+    normalized_underlying_llm_ids = list(dict.fromkeys(normalized_underlying_llm_ids))
 
     effect_polarity = str(effect.get("effect_polarity", "neutral") or "neutral").strip().lower()
     if effect_polarity not in EFFECT_POLARITY_VALUES:
@@ -911,7 +927,7 @@ def normalize_effect_record(effect):
         "modeling_approach_id": modeling_approach_id,
         "prompting_technique_id": None,
         "other_technique_id": None,
-        "underlying_llm_id": underlying_llm_id,
+        "underlying_llm_ids": normalized_underlying_llm_ids,
         "effect_polarity": effect_polarity,
     }
 
@@ -1030,9 +1046,7 @@ def get_modeling_approach_underlying_llm_lookup(modeling_approaches, effects):
     for approach in modeling_approaches:
         llm_ids = []
         for effect in approach_effect_lookup.get(approach.get("id"), []):
-            underlying_llm_id = effect.get("underlying_llm_id")
-            if underlying_llm_id is not None:
-                llm_ids.append(underlying_llm_id)
+            llm_ids.extend(effect.get("underlying_llm_ids", []))
         lookup[approach.get("id")] = list(dict.fromkeys(llm_ids))
     return lookup
 
@@ -1823,13 +1837,22 @@ def update_underlying_llm(underlying_llm_id):
 @app.route("/delete_underlying_llm/<int:underlying_llm_id>")
 def delete_underlying_llm(underlying_llm_id):
     store = load_data()
+    # underlying_llm is mandatory (1..*) on effect, so an LLM that is an effect's only LLM cannot be removed.
+    sole_dependent_effects = [
+        effect for effect in store.get("effects", [])
+        if effect.get("underlying_llm_ids", []) == [underlying_llm_id]
+    ]
+    if sole_dependent_effects:
+        return redirect("/")
     store["underlying_llms"] = [
         llm for llm in store.get("underlying_llms", [])
         if llm.get("id") != underlying_llm_id
     ]
     for effect in store.get("effects", []):
-        if effect.get("underlying_llm_id") == underlying_llm_id:
-            effect["underlying_llm_id"] = None
+        effect["underlying_llm_ids"] = [
+            llm_id for llm_id in effect.get("underlying_llm_ids", [])
+            if llm_id != underlying_llm_id
+        ]
     save_data(store)
     return redirect("/")
 
@@ -1982,8 +2005,10 @@ def add_effect():
     if modeling_approach_id is not None and not any(approach.get("id") == modeling_approach_id for approach in store.get("modeling_approaches", [])):
         modeling_approach_id = None
 
-    underlying_llm_id = parse_optional_int(request.form.get("underlying_llm_id", ""))
-    if underlying_llm_id is not None and not any(llm.get("id") == underlying_llm_id for llm in store.get("underlying_llms", [])):
+    valid_underlying_llm_ids = {llm.get("id") for llm in store.get("underlying_llms", [])}
+    underlying_llm_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("underlying_llm_ids"))))
+    underlying_llm_ids = [llm_id for llm_id in underlying_llm_ids if llm_id in valid_underlying_llm_ids]
+    if not underlying_llm_ids:
         return redirect("/")
     if not has_exclusive_effect_binding(None, modeling_approach_id, None, None):
         return redirect("/")
@@ -1997,7 +2022,7 @@ def add_effect():
         "modeling_approach_id": modeling_approach_id,
         "prompting_technique_id": None,
         "other_technique_id": None,
-        "underlying_llm_id": underlying_llm_id,
+        "underlying_llm_ids": underlying_llm_ids,
     })
     if not new_effect.get("description"):
         return redirect("/")
@@ -2041,8 +2066,10 @@ def update_effect(effect_id):
     if modeling_approach_id is not None and not any(approach.get("id") == modeling_approach_id for approach in store.get("modeling_approaches", [])):
         modeling_approach_id = None
 
-    underlying_llm_id = parse_optional_int(request.form.get("underlying_llm_id", ""))
-    if underlying_llm_id is not None and not any(llm.get("id") == underlying_llm_id for llm in store.get("underlying_llms", [])):
+    valid_underlying_llm_ids = {llm.get("id") for llm in store.get("underlying_llms", [])}
+    underlying_llm_ids = list(dict.fromkeys(parse_int_list(request.form.getlist("underlying_llm_ids"))))
+    underlying_llm_ids = [llm_id for llm_id in underlying_llm_ids if llm_id in valid_underlying_llm_ids]
+    if not underlying_llm_ids:
         return redirect("/")
     if not has_exclusive_effect_binding(None, modeling_approach_id, None, None):
         return redirect("/")
@@ -2056,7 +2083,7 @@ def update_effect(effect_id):
         "modeling_approach_id": modeling_approach_id,
         "prompting_technique_id": None,
         "other_technique_id": None,
-        "underlying_llm_id": underlying_llm_id,
+        "underlying_llm_ids": underlying_llm_ids,
     })
     if not updated.get("description"):
         return redirect("/")

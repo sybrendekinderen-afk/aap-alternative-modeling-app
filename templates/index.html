@@ -1133,11 +1133,13 @@
                                           <div class="small text-muted">Evidence rigor: {{ effect.evidence_rigor }}</div>
                                         {% endif %}
                                         <div class="small text-muted">Polarity: {{ effect.effect_polarity|default('neutral')|capitalize }}</div>
-                                        {% if effect.underlying_llm_id %}
-                                          {% set llm = underlying_llm_lookup.get(effect.underlying_llm_id) %}
-                                          {% if llm %}
-                                            <div class="small mt-1"><span class="badge bg-success-subtle text-success-emphasis">{{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}</span></div>
-                                          {% endif %}
+                                        {% if effect.underlying_llm_ids %}
+                                          <div class="small mt-1">
+                                            {% for llm_id in effect.underlying_llm_ids %}
+                                              {% set llm = underlying_llm_lookup.get(llm_id) %}
+                                              {% if llm %}<span class="badge bg-success-subtle text-success-emphasis me-1">{{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}</span>{% endif %}
+                                            {% endfor %}
+                                          </div>
                                         {% endif %}
                                       </div>
                                       <div class="d-flex gap-2 flex-wrap">
@@ -1186,12 +1188,12 @@
                                 <div class="form-text">Constraint: choose at most one of Modeling Approach or Other Technique.</div>
                               </div>
                               <div class="col-md-4">
-                                <select class="form-select" name="underlying_llm_id">
-                                  <option value="">No underlying LLM</option>
+                                <select class="form-select" name="underlying_llm_ids" multiple size="3" required>
                                   {% for llm in underlying_llms %}
                                     <option value="{{ llm.id }}">{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
                                   {% endfor %}
                                 </select>
+                                <div class="form-text">At least one underlying LLM is required.</div>
                               </div>
                               <div class="col-md-2">
                                 <button class="btn btn-outline-secondary w-100">Add effect to this approach</button>
@@ -1520,12 +1522,12 @@
                   </select>
                 </div>
                 <div class="col-md-4">
-                  <select class="form-select" name="underlying_llm_id">
-                    <option value="">No underlying LLM</option>
+                  <select class="form-select" name="underlying_llm_ids" multiple size="3" required>
                     {% for llm in underlying_llms %}
                       <option value="{{ llm.id }}">{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
                     {% endfor %}
                   </select>
+                  <div class="form-text">At least one underlying LLM is required.</div>
                 </div>
                 <div class="col-12">
                   <div class="form-text">Constraint: choose at most one of Modeling Approach or Other Technique.</div>
@@ -1544,9 +1546,16 @@
                         <div class="small text-muted">Evidence rigor: {{ effect.evidence_rigor }}</div>
                       {% endif %}
                       <div class="small text-muted">Polarity: {{ effect.effect_polarity|default('neutral')|capitalize }}</div>
+                      {% if effect.underlying_llm_ids %}
+                        <div class="small mt-1">
+                          {% for llm_id in effect.underlying_llm_ids %}
+                            {% set llm = underlying_llm_lookup.get(llm_id) %}
+                            {% if llm %}<span class="badge bg-success-subtle text-success-emphasis me-1">{{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}</span>{% endif %}
+                          {% endfor %}
+                        </div>
+                      {% endif %}
                       {% if effect.modeling_approach_id %}
                         {% set linked_approach = modeling_approaches|selectattr('id', 'equalto', effect.modeling_approach_id)|list|first %}
-                        {% set llm = underlying_llm_lookup.get(effect.underlying_llm_id) %}
                         {% if linked_approach %}
                           <div class="small">Modeling approach: <a href="/edit_modeling_approach/{{ linked_approach.id }}" class="text-decoration-none">{{ linked_approach.name }}</a></div>
                           {% if linked_approach.prompting_technique_ids %}
@@ -1571,9 +1580,6 @@
                               {% endfor %}
                             </div>
                           {% endif %}
-                        {% endif %}
-                        {% if llm %}
-                          <span class="badge bg-success-subtle text-success-emphasis">{{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}</span>
                         {% endif %}
                       {% endif %}
                     </div>

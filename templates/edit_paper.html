@@ -64,12 +64,12 @@
           {% endfor %}
         </select>
         <div class="form-text mb-2">Associate this effect with a Modeling Approach.</div>
-        <select class="form-select mb-2" name="underlying_llm_id">
-          <option value="">No underlying LLM</option>
+        <select class="form-select mb-2" name="underlying_llm_ids" multiple size="4" required>
           {% for llm in underlying_llms %}
-            <option value="{{ llm.id }}" {% if effect.underlying_llm_id == llm.id %}selected{% endif %}>{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
+            <option value="{{ llm.id }}" {% if llm.id in effect.underlying_llm_ids %}selected{% endif %}>{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
           {% endfor %}
         </select>
+        <div class="form-text mb-2">Select at least one underlying LLM (required).</div>
         <button class="btn btn-primary">Save</button>
         <a href="/" class="btn btn-secondary">Cancel</a>
       </form>
