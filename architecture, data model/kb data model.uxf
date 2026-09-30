@@ -84,12 +84,13 @@ justification [0..1]</panel_attributes>
       <x>470</x>
       <y>70</y>
       <w>140</w>
-      <h>70</h>
+      <h>80</h>
     </coordinates>
     <panel_attributes>Model Type
 --
 name 
-notation
+notation [0..1]
+format [0..1]
 
 </panel_attributes>
     <additional_attributes/>
@@ -98,9 +99,9 @@ notation
     <id>Relation</id>
     <coordinates>
       <x>530</x>
-      <y>130</y>
+      <y>140</y>
       <w>50</w>
-      <h>120</h>
+      <h>110</h>
     </coordinates>
     <panel_attributes>lt=-
 m1=1..n
@@ -108,7 +109,7 @@ m1=1..n
 m2=0..1
 
 </panel_attributes>
-    <additional_attributes>10.0;100.0;10.0;10.0</additional_attributes>
+    <additional_attributes>10.0;90.0;10.0;10.0</additional_attributes>
   </element>
   <element>
     <id>UMLClass</id>
@@ -116,7 +117,7 @@ m2=0..1
       <x>1120</x>
       <y>220</y>
       <w>160</w>
-      <h>80</h>
+      <h>70</h>
     </coordinates>
     <panel_attributes>Underlying LLM
 --

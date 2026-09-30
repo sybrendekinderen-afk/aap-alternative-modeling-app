@@ -1,0 +1,74 @@
+erDiagram
+    SOLUTION {
+        int id
+        string name
+        string justification
+    }
+    SOURCE {
+        int id
+        string title
+        string author
+        string doi
+        string year
+    }
+    EFFECT {
+        int id
+        string description
+        string evidence_rigor
+        string effect_polarity
+    }
+    UNDERLYING_LLM {
+        int id
+        string name
+        string version
+    }
+    MODEL_TYPE {
+        int id
+        string name
+        string notation
+    }
+    PROMPTING_TECHNIQUE {
+        int id
+        string name
+        string description
+    }
+    OTHER_TECHNIQUE {
+        int id
+        string name
+        string description
+    }
+    MODELING_TASK {
+        int id
+        string name
+    }
+    MODELING_PROBLEM {
+        int id
+        string name
+    }
+    MODELING_APPROACH {
+        int id
+        string name
+    }
+
+    SOLUTION }o--o{ MODELING_APPROACH : implements
+    SOLUTION }o--o{ PROMPTING_TECHNIQUE : uses
+    SOLUTION }o--o{ OTHER_TECHNIQUE : uses
+
+    MODELING_PROBLEM }o--o{ SOLUTION : solved_by
+    MODELING_PROBLEM }o--o{ PROMPTING_TECHNIQUE : relates_to
+    MODELING_PROBLEM }o--o{ OTHER_TECHNIQUE : relates_to
+    MODELING_PROBLEM |o--o{ MODELING_PROBLEM : sub_problem_of
+
+    MODELING_TASK }o--o{ MODELING_PROBLEM : addresses
+    MODELING_TASK }o--|| MODEL_TYPE : produces
+
+    MODELING_APPROACH }o--o| SOURCE : cited_in
+    MODELING_APPROACH }o--o{ MODELING_TASK : applied_to
+    MODELING_APPROACH }o--o{ PROMPTING_TECHNIQUE : uses
+    MODELING_APPROACH }o--o{ OTHER_TECHNIQUE : uses
+
+    EFFECT }o--o| SOLUTION : observed_for
+    EFFECT }o--o| MODELING_APPROACH : observed_for
+    EFFECT }o--o| PROMPTING_TECHNIQUE : observed_for
+    EFFECT }o--o| OTHER_TECHNIQUE : observed_for
+    EFFECT }o--o| UNDERLYING_LLM : produced_by

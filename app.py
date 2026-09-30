@@ -478,9 +478,12 @@ def load_data():
                 effect["other_technique_id"] = None
 
         valid_model_type_ids = {model_type.get("id") for model_type in store.get("model_types", [])}
+        # model_type is now mandatory (1..1): fall back to the lowest-id model type for any task
+        # left with a missing/invalid reference (e.g. legacy data or a deleted model type).
+        fallback_model_type_id = min(valid_model_type_ids) if valid_model_type_ids else None
         for modeling_task in store.get("modeling_tasks", []):
             if modeling_task.get("model_type_id") not in valid_model_type_ids:
-                modeling_task["model_type_id"] = None
+                modeling_task["model_type_id"] = fallback_model_type_id
 
         valid_solution_ids = {solution.get("id") for solution in store.get("solutions", [])}
         valid_source_ids = {source.get("id") for source in store.get("sources", [])}
@@ -1452,8 +1455,9 @@ def add_modeling_task():
         pid for pid in parse_int_list(request.form.getlist("modeling_problem_ids"))
         if pid in valid_problem_ids
     ]
+    valid_model_type_ids = {mt.get("id") for mt in store.get("model_types", [])}
 
-    if name:
+    if name and model_type_id in valid_model_type_ids:
         modeling_tasks = store.get("modeling_tasks", [])
         modeling_tasks.append({
             "id": max([mt["id"] for mt in modeling_tasks], default=0) + 1,
@@ -1474,6 +1478,9 @@ def update_modeling_task(modeling_task_id):
     modeling_problems = store.get("modeling_problems", [])
     valid_problem_ids = {p["id"] for p in modeling_problems}
     model_type_value = parse_optional_int(request.form.get("model_type_id", ""))
+    valid_model_type_ids = {mt.get("id") for mt in store.get("model_types", [])}
+    if model_type_value not in valid_model_type_ids:
+        return redirect("/")
     modeling_problem_ids = [
         pid for pid in parse_int_list(request.form.getlist("modeling_problem_ids"))
         if pid in valid_problem_ids
@@ -1647,11 +1654,14 @@ def update_model_type(model_type_id):
 def delete_model_type(model_type_id):
     store = load_data()
     model_types = store.get("model_types", [])
+    # model_type is mandatory (1..1) on modeling_task, so a model type still in use cannot be removed.
+    linked_tasks = [
+        task for task in store.get("modeling_tasks", [])
+        if task.get("model_type_id") == model_type_id
+    ]
+    if linked_tasks:
+        return redirect("/")
     store["model_types"] = [mt for mt in model_types if mt["id"] != model_type_id]
-    for modeling_purpose in store.get("modeling_purposes", []):
-        if modeling_purpose.get("model_type_id") == model_type_id:
-            modeling_purpose["model_type_id"] = None
-
     save_data(store)
     return redirect("/")
 
