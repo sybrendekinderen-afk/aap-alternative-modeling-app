@@ -621,7 +621,7 @@
 
       <div class="tab-pane fade" id="kb-competency-pane" role="tabpanel" aria-labelledby="kb-competency-tab" tabindex="0">
         <section aria-labelledby="technique-task-question">
-          <h3 class="h5 mb-3" id="technique-task-question">What LLM techniques are used to support which modeling tasks?</h3>
+          <h3 class="h5 mb-3" id="technique-task-question">What prompting techniques are used to support which modeling tasks?</h3>
           <div class="alert alert-info small" role="note">
             Technique/task links are derived through modeling approaches. A technique recorded on an approach, or one of its linked solutions, is shown for every task linked to that approach. This is an association, not a direct technique-to-task assertion.
           </div>
@@ -721,12 +721,12 @@
           {% endif %}
         </section>
         <section class="mt-4 pt-4 border-top" aria-labelledby="technique-effectiveness-question">
-          <h3 class="h5 mb-2" id="technique-effectiveness-question">What evidence is available regarding the effectiveness of LLM techniques?</h3>
+          <h3 class="h5 mb-2" id="technique-effectiveness-question">What evidence is available regarding the effectiveness of a given approach?</h3>
           <div class="alert alert-info small" role="note">
-            Effects are recorded against modeling approaches, not individual techniques. A technique shown with an effect was used in that approach. The data does not establish that the technique caused the effect.
+            Effects are recorded against modeling approaches.
           </div>
           <div class="row g-2 mb-3">
-            <div class="col-md-4 col-lg">
+            <div class="col-md-4">
               <label class="form-label form-label-sm mb-1" for="effectiveness-filter-approach">Modeling approach</label>
               <select id="effectiveness-filter-approach" class="form-select form-select-sm">
                 <option value="">All approaches</option>
@@ -735,25 +735,7 @@
                 {% endfor %}
               </select>
             </div>
-            <div class="col-md-4 col-lg">
-              <label class="form-label form-label-sm mb-1" for="effectiveness-filter-prompting">Prompting technique</label>
-              <select id="effectiveness-filter-prompting" class="form-select form-select-sm">
-                <option value="">All prompting techniques</option>
-                {% for technique in prompting_techniques %}
-                  <option value="{{ technique.id }}">{{ technique.name }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-md-4 col-lg">
-              <label class="form-label form-label-sm mb-1" for="effectiveness-filter-other">Other technique</label>
-              <select id="effectiveness-filter-other" class="form-select form-select-sm">
-                <option value="">All other techniques</option>
-                {% for technique in other_techniques %}
-                  <option value="{{ technique.id }}">{{ technique.name }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-md-4 col-lg">
+            <div class="col-md-4">
               <label class="form-label form-label-sm mb-1" for="effectiveness-filter-polarity">Effect polarity</label>
               <select id="effectiveness-filter-polarity" class="form-select form-select-sm">
                 <option value="">All polarities</option>
@@ -762,7 +744,7 @@
                 <option value="neutral">Neutral</option>
               </select>
             </div>
-            <div class="col-md-4 col-lg">
+            <div class="col-md-4">
               <label class="form-label form-label-sm mb-1" for="effectiveness-filter-rigor">Evidence rigor</label>
               <select id="effectiveness-filter-rigor" class="form-select form-select-sm">
                 <option value="">All evidence rigor</option>
@@ -777,54 +759,47 @@
             <button class="btn btn-sm btn-outline-secondary" id="effectiveness-answer-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#effectiveness-answer-panel" aria-expanded="false" aria-controls="effectiveness-answer-panel">Show answer</button>
           </div>
           <p class="text-muted small" id="effectiveness-answer-summary" aria-live="polite">
-            {{ effectiveness_competency_summary.effect_count }} effect records: {{ effectiveness_competency_summary.linked_effect_count }} linked through technique-using approaches and {{ effectiveness_competency_summary.unlinked_effect_count }} not linkable to those techniques.
+            {{ approach_effectiveness_summary.linked_effect_count }} linked effect records across {{ approach_effectiveness_summary.approaches_with_effects }} effect-bearing approach{% if approach_effectiveness_summary.approaches_with_effects != 1 %}es{% endif %} ({{ approach_effectiveness_summary.approach_count }} total approaches).
           </p>
           <div class="collapse" id="effectiveness-answer-panel">
-            <div class="mb-4" id="effectiveness-technique-groups">
-              {% for group in effectiveness_technique_groups %}
-                <div class="border-bottom py-2 effectiveness-answer-group" data-technique-kind="{{ group.kind }}" data-technique-id="{{ group.technique.id }}">
-                  <div class="fw-semibold mb-1"><span class="badge {% if group.kind == 'Prompting technique' %}bg-secondary{% else %}bg-warning text-dark{% endif %} me-1">{{ group.kind }}</span>{{ group.technique.name }}</div>
-                  {% for record in group.records %}
-                    <div class="small ps-2 effectiveness-answer-record" data-row-key="{{ record.row.row_key }}">
-                      <span class="fw-semibold">{{ record.row.effect.description if record.row.effect else 'No effect record linked to this approach.' }}</span>
-                      {% if record.row.approach %}
-                        <span class="text-muted">via {{ record.row.approach.name }}</span>
+            <div class="mb-4" id="effectiveness-approach-groups">
+              {% for answer in approach_effectiveness_answers %}
+                <div class="border-bottom py-2 effectiveness-approach-answer" data-approach-id="{{ answer.approach.id }}">
+                  <div class="fw-semibold">{{ answer.approach.name }}</div>
+                  {% if answer.tasks %}
+                    <div class="small text-muted">Modeling tasks: {{ answer.tasks|map(attribute='name')|join(', ') }}</div>
+                  {% endif %}
+                  {% for record in answer.effects %}
+                    <div class="small ps-2 effectiveness-answer-record" data-row-key="approach-{{ answer.approach.id }}-effect-{{ record.effect.id }}">
+                      <span class="fw-semibold">{{ record.effect.description }}</span>
+                      <span class="text-muted">({{ record.effect.effect_polarity|default('neutral')|capitalize }}{% if record.effect.evidence_rigor %}; {{ record.effect.evidence_rigor }}{% endif %})</span>
+                      {% if record.underlying_llms %}
+                        <span class="text-muted">LLMs: {% for llm in record.underlying_llms %}{{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+                      {% else %}
+                        <span class="text-muted">LLM not specified</span>
                       {% endif %}
-                      {% if record.row.effect %}
-                        <span class="text-muted">({{ record.row.effect.effect_polarity|default('neutral')|capitalize }}{% if record.row.effect.evidence_rigor %}; {{ record.row.effect.evidence_rigor }}{% endif %})</span>
-                      {% endif %}
-                      <span class="text-muted">[
-                        {% for path in record.paths %}{% if not loop.first %}; {% endif %}{% if path.solution %}via solution {{ path.solution.name }}{% else %}recorded on approach{% endif %}{% endfor %}
-                      ]</span>
                     </div>
+                  {% else %}
+                    <div class="small ps-2 effectiveness-answer-record" data-row-key="approach-{{ answer.approach.id }}-no-effect">No effect record linked to this approach.</div>
                   {% endfor %}
                 </div>
+              {% else %}
+                <div class="alert alert-light border">No modeling approaches are recorded.</div>
               {% endfor %}
             </div>
-            {% if effectiveness_unlinked_effects %}
-              <div class="mb-4" id="effectiveness-unlinked-group">
-                <h5 class="h6">Effects without a linked technique-using approach</h5>
-                {% for row in effectiveness_unlinked_effects %}
-                  <div class="small effectiveness-answer-record" data-row-key="{{ row.row_key }}">
-                    <span class="fw-semibold">{{ row.effect.description }}</span>
-                    <span class="text-muted">({{ row.effect.effect_polarity|default('neutral')|capitalize }}{% if row.effect.evidence_rigor %}; {{ row.effect.evidence_rigor }}{% endif %})</span>
-                  </div>
-                {% endfor %}
-              </div>
-            {% endif %}
           </div>
           <div class="d-flex align-items-center gap-2 mb-2">
             <h4 class="h6 mb-0">Trace</h4>
             <button class="btn btn-sm btn-outline-secondary" id="effectiveness-trace-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#effectiveness-trace-panel" aria-expanded="false" aria-controls="effectiveness-trace-panel">Show trace</button>
           </div>
           <div class="collapse" id="effectiveness-trace-panel">
-            <div class="alert alert-light border d-none" id="effectiveness-trace-empty">No technique, approach, or effect records match these filters.</div>
+            <div class="alert alert-light border d-none" id="effectiveness-trace-empty">No approach or effect records match these filters.</div>
             <div class="table-responsive">
               <table class="table table-sm table-striped table-bordered align-middle">
                 <thead class="table-light">
                   <tr>
-                    <th scope="col">LLM techniques and recorded path</th>
                     <th scope="col">Modeling approach</th>
+                    <th scope="col">Modeling tasks</th>
                     <th scope="col">Effect evidence</th>
                     <th scope="col">Polarity</th>
                     <th scope="col">Evidence rigor</th>
@@ -833,21 +808,12 @@
                   </tr>
                 </thead>
                 <tbody id="effectiveness-trace-rows">
-                  {% for row in effectiveness_competency_trace %}
-                    <tr data-row-key="{{ row.row_key }}" data-approach-id="{{ row.approach.id if row.approach else '' }}" data-effect-id="{{ row.effect.id if row.effect else '' }}" data-effect-polarity="{{ row.effect.effect_polarity if row.effect else '' }}" data-evidence-rigor="{{ row.effect.evidence_rigor if row.effect else '' }}" data-unlinked="{{ 'true' if row.is_unlinked else 'false' }}">
-                      <td>
-                        {% for path in row.technique_paths %}
-                          <div class="small effectiveness-technique" data-technique-kind="{{ path.kind }}" data-technique-id="{{ path.technique.id }}">
-                            <span class="badge {% if path.kind == 'Prompting technique' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">{{ path.kind }}: {{ path.technique.name }}</span>
-                            <span class="text-muted">{% if path.solution %}via solution: {{ path.solution.name }}{% else %}recorded on approach{% endif %}</span>
-                          </div>
-                        {% else %}
-                          <span class="text-muted">No technique linked</span>
-                        {% endfor %}
-                      </td>
-                      <td>{{ row.approach.name if row.approach else 'Not linked to an approach' }}</td>
+                  {% for row in approach_effectiveness_trace %}
+                    <tr data-row-key="{{ row.row_key }}" data-approach-id="{{ row.approach.id }}" data-effect-id="{{ row.effect.id if row.effect else '' }}" data-effect-polarity="{{ row.effect.effect_polarity if row.effect else '' }}" data-evidence-rigor="{{ row.effect.evidence_rigor if row.effect else '' }}">
+                      <td>{{ row.approach.name }}</td>
+                      <td>{{ row.tasks|map(attribute='name')|join(', ') if row.tasks else 'Not specified' }}</td>
                       <td>{{ row.effect.description if row.effect else 'No effect record linked to this approach.' }}</td>
-                      <td>{{ row.effect.effect_polarity|default('neutral')|capitalize if row.effect else 'Not reported' }}</td>
+                      <td>{{ row.effect.effect_polarity|default('neutral')|capitalize if row.effect else 'Not recorded' }}</td>
                       <td>{{ row.effect.evidence_rigor if row.effect and row.effect.evidence_rigor else 'Not specified' }}</td>
                       <td>
                         {% if row.underlying_llms %}
@@ -856,7 +822,7 @@
                           {% endfor %}
                         {% else %}Not specified{% endif %}
                       </td>
-                      <td>{{ row.source.title if row.source else 'Not linked' }}</td>
+                      <td>{{ row.source.title if row.source else 'Unknown source' }}</td>
                     </tr>
                   {% endfor %}
                 </tbody>
@@ -2866,14 +2832,11 @@
       applyCompetencyFilters();
 
       const effectivenessApproachFilter = document.getElementById('effectiveness-filter-approach');
-      const effectivenessPromptingFilter = document.getElementById('effectiveness-filter-prompting');
-      const effectivenessOtherFilter = document.getElementById('effectiveness-filter-other');
       const effectivenessPolarityFilter = document.getElementById('effectiveness-filter-polarity');
       const effectivenessRigorFilter = document.getElementById('effectiveness-filter-rigor');
       const effectivenessTraceRows = document.querySelectorAll('#effectiveness-trace-rows tr');
       const effectivenessAnswerRecords = document.querySelectorAll('.effectiveness-answer-record');
-      const effectivenessAnswerGroups = document.querySelectorAll('.effectiveness-answer-group');
-      const effectivenessUnlinkedGroup = document.getElementById('effectiveness-unlinked-group');
+      const effectivenessAnswerGroups = document.querySelectorAll('.effectiveness-approach-answer');
       const effectivenessSummary = document.getElementById('effectiveness-answer-summary');
       const effectivenessTraceEmpty = document.getElementById('effectiveness-trace-empty');
       const effectivenessAnswerPanel = document.getElementById('effectiveness-answer-panel');
@@ -2883,31 +2846,26 @@
 
       function applyEffectivenessFilters() {
         const activeApproach = effectivenessApproachFilter ? effectivenessApproachFilter.value : '';
-        const activePrompting = effectivenessPromptingFilter ? effectivenessPromptingFilter.value : '';
-        const activeOther = effectivenessOtherFilter ? effectivenessOtherFilter.value : '';
         const activePolarity = effectivenessPolarityFilter ? effectivenessPolarityFilter.value : '';
         const activeRigor = effectivenessRigorFilter ? effectivenessRigorFilter.value : '';
-        const hasTechniqueFilter = Boolean(activePrompting || activeOther);
         const visibleEffects = new Map();
+        const visibleApproaches = new Set();
         const visibleRowKeys = new Set();
         let visibleRowCount = 0;
 
         effectivenessTraceRows.forEach(function (row) {
           const matchesApproach = !activeApproach || row.dataset.approachId === activeApproach;
-          const matchesTechnique = !hasTechniqueFilter || Array.from(row.querySelectorAll('.effectiveness-technique')).some(function (technique) {
-            return (activePrompting && technique.dataset.techniqueKind === 'Prompting technique' && technique.dataset.techniqueId === activePrompting)
-              || (activeOther && technique.dataset.techniqueKind === 'Other technique' && technique.dataset.techniqueId === activeOther);
-          });
           const matchesPolarity = !activePolarity || row.dataset.effectPolarity === activePolarity;
           const matchesRigor = !activeRigor || row.dataset.evidenceRigor === activeRigor;
-          const isVisible = matchesApproach && matchesTechnique && matchesPolarity && matchesRigor;
+          const isVisible = matchesApproach && matchesPolarity && matchesRigor;
           row.classList.toggle('d-none', !isVisible);
           if (isVisible) {
             visibleRowCount += 1;
             visibleRowKeys.add(row.dataset.rowKey);
+            visibleApproaches.add(row.dataset.approachId);
             if (row.dataset.effectId) {
               visibleEffects.set(row.dataset.effectId, {
-                unlinked: row.dataset.unlinked === 'true',
+                approachId: row.dataset.approachId,
                 polarity: row.dataset.effectPolarity,
               });
             }
@@ -2918,31 +2876,22 @@
           record.classList.toggle('d-none', !visibleRowKeys.has(record.dataset.rowKey));
         });
         effectivenessAnswerGroups.forEach(function (group) {
-          const hasVisibleRecord = Boolean(group.querySelector('.effectiveness-answer-record:not(.d-none)'));
-          const matchesTechnique = !hasTechniqueFilter
-            || (activePrompting && group.dataset.techniqueKind === 'Prompting technique' && group.dataset.techniqueId === activePrompting)
-            || (activeOther && group.dataset.techniqueKind === 'Other technique' && group.dataset.techniqueId === activeOther);
-          group.classList.toggle('d-none', !hasVisibleRecord || !matchesTechnique);
+          group.classList.toggle('d-none', !visibleApproaches.has(group.dataset.approachId));
         });
-        if (effectivenessUnlinkedGroup) {
-          const hasVisibleUnlinkedRecord = Boolean(effectivenessUnlinkedGroup.querySelector('.effectiveness-answer-record:not(.d-none)'));
-          effectivenessUnlinkedGroup.classList.toggle('d-none', !hasVisibleUnlinkedRecord);
-        }
 
         if (effectivenessSummary) {
-          const linkedCount = Array.from(visibleEffects.values()).filter(function (effect) { return !effect.unlinked; }).length;
-          const unlinkedCount = visibleEffects.size - linkedCount;
+          const approachesWithEffects = new Set(Array.from(visibleEffects.values()).map(function (effect) { return effect.approachId; }));
           const positiveCount = Array.from(visibleEffects.values()).filter(function (effect) { return effect.polarity === 'positive'; }).length;
           const negativeCount = Array.from(visibleEffects.values()).filter(function (effect) { return effect.polarity === 'negative'; }).length;
           const neutralCount = Array.from(visibleEffects.values()).filter(function (effect) { return effect.polarity === 'neutral'; }).length;
-          effectivenessSummary.textContent = visibleEffects.size + ' effect records shown: ' + linkedCount + ' linked through technique-using approaches and ' + unlinkedCount + ' not linkable to those techniques. Polarity: ' + positiveCount + ' positive, ' + negativeCount + ' negative, ' + neutralCount + ' neutral.';
+          effectivenessSummary.textContent = visibleEffects.size + ' linked effect records across ' + approachesWithEffects.size + ' effect-bearing ' + (approachesWithEffects.size === 1 ? 'approach' : 'approaches') + ' (' + visibleApproaches.size + ' total approaches). Polarity: ' + positiveCount + ' positive, ' + negativeCount + ' negative, ' + neutralCount + ' neutral.';
         }
         if (effectivenessTraceEmpty) {
           effectivenessTraceEmpty.classList.toggle('d-none', visibleRowCount > 0);
         }
       }
 
-      [effectivenessApproachFilter, effectivenessPromptingFilter, effectivenessOtherFilter, effectivenessPolarityFilter, effectivenessRigorFilter].forEach(function (filter) {
+      [effectivenessApproachFilter, effectivenessPolarityFilter, effectivenessRigorFilter].forEach(function (filter) {
         if (filter) filter.addEventListener('change', applyEffectivenessFilters);
       });
       if (effectivenessTracePanel && effectivenessTraceToggle) {
