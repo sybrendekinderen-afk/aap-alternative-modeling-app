@@ -1061,6 +1061,100 @@
         </section>
       </div>
 
+      <section class="mt-4 pt-4 border-top" aria-labelledby="approach-underlying-llm-question">
+        <h3 class="h5 mb-2" id="approach-underlying-llm-question">Which underlying LLMs are employed by existing approaches?</h3>
+        <div class="alert alert-info small" role="note">
+          LLMs are linked to approaches through their effect records. This shows recorded LLM evidence; an approach without a linked effect record is marked as not recorded, not as using no LLM.
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label form-label-sm mb-1" for="approach-llm-filter-approach">Modeling approach</label>
+            <select id="approach-llm-filter-approach" class="form-select form-select-sm">
+              <option value="">All approaches</option>
+              {% for answer in approach_underlying_llm_answers %}
+                <option value="{{ answer.approach.id }}">{{ answer.approach.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label form-label-sm mb-1" for="approach-llm-filter-llm">Underlying LLM</label>
+            <select id="approach-llm-filter-llm" class="form-select form-select-sm">
+              <option value="">All underlying LLMs</option>
+              {% for llm in underlying_llms %}
+                <option value="{{ llm.id }}">{{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <h4 class="h6 mb-0">Answer</h4>
+          <button class="btn btn-sm btn-outline-secondary" id="approach-llm-answer-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#approach-llm-answer-panel" aria-expanded="false" aria-controls="approach-llm-answer-panel">Show answer</button>
+        </div>
+        <p class="text-muted small" id="approach-llm-answer-summary" aria-live="polite"></p>
+        <div class="collapse" id="approach-llm-answer-panel">
+          <div id="approach-llm-answer-list">
+            {% for answer in approach_underlying_llm_answers %}
+              <div class="border-bottom py-2 approach-underlying-llm-answer" data-approach-id="{{ answer.approach.id }}">
+                <div class="fw-semibold">{{ answer.approach.name }}</div>
+                {% if answer.tasks %}
+                  <div class="small text-muted">Modeling tasks: {{ answer.tasks|map(attribute='name')|join(', ') }}</div>
+                {% endif %}
+                {% if answer.underlying_llms %}
+                  {% for item in answer.underlying_llms %}
+                    <div class="small approach-underlying-llm-entry" data-llm-id="{{ item.llm.id }}">
+                      <span class="badge bg-primary-subtle text-primary-emphasis me-1">{{ item.llm.name }}{% if item.llm.version %} {{ item.llm.version }}{% endif %}</span>
+                      <span class="text-muted">via {{ item.effects|length }} effect record{% if item.effects|length != 1 %}s{% endif %}</span>
+                      {% for effect in item.effects %}
+                        <div class="text-muted ps-2">{{ effect.description }} ({{ effect.effect_polarity|default('neutral')|capitalize }}{% if effect.evidence_rigor %}; {{ effect.evidence_rigor }}{% endif %})</div>
+                      {% endfor %}
+                    </div>
+                  {% endfor %}
+                {% else %}
+                  <div class="small text-muted approach-underlying-llm-entry">No underlying LLM recorded through an approach-linked effect.</div>
+                {% endif %}
+              </div>
+            {% else %}
+              <div class="alert alert-light border">No modeling approaches are recorded.</div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-3 mb-2">
+          <h4 class="h6 mb-0">Trace</h4>
+          <button class="btn btn-sm btn-outline-secondary" id="approach-llm-trace-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#approach-llm-trace-panel" aria-expanded="false" aria-controls="approach-llm-trace-panel">Show trace</button>
+        </div>
+        <div class="collapse" id="approach-llm-trace-panel">
+          <div class="alert alert-light border d-none" id="approach-llm-trace-empty">No approach/LLM records match these filters.</div>
+          <div class="table-responsive">
+            <table class="table table-sm table-striped table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col">Modeling approach</th>
+                  <th scope="col">Linked modeling tasks</th>
+                  <th scope="col">Underlying LLM</th>
+                  <th scope="col">Effect evidence</th>
+                  <th scope="col">Source</th>
+                </tr>
+              </thead>
+              <tbody id="approach-llm-trace-rows">
+                {% for row in approach_underlying_llm_trace %}
+                  <tr data-approach-id="{{ row.approach.id }}" data-llm-id="{{ row.underlying_llm.id if row.underlying_llm else '' }}">
+                    <td>{{ row.approach.name }}</td>
+                    <td>{{ row.tasks|map(attribute='name')|join(', ') if row.tasks else 'Not specified' }}</td>
+                    <td>{% if row.underlying_llm %}{{ row.underlying_llm.name }}{% if row.underlying_llm.version %} {{ row.underlying_llm.version }}{% endif %}{% else %}Not recorded{% endif %}</td>
+                    <td>
+                      {% for effect in row.effects %}
+                        <div>{{ effect.description }} <span class="text-muted">({{ effect.effect_polarity|default('neutral')|capitalize }}{% if effect.evidence_rigor %}; {{ effect.evidence_rigor }}{% endif %})</span></div>
+                      {% else %}No linked effect record{% endfor %}
+                    </td>
+                    <td>{{ row.source.title if row.source else 'Unknown source' }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <div class="tab-pane fade" id="kb-visualization-pane" role="tabpanel" aria-labelledby="kb-visualization-tab" tabindex="0">
     <div class="card mb-4">
       <div class="card-header"><h3 class="h5 mb-0">Knowledge Base Statistics</h3></div>
@@ -2996,6 +3090,75 @@
         });
       }
       applyIntermediateProblemFilters();
+
+      const approachLlmApproachFilter = document.getElementById('approach-llm-filter-approach');
+      const approachLlmFilter = document.getElementById('approach-llm-filter-llm');
+      const approachLlmTraceRows = document.querySelectorAll('#approach-llm-trace-rows tr');
+      const approachLlmAnswerRows = document.querySelectorAll('.approach-underlying-llm-answer');
+      const approachLlmAnswerSummary = document.getElementById('approach-llm-answer-summary');
+      const approachLlmTraceEmpty = document.getElementById('approach-llm-trace-empty');
+      const approachLlmAnswerPanel = document.getElementById('approach-llm-answer-panel');
+      const approachLlmAnswerToggle = document.getElementById('approach-llm-answer-toggle');
+      const approachLlmTracePanel = document.getElementById('approach-llm-trace-panel');
+      const approachLlmTraceToggle = document.getElementById('approach-llm-trace-toggle');
+
+      function applyApproachLlmFilters() {
+        const activeApproach = approachLlmApproachFilter ? approachLlmApproachFilter.value : '';
+        const activeLlm = approachLlmFilter ? approachLlmFilter.value : '';
+        const visibleApproaches = new Set();
+        const visibleLlms = new Set();
+        let visibleRowCount = 0;
+
+        approachLlmTraceRows.forEach(function (row) {
+          const matchesApproach = !activeApproach || row.dataset.approachId === activeApproach;
+          const matchesLlm = !activeLlm || row.dataset.llmId === activeLlm;
+          const isVisible = matchesApproach && matchesLlm;
+          row.classList.toggle('d-none', !isVisible);
+          if (isVisible) {
+            visibleRowCount += 1;
+            visibleApproaches.add(row.dataset.approachId);
+            if (row.dataset.llmId) visibleLlms.add(row.dataset.llmId);
+          }
+        });
+
+        approachLlmAnswerRows.forEach(function (row) {
+          const isVisible = visibleApproaches.has(row.dataset.approachId);
+          row.classList.toggle('d-none', !isVisible);
+          row.querySelectorAll('.approach-underlying-llm-entry').forEach(function (entry) {
+            const matchesLlm = !activeLlm || entry.dataset.llmId === activeLlm;
+            entry.classList.toggle('d-none', !matchesLlm);
+          });
+        });
+        if (approachLlmAnswerSummary) {
+          const approachWord = visibleApproaches.size === 1 ? 'approach' : 'approaches';
+          const llmWord = visibleLlms.size === 1 ? 'underlying LLM' : 'underlying LLMs';
+          approachLlmAnswerSummary.textContent = visibleApproaches.size + ' ' + approachWord + ' shown; ' + visibleLlms.size + ' ' + llmWord + ' recorded through effects.';
+        }
+        if (approachLlmTraceEmpty) {
+          approachLlmTraceEmpty.classList.toggle('d-none', visibleRowCount > 0);
+        }
+      }
+
+      [approachLlmApproachFilter, approachLlmFilter].forEach(function (filter) {
+        if (filter) filter.addEventListener('change', applyApproachLlmFilters);
+      });
+      if (approachLlmAnswerPanel && approachLlmAnswerToggle) {
+        approachLlmAnswerPanel.addEventListener('shown.bs.collapse', function () {
+          approachLlmAnswerToggle.textContent = 'Hide answer';
+        });
+        approachLlmAnswerPanel.addEventListener('hidden.bs.collapse', function () {
+          approachLlmAnswerToggle.textContent = 'Show answer';
+        });
+      }
+      if (approachLlmTracePanel && approachLlmTraceToggle) {
+        approachLlmTracePanel.addEventListener('shown.bs.collapse', function () {
+          approachLlmTraceToggle.textContent = 'Hide trace';
+        });
+        approachLlmTracePanel.addEventListener('hidden.bs.collapse', function () {
+          approachLlmTraceToggle.textContent = 'Show trace';
+        });
+      }
+      applyApproachLlmFilters();
 
       solutionLinks.forEach(function (link) {
         link.addEventListener('click', function (event) {

@@ -1355,6 +1355,67 @@ def get_modeling_approach_underlying_llm_lookup(modeling_approaches, effects):
     return lookup
 
 
+def get_approach_underlying_llm_competency_question(modeling_approaches, modeling_tasks, effects, underlying_llms, sources):
+    approach_effect_lookup = get_modeling_approach_effect_lookup(effects)
+    task_lookup = {task.get("id"): task for task in modeling_tasks}
+    llm_lookup = {llm.get("id"): llm for llm in underlying_llms}
+    source_lookup = {source.get("id"): source for source in sources}
+    answers = []
+    trace_rows = []
+
+    for approach in modeling_approaches:
+        approach_effects = approach_effect_lookup.get(approach.get("id"), [])
+        tasks = [
+            task_lookup[task_id]
+            for task_id in approach.get("modeling_task_ids", [])
+            if task_id in task_lookup
+        ]
+        llm_effects = {}
+        for effect in approach_effects:
+            for llm_id in effect.get("underlying_llm_ids", []):
+                llm = llm_lookup.get(llm_id)
+                if not llm:
+                    continue
+                llm_effects.setdefault(llm_id, {"llm": llm, "effects": []})["effects"].append(effect)
+
+        answer = {
+            "approach": approach,
+            "tasks": tasks,
+            "underlying_llms": sorted(
+                llm_effects.values(),
+                key=lambda item: item["llm"].get("name", "").lower(),
+            ),
+            "effect_count": len(approach_effects),
+            "source": source_lookup.get(approach.get("source_id")),
+        }
+        answers.append(answer)
+
+        if llm_effects:
+            for llm_entry in answer["underlying_llms"]:
+                trace_rows.append({
+                    "approach": approach,
+                    "tasks": tasks,
+                    "underlying_llm": llm_entry["llm"],
+                    "effects": llm_entry["effects"],
+                    "source": answer["source"],
+                })
+        else:
+            trace_rows.append({
+                "approach": approach,
+                "tasks": tasks,
+                "underlying_llm": None,
+                "effects": approach_effects,
+                "source": answer["source"],
+            })
+
+    answers.sort(key=lambda answer: answer["approach"].get("name", "").lower())
+    trace_rows.sort(key=lambda row: (
+        row["approach"].get("name", "").lower(),
+        (row["underlying_llm"] or {}).get("name", "").lower(),
+    ))
+    return answers, trace_rows
+
+
 def get_modeling_approach_model_type_lookup(modeling_approaches, modeling_tasks):
     task_lookup = {task.get("id"): task for task in modeling_tasks}
     lookup = {}
@@ -1535,6 +1596,13 @@ def home():
         solutions,
         sources,
     )
+    approach_underlying_llm_answers, approach_underlying_llm_trace = get_approach_underlying_llm_competency_question(
+        modeling_approaches,
+        modeling_tasks,
+        effects,
+        underlying_llms,
+        sources,
+    )
     technique_usage_counts = get_llm_technique_usage_counts(
         solutions,
         modeling_approaches,
@@ -1588,6 +1656,8 @@ def home():
         competency_question_trace=competency_question_trace,
         approach_technique_combination_answers=approach_technique_combination_answers,
         intermediate_problem_competency_answers=intermediate_problem_competency_answers,
+        approach_underlying_llm_answers=approach_underlying_llm_answers,
+        approach_underlying_llm_trace=approach_underlying_llm_trace,
         effectiveness_competency_trace=effectiveness_competency_trace,
         effectiveness_competency_summary=effectiveness_competency_summary,
         effectiveness_technique_groups=effectiveness_technique_groups,
