@@ -864,6 +864,113 @@
             </div>
           </div>
         </section>
+        <section class="mt-4 pt-4 border-top" aria-labelledby="technique-combination-question">
+          <h3 class="h5 mb-2" id="technique-combination-question">Which approaches use a combination of prompting techniques and other techniques?</h3>
+          <div class="alert alert-info small" role="note">
+            The combination is inferred at the approach level from techniques recorded on the approach and its linked solutions.
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <label class="form-label form-label-sm mb-1" for="combination-filter-approach">Modeling approach</label>
+              <select id="combination-filter-approach" class="form-select form-select-sm">
+                <option value="">All approaches</option>
+                {% for answer in approach_technique_combination_answers %}
+                  <option value="{{ answer.approach.id }}">{{ answer.approach.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label form-label-sm mb-1" for="combination-filter-prompting">Prompting technique</label>
+              <select id="combination-filter-prompting" class="form-select form-select-sm">
+                <option value="">All prompting techniques</option>
+                {% for technique in prompting_techniques %}
+                  <option value="{{ technique.id }}">{{ technique.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label form-label-sm mb-1" for="combination-filter-other">Other technique</label>
+              <select id="combination-filter-other" class="form-select form-select-sm">
+                <option value="">All other techniques</option>
+                {% for technique in other_techniques %}
+                  <option value="{{ technique.id }}">{{ technique.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <h4 class="h6 mb-0">Answer</h4>
+            <button class="btn btn-sm btn-outline-secondary" id="combination-answer-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#combination-answer-panel" aria-expanded="false" aria-controls="combination-answer-panel">Show answer</button>
+          </div>
+          <p class="text-muted small" id="combination-answer-summary" aria-live="polite"></p>
+          <div class="collapse" id="combination-answer-panel">
+            <div id="combination-answer-list">
+              {% for answer in approach_technique_combination_answers %}
+                <div class="border-bottom py-2 approach-combination-answer" data-approach-id="{{ answer.approach.id }}">
+                  <div class="fw-semibold">{{ answer.approach.name }}</div>
+                  {% if answer.modeling_tasks %}
+                    <div class="small text-muted">Modeling tasks: {{ answer.modeling_tasks|map(attribute='name')|join(', ') }}</div>
+                  {% endif %}
+                  <div class="small">
+                    <span class="fw-semibold">Prompting:</span>
+                    {% for item in answer.prompting_techniques %}
+                      <span class="badge bg-secondary me-1">{{ item.technique.name }}</span>
+                    {% endfor %}
+                  </div>
+                  <div class="small">
+                    <span class="fw-semibold">Other:</span>
+                    {% for item in answer.other_techniques %}
+                      <span class="badge bg-warning text-dark me-1">{{ item.technique.name }}</span>
+                    {% endfor %}
+                  </div>
+                </div>
+              {% else %}
+                <div class="alert alert-light border">No approaches currently have both technique categories recorded.</div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2 mt-3 mb-2">
+            <h4 class="h6 mb-0">Trace</h4>
+            <button class="btn btn-sm btn-outline-secondary" id="combination-trace-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#combination-trace-panel" aria-expanded="false" aria-controls="combination-trace-panel">Show trace</button>
+          </div>
+          <div class="collapse" id="combination-trace-panel">
+            <div class="alert alert-light border d-none" id="combination-trace-empty">No approaches match these filters.</div>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped table-bordered align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th scope="col">Modeling approach</th>
+                    <th scope="col">Modeling tasks</th>
+                    <th scope="col">Prompting techniques and recorded path</th>
+                    <th scope="col">Other techniques and recorded path</th>
+                    <th scope="col">Linked solutions</th>
+                    <th scope="col">Source</th>
+                  </tr>
+                </thead>
+                <tbody id="combination-trace-rows">
+                  {% for answer in approach_technique_combination_answers %}
+                    <tr data-approach-id="{{ answer.approach.id }}" data-prompting-technique-ids="{{ answer.prompting_technique_ids|join(',') }}" data-other-technique-ids="{{ answer.other_technique_ids|join(',') }}">
+                      <td>{{ answer.approach.name }}</td>
+                      <td>{{ answer.modeling_tasks|map(attribute='name')|join(', ') if answer.modeling_tasks else 'Not specified' }}</td>
+                      <td>
+                        {% for item in answer.prompting_techniques %}
+                          <div><span class="badge bg-secondary">{{ item.technique.name }}</span> <span class="text-muted small">({% for path in item.paths %}{% if not loop.first %}; {% endif %}{% if path.solution %}via solution: {{ path.solution.name }}{% else %}recorded on approach{% endif %}{% endfor %})</span></div>
+                        {% endfor %}
+                      </td>
+                      <td>
+                        {% for item in answer.other_techniques %}
+                          <div><span class="badge bg-warning text-dark">{{ item.technique.name }}</span> <span class="text-muted small">({% for path in item.paths %}{% if not loop.first %}; {% endif %}{% if path.solution %}via solution: {{ path.solution.name }}{% else %}recorded on approach{% endif %}{% endfor %})</span></div>
+                        {% endfor %}
+                      </td>
+                      <td>{{ answer.linked_solutions|map(attribute='name')|join(', ') if answer.linked_solutions else 'None' }}</td>
+                      <td>{{ answer.source.title if answer.source else 'Unknown source' }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       </div>
 
       <div class="tab-pane fade" id="kb-visualization-pane" role="tabpanel" aria-labelledby="kb-visualization-tab" tabindex="0">
@@ -2673,6 +2780,65 @@
         });
       }
       applyEffectivenessFilters();
+
+      const combinationApproachFilter = document.getElementById('combination-filter-approach');
+      const combinationPromptingFilter = document.getElementById('combination-filter-prompting');
+      const combinationOtherFilter = document.getElementById('combination-filter-other');
+      const combinationTraceRows = document.querySelectorAll('#combination-trace-rows tr');
+      const combinationAnswerRows = document.querySelectorAll('.approach-combination-answer');
+      const combinationSummary = document.getElementById('combination-answer-summary');
+      const combinationTraceEmpty = document.getElementById('combination-trace-empty');
+      const combinationAnswerPanel = document.getElementById('combination-answer-panel');
+      const combinationAnswerToggle = document.getElementById('combination-answer-toggle');
+      const combinationTracePanel = document.getElementById('combination-trace-panel');
+      const combinationTraceToggle = document.getElementById('combination-trace-toggle');
+
+      function applyCombinationFilters() {
+        const activeApproach = combinationApproachFilter ? combinationApproachFilter.value : '';
+        const activePrompting = combinationPromptingFilter ? combinationPromptingFilter.value : '';
+        const activeOther = combinationOtherFilter ? combinationOtherFilter.value : '';
+        const visibleApproaches = new Set();
+
+        combinationTraceRows.forEach(function (row) {
+          const matchesApproach = !activeApproach || row.dataset.approachId === activeApproach;
+          const matchesPrompting = !activePrompting || parseCsvIds(row.dataset.promptingTechniqueIds).includes(activePrompting);
+          const matchesOther = !activeOther || parseCsvIds(row.dataset.otherTechniqueIds).includes(activeOther);
+          const isVisible = matchesApproach && matchesPrompting && matchesOther;
+          row.classList.toggle('d-none', !isVisible);
+          if (isVisible) visibleApproaches.add(row.dataset.approachId);
+        });
+
+        combinationAnswerRows.forEach(function (row) {
+          row.classList.toggle('d-none', !visibleApproaches.has(row.dataset.approachId));
+        });
+        if (combinationSummary) {
+          combinationSummary.textContent = visibleApproaches.size + ' approaches use both technique categories.';
+        }
+        if (combinationTraceEmpty) {
+          combinationTraceEmpty.classList.toggle('d-none', visibleApproaches.size > 0);
+        }
+      }
+
+      [combinationApproachFilter, combinationPromptingFilter, combinationOtherFilter].forEach(function (filter) {
+        if (filter) filter.addEventListener('change', applyCombinationFilters);
+      });
+      if (combinationAnswerPanel && combinationAnswerToggle) {
+        combinationAnswerPanel.addEventListener('shown.bs.collapse', function () {
+          combinationAnswerToggle.textContent = 'Hide answer';
+        });
+        combinationAnswerPanel.addEventListener('hidden.bs.collapse', function () {
+          combinationAnswerToggle.textContent = 'Show answer';
+        });
+      }
+      if (combinationTracePanel && combinationTraceToggle) {
+        combinationTracePanel.addEventListener('shown.bs.collapse', function () {
+          combinationTraceToggle.textContent = 'Hide trace';
+        });
+        combinationTracePanel.addEventListener('hidden.bs.collapse', function () {
+          combinationTraceToggle.textContent = 'Show trace';
+        });
+      }
+      applyCombinationFilters();
 
       solutionLinks.forEach(function (link) {
         link.addEventListener('click', function (event) {

@@ -1212,6 +1212,64 @@ def get_technique_effectiveness_competency_question(modeling_approaches, effects
     return trace_rows, summary, technique_groups, unlinked_effects
 
 
+def get_approach_technique_combinations_competency_question(modeling_approaches, modeling_tasks, prompting_techniques, other_techniques, solutions, sources):
+    prompting_lookup = {technique.get("id"): technique for technique in prompting_techniques}
+    other_lookup = {technique.get("id"): technique for technique in other_techniques}
+    solution_lookup = {solution.get("id"): solution for solution in solutions}
+    source_lookup = {source.get("id"): source for source in sources}
+    task_lookup = {task.get("id"): task for task in modeling_tasks}
+    answers = []
+
+    for approach in modeling_approaches:
+        technique_sets = {"prompting": {}, "other": {}}
+
+        def add_technique(category, technique_lookup, technique_id, recorded_via, solution=None):
+            technique = technique_lookup.get(technique_id)
+            if not technique:
+                return
+            entry = technique_sets[category].setdefault(technique_id, {"technique": technique, "paths": []})
+            path = {"recorded_via": recorded_via, "solution": solution}
+            if not any(
+                existing["recorded_via"] == recorded_via
+                and (existing["solution"] or {}).get("id") == (solution or {}).get("id")
+                for existing in entry["paths"]
+            ):
+                entry["paths"].append(path)
+
+        for technique_id in approach.get("prompting_technique_ids", []):
+            add_technique("prompting", prompting_lookup, technique_id, "Modeling approach")
+        for technique_id in approach.get("other_technique_ids", []):
+            add_technique("other", other_lookup, technique_id, "Modeling approach")
+
+        linked_solutions = []
+        for solution_id in approach.get("solution_ids", []):
+            solution = solution_lookup.get(solution_id)
+            if not solution:
+                continue
+            linked_solutions.append(solution)
+            for technique_id in solution.get("prompting_technique_ids", []):
+                add_technique("prompting", prompting_lookup, technique_id, "Solution", solution)
+            for technique_id in solution.get("other_technique_ids", []):
+                add_technique("other", other_lookup, technique_id, "Solution", solution)
+
+        if not technique_sets["prompting"] or not technique_sets["other"]:
+            continue
+
+        answers.append({
+            "approach": approach,
+            "modeling_tasks": [task_lookup[task_id] for task_id in approach.get("modeling_task_ids", []) if task_id in task_lookup],
+            "prompting_techniques": list(technique_sets["prompting"].values()),
+            "prompting_technique_ids": list(technique_sets["prompting"]),
+            "other_techniques": list(technique_sets["other"].values()),
+            "other_technique_ids": list(technique_sets["other"]),
+            "linked_solutions": linked_solutions,
+            "source": source_lookup.get(approach.get("source_id")),
+        })
+
+    answers.sort(key=lambda answer: answer["approach"].get("name", "").lower())
+    return answers
+
+
 def get_modeling_approach_underlying_llm_lookup(modeling_approaches, effects):
     approach_effect_lookup = get_modeling_approach_effect_lookup(effects)
     lookup = {}
@@ -1388,6 +1446,14 @@ def home():
         sources,
         underlying_llms,
     )
+    approach_technique_combination_answers = get_approach_technique_combinations_competency_question(
+        modeling_approaches,
+        modeling_tasks,
+        prompting_techniques,
+        other_techniques,
+        solutions,
+        sources,
+    )
     technique_usage_counts = get_llm_technique_usage_counts(
         solutions,
         modeling_approaches,
@@ -1439,6 +1505,7 @@ def home():
         modeling_approach_lookup=get_modeling_approach_lookup(modeling_approaches),
         competency_question_answers=competency_question_answers,
         competency_question_trace=competency_question_trace,
+        approach_technique_combination_answers=approach_technique_combination_answers,
         effectiveness_competency_trace=effectiveness_competency_trace,
         effectiveness_competency_summary=effectiveness_competency_summary,
         effectiveness_technique_groups=effectiveness_technique_groups,
