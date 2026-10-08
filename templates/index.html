@@ -64,6 +64,9 @@
         <button class="nav-link active" id="kb-navigation-tab" data-bs-toggle="tab" data-bs-target="#kb-navigation-pane" type="button" role="tab" aria-controls="kb-navigation-pane" aria-selected="true">Knowledge Base Navigation</button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link" id="kb-competency-tab" data-bs-toggle="tab" data-bs-target="#kb-competency-pane" type="button" role="tab" aria-controls="kb-competency-pane" aria-selected="false">Competency Questions</button>
+      </li>
+      <li class="nav-item" role="presentation">
         <button class="nav-link" id="kb-visualization-tab" data-bs-toggle="tab" data-bs-target="#kb-visualization-pane" type="button" role="tab" aria-controls="kb-visualization-pane" aria-selected="false">Knowledge Base Statistics</button>
       </li>
       <li class="nav-item" role="presentation">
@@ -614,6 +617,253 @@
       </div>
     {% endfor %}
 
+      </div>
+
+      <div class="tab-pane fade" id="kb-competency-pane" role="tabpanel" aria-labelledby="kb-competency-tab" tabindex="0">
+        <section aria-labelledby="technique-task-question">
+          <h3 class="h5 mb-3" id="technique-task-question">What LLM techniques are used to support which modeling tasks?</h3>
+          <div class="alert alert-info small" role="note">
+            Technique/task links are derived through modeling approaches. A technique recorded on an approach, or one of its linked solutions, is shown for every task linked to that approach. This is an association, not a direct technique-to-task assertion.
+          </div>
+          {% if competency_question_answers %}
+            <div class="row g-2 mb-3">
+              <div class="col-md-4">
+                <label class="form-label form-label-sm mb-1" for="competency-filter-task">Modeling task</label>
+                <select id="competency-filter-task" class="form-select form-select-sm">
+                  <option value="">All modeling tasks</option>
+                  {% for task in modeling_tasks %}
+                    <option value="{{ task.id }}">{{ task.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label form-label-sm mb-1" for="competency-filter-prompting-technique">Prompting technique</label>
+                <select id="competency-filter-prompting-technique" class="form-select form-select-sm">
+                  <option value="">All prompting techniques</option>
+                  {% for technique in prompting_techniques %}
+                    <option value="{{ technique.id }}">{{ technique.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label form-label-sm mb-1" for="competency-filter-other-technique">Other technique</label>
+                <select id="competency-filter-other-technique" class="form-select form-select-sm">
+                  <option value="">All other techniques</option>
+                  {% for technique in other_techniques %}
+                    <option value="{{ technique.id }}">{{ technique.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <h4 class="h6">Answer</h4>
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <h4 class="h6 mb-0">Answer</h4>
+              <button class="btn btn-sm btn-outline-secondary" id="competency-answer-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#competency-answer-panel" aria-expanded="false" aria-controls="competency-answer-panel">Show answer</button>
+            </div>
+            <p class="text-muted small" id="competency-question-count" aria-live="polite"></p>
+            <div class="collapse" id="competency-answer-panel">
+              <div class="mb-4" id="competency-answer-list">
+                {% for answer in competency_question_answers %}
+                  <div class="border-bottom py-2 competency-answer-item" data-task-id="{{ answer.task.id }}" data-model-type-id="{{ answer.task.model_type_id if answer.task.model_type_id is not none else '' }}">
+                    <div class="fw-semibold">{{ answer.task.name }}</div>
+                    <div class="small">
+                      {% for item in answer.techniques %}
+                        <span class="badge bg-secondary me-1 competency-answer-technique" data-technique-kind="{{ item.kind }}" data-technique-id="{{ item.technique.id }}">{{ item.kind }}: {{ item.technique.name }}</span>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <h4 class="h6 mb-0">Trace</h4>
+              <button class="btn btn-sm btn-outline-secondary" id="competency-trace-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#competency-trace-panel" aria-expanded="false" aria-controls="competency-trace-panel">Show trace</button>
+            </div>
+            <div class="collapse" id="competency-trace-panel">
+              <div class="alert alert-light border d-none" id="competency-trace-empty">No matching links for these filters.</div>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped table-bordered align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th scope="col">Modeling task</th>
+                      <th scope="col">Model type / notation</th>
+                      <th scope="col">Technique category</th>
+                      <th scope="col">LLM technique</th>
+                      <th scope="col">Modeling approach</th>
+                      <th scope="col">Recorded via</th>
+                      <th scope="col">Solution</th>
+                      <th scope="col">Source</th>
+                    </tr>
+                  </thead>
+                  <tbody id="competency-trace-rows">
+                    {% for row in competency_question_trace %}
+                      <tr data-task-id="{{ row.task.id }}" data-model-type-id="{{ row.model_type.id if row.model_type else '' }}" data-technique-kind="{{ row.technique_kind }}" data-technique-id="{{ row.technique.id }}">
+                        <td>{{ row.task.name }}</td>
+                        <td>
+                          {% if row.model_type %}
+                            {{ row.model_type.name }}{% if row.model_type.notation %} ({{ row.model_type.notation }}){% endif %}
+                          {% else %}Not specified{% endif %}
+                        </td>
+                        <td>{{ row.technique_kind }}</td>
+                        <td>{{ row.technique.name }}</td>
+                        <td>{{ row.approach.name }}</td>
+                        <td>{{ row.recorded_via }}{% if row.solution %}: {{ row.solution.name }}{% endif %}</td>
+                        <td>{{ row.solution.name if row.solution else '—' }}</td>
+                        <td>{{ row.source.title if row.source else 'Unknown source' }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% else %}
+            <div class="alert alert-light border mb-0">No modeling-task and LLM-technique links are recorded yet.</div>
+          {% endif %}
+        </section>
+        <section class="mt-4 pt-4 border-top" aria-labelledby="technique-effectiveness-question">
+          <h3 class="h5 mb-2" id="technique-effectiveness-question">What evidence is available regarding the effectiveness of LLM techniques?</h3>
+          <div class="alert alert-info small" role="note">
+            Effects are recorded against modeling approaches, not individual techniques. A technique shown with an effect was used in that approach. The data does not establish that the technique caused the effect.
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-4 col-lg">
+              <label class="form-label form-label-sm mb-1" for="effectiveness-filter-approach">Modeling approach</label>
+              <select id="effectiveness-filter-approach" class="form-select form-select-sm">
+                <option value="">All approaches</option>
+                {% for approach in modeling_approaches %}
+                  <option value="{{ approach.id }}">{{ approach.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4 col-lg">
+              <label class="form-label form-label-sm mb-1" for="effectiveness-filter-prompting">Prompting technique</label>
+              <select id="effectiveness-filter-prompting" class="form-select form-select-sm">
+                <option value="">All prompting techniques</option>
+                {% for technique in prompting_techniques %}
+                  <option value="{{ technique.id }}">{{ technique.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4 col-lg">
+              <label class="form-label form-label-sm mb-1" for="effectiveness-filter-other">Other technique</label>
+              <select id="effectiveness-filter-other" class="form-select form-select-sm">
+                <option value="">All other techniques</option>
+                {% for technique in other_techniques %}
+                  <option value="{{ technique.id }}">{{ technique.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4 col-lg">
+              <label class="form-label form-label-sm mb-1" for="effectiveness-filter-polarity">Effect polarity</label>
+              <select id="effectiveness-filter-polarity" class="form-select form-select-sm">
+                <option value="">All polarities</option>
+                <option value="positive">Positive</option>
+                <option value="negative">Negative</option>
+                <option value="neutral">Neutral</option>
+              </select>
+            </div>
+            <div class="col-md-4 col-lg">
+              <label class="form-label form-label-sm mb-1" for="effectiveness-filter-rigor">Evidence rigor</label>
+              <select id="effectiveness-filter-rigor" class="form-select form-select-sm">
+                <option value="">All evidence rigor</option>
+                {% for value in evidence_rigor_values %}
+                  <option value="{{ value }}">{{ value }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <h4 class="h6 mb-0">Answer</h4>
+            <button class="btn btn-sm btn-outline-secondary" id="effectiveness-answer-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#effectiveness-answer-panel" aria-expanded="false" aria-controls="effectiveness-answer-panel">Show answer</button>
+          </div>
+          <p class="text-muted small" id="effectiveness-answer-summary" aria-live="polite">
+            {{ effectiveness_competency_summary.effect_count }} effect records: {{ effectiveness_competency_summary.linked_effect_count }} linked through technique-using approaches and {{ effectiveness_competency_summary.unlinked_effect_count }} not linkable to those techniques.
+          </p>
+          <div class="collapse" id="effectiveness-answer-panel">
+            <div class="mb-4" id="effectiveness-technique-groups">
+              {% for group in effectiveness_technique_groups %}
+                <div class="border-bottom py-2 effectiveness-answer-group" data-technique-kind="{{ group.kind }}" data-technique-id="{{ group.technique.id }}">
+                  <div class="fw-semibold mb-1"><span class="badge {% if group.kind == 'Prompting technique' %}bg-secondary{% else %}bg-warning text-dark{% endif %} me-1">{{ group.kind }}</span>{{ group.technique.name }}</div>
+                  {% for record in group.records %}
+                    <div class="small ps-2 effectiveness-answer-record" data-row-key="{{ record.row.row_key }}">
+                      <span class="fw-semibold">{{ record.row.effect.description if record.row.effect else 'No effect record linked to this approach.' }}</span>
+                      {% if record.row.approach %}
+                        <span class="text-muted">via {{ record.row.approach.name }}</span>
+                      {% endif %}
+                      {% if record.row.effect %}
+                        <span class="text-muted">({{ record.row.effect.effect_polarity|default('neutral')|capitalize }}{% if record.row.effect.evidence_rigor %}; {{ record.row.effect.evidence_rigor }}{% endif %})</span>
+                      {% endif %}
+                      <span class="text-muted">[
+                        {% for path in record.paths %}{% if not loop.first %}; {% endif %}{% if path.solution %}via solution {{ path.solution.name }}{% else %}recorded on approach{% endif %}{% endfor %}
+                      ]</span>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endfor %}
+            </div>
+            {% if effectiveness_unlinked_effects %}
+              <div class="mb-4" id="effectiveness-unlinked-group">
+                <h5 class="h6">Effects without a linked technique-using approach</h5>
+                {% for row in effectiveness_unlinked_effects %}
+                  <div class="small effectiveness-answer-record" data-row-key="{{ row.row_key }}">
+                    <span class="fw-semibold">{{ row.effect.description }}</span>
+                    <span class="text-muted">({{ row.effect.effect_polarity|default('neutral')|capitalize }}{% if row.effect.evidence_rigor %}; {{ row.effect.evidence_rigor }}{% endif %})</span>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <h4 class="h6 mb-0">Trace</h4>
+            <button class="btn btn-sm btn-outline-secondary" id="effectiveness-trace-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#effectiveness-trace-panel" aria-expanded="false" aria-controls="effectiveness-trace-panel">Show trace</button>
+          </div>
+          <div class="collapse" id="effectiveness-trace-panel">
+            <div class="alert alert-light border d-none" id="effectiveness-trace-empty">No technique, approach, or effect records match these filters.</div>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped table-bordered align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th scope="col">LLM techniques and recorded path</th>
+                    <th scope="col">Modeling approach</th>
+                    <th scope="col">Effect evidence</th>
+                    <th scope="col">Polarity</th>
+                    <th scope="col">Evidence rigor</th>
+                    <th scope="col">Underlying LLMs</th>
+                    <th scope="col">Source</th>
+                  </tr>
+                </thead>
+                <tbody id="effectiveness-trace-rows">
+                  {% for row in effectiveness_competency_trace %}
+                    <tr data-row-key="{{ row.row_key }}" data-approach-id="{{ row.approach.id if row.approach else '' }}" data-effect-id="{{ row.effect.id if row.effect else '' }}" data-effect-polarity="{{ row.effect.effect_polarity if row.effect else '' }}" data-evidence-rigor="{{ row.effect.evidence_rigor if row.effect else '' }}" data-unlinked="{{ 'true' if row.is_unlinked else 'false' }}">
+                      <td>
+                        {% for path in row.technique_paths %}
+                          <div class="small effectiveness-technique" data-technique-kind="{{ path.kind }}" data-technique-id="{{ path.technique.id }}">
+                            <span class="badge {% if path.kind == 'Prompting technique' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">{{ path.kind }}: {{ path.technique.name }}</span>
+                            <span class="text-muted">{% if path.solution %}via solution: {{ path.solution.name }}{% else %}recorded on approach{% endif %}</span>
+                          </div>
+                        {% else %}
+                          <span class="text-muted">No technique linked</span>
+                        {% endfor %}
+                      </td>
+                      <td>{{ row.approach.name if row.approach else 'Not linked to an approach' }}</td>
+                      <td>{{ row.effect.description if row.effect else 'No effect record linked to this approach.' }}</td>
+                      <td>{{ row.effect.effect_polarity|default('neutral')|capitalize if row.effect else 'Not reported' }}</td>
+                      <td>{{ row.effect.evidence_rigor if row.effect and row.effect.evidence_rigor else 'Not specified' }}</td>
+                      <td>
+                        {% if row.underlying_llms %}
+                          {% for llm in row.underlying_llms %}
+                            {{ llm.name }}{% if llm.version %} {{ llm.version }}{% endif %}{% if not loop.last %}, {% endif %}
+                          {% endfor %}
+                        {% else %}Not specified{% endif %}
+                      </td>
+                      <td>{{ row.source.title if row.source else 'Not linked' }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       </div>
 
       <div class="tab-pane fade" id="kb-visualization-pane" role="tabpanel" aria-labelledby="kb-visualization-tab" tabindex="0">
@@ -2249,6 +2499,180 @@
       if (approachEffectPolarityFilter) {
         approachEffectPolarityFilter.addEventListener('change', applyHighlight);
       }
+
+      const competencyTaskFilter = document.getElementById('competency-filter-task');
+      const competencyPromptingFilter = document.getElementById('competency-filter-prompting-technique');
+      const competencyOtherTechniqueFilter = document.getElementById('competency-filter-other-technique');
+      const competencyAnswerItems = document.querySelectorAll('.competency-answer-item');
+      const competencyTraceRows = document.querySelectorAll('#competency-trace-rows tr');
+      const competencyQuestionCount = document.getElementById('competency-question-count');
+      const competencyTraceEmpty = document.getElementById('competency-trace-empty');
+      const competencyAnswerPanel = document.getElementById('competency-answer-panel');
+      const competencyAnswerToggle = document.getElementById('competency-answer-toggle');
+      const competencyTracePanel = document.getElementById('competency-trace-panel');
+      const competencyTraceToggle = document.getElementById('competency-trace-toggle');
+
+      function applyCompetencyFilters() {
+        const activeTask = competencyTaskFilter ? competencyTaskFilter.value : '';
+        const activePromptingTechnique = competencyPromptingFilter ? competencyPromptingFilter.value : '';
+        const activeOtherTechnique = competencyOtherTechniqueFilter ? competencyOtherTechniqueFilter.value : '';
+        const hasTechniqueFilter = Boolean(activePromptingTechnique || activeOtherTechnique);
+        const visibleAnswerTechniques = new Set();
+        const visibleTasks = new Set();
+        let visibleRowCount = 0;
+
+        competencyTraceRows.forEach(function (row) {
+          const matchesTask = !activeTask || row.dataset.taskId === activeTask;
+          const matchesTechnique = !hasTechniqueFilter
+            || (activePromptingTechnique && row.dataset.techniqueKind === 'Prompting technique' && row.dataset.techniqueId === activePromptingTechnique)
+            || (activeOtherTechnique && row.dataset.techniqueKind === 'Other technique' && row.dataset.techniqueId === activeOtherTechnique);
+          const isVisible = matchesTask && matchesTechnique;
+          row.classList.toggle('d-none', !isVisible);
+          if (isVisible) {
+            visibleRowCount += 1;
+            visibleTasks.add(row.dataset.taskId);
+            visibleAnswerTechniques.add([row.dataset.taskId, row.dataset.techniqueKind, row.dataset.techniqueId].join('|'));
+          }
+        });
+
+        competencyAnswerItems.forEach(function (item) {
+          const taskId = item.dataset.taskId;
+          let hasVisibleTechnique = false;
+          item.querySelectorAll('.competency-answer-technique').forEach(function (technique) {
+            const key = [taskId, technique.dataset.techniqueKind, technique.dataset.techniqueId].join('|');
+            const isVisible = visibleAnswerTechniques.has(key);
+            technique.classList.toggle('d-none', !isVisible);
+            if (isVisible) hasVisibleTechnique = true;
+          });
+          item.classList.toggle('d-none', !hasVisibleTechnique);
+        });
+
+        if (competencyQuestionCount) {
+          competencyQuestionCount.textContent = visibleRowCount + ' traced links across ' + visibleTasks.size + ' modeling tasks.';
+        }
+        if (competencyTraceEmpty) {
+          competencyTraceEmpty.classList.toggle('d-none', visibleRowCount > 0);
+        }
+      }
+
+      [competencyTaskFilter, competencyPromptingFilter, competencyOtherTechniqueFilter].forEach(function (filter) {
+        if (filter) filter.addEventListener('change', applyCompetencyFilters);
+      });
+      if (competencyTracePanel && competencyTraceToggle) {
+        competencyTracePanel.addEventListener('shown.bs.collapse', function () {
+          competencyTraceToggle.textContent = 'Hide trace';
+        });
+        competencyTracePanel.addEventListener('hidden.bs.collapse', function () {
+          competencyTraceToggle.textContent = 'Show trace';
+        });
+      }
+      if (competencyAnswerPanel && competencyAnswerToggle) {
+        competencyAnswerPanel.addEventListener('shown.bs.collapse', function () {
+          competencyAnswerToggle.textContent = 'Hide answer';
+        });
+        competencyAnswerPanel.addEventListener('hidden.bs.collapse', function () {
+          competencyAnswerToggle.textContent = 'Show answer';
+        });
+      }
+      applyCompetencyFilters();
+
+      const effectivenessApproachFilter = document.getElementById('effectiveness-filter-approach');
+      const effectivenessPromptingFilter = document.getElementById('effectiveness-filter-prompting');
+      const effectivenessOtherFilter = document.getElementById('effectiveness-filter-other');
+      const effectivenessPolarityFilter = document.getElementById('effectiveness-filter-polarity');
+      const effectivenessRigorFilter = document.getElementById('effectiveness-filter-rigor');
+      const effectivenessTraceRows = document.querySelectorAll('#effectiveness-trace-rows tr');
+      const effectivenessAnswerRecords = document.querySelectorAll('.effectiveness-answer-record');
+      const effectivenessAnswerGroups = document.querySelectorAll('.effectiveness-answer-group');
+      const effectivenessUnlinkedGroup = document.getElementById('effectiveness-unlinked-group');
+      const effectivenessSummary = document.getElementById('effectiveness-answer-summary');
+      const effectivenessTraceEmpty = document.getElementById('effectiveness-trace-empty');
+      const effectivenessAnswerPanel = document.getElementById('effectiveness-answer-panel');
+      const effectivenessAnswerToggle = document.getElementById('effectiveness-answer-toggle');
+      const effectivenessTracePanel = document.getElementById('effectiveness-trace-panel');
+      const effectivenessTraceToggle = document.getElementById('effectiveness-trace-toggle');
+
+      function applyEffectivenessFilters() {
+        const activeApproach = effectivenessApproachFilter ? effectivenessApproachFilter.value : '';
+        const activePrompting = effectivenessPromptingFilter ? effectivenessPromptingFilter.value : '';
+        const activeOther = effectivenessOtherFilter ? effectivenessOtherFilter.value : '';
+        const activePolarity = effectivenessPolarityFilter ? effectivenessPolarityFilter.value : '';
+        const activeRigor = effectivenessRigorFilter ? effectivenessRigorFilter.value : '';
+        const hasTechniqueFilter = Boolean(activePrompting || activeOther);
+        const visibleEffects = new Map();
+        const visibleRowKeys = new Set();
+        let visibleRowCount = 0;
+
+        effectivenessTraceRows.forEach(function (row) {
+          const matchesApproach = !activeApproach || row.dataset.approachId === activeApproach;
+          const matchesTechnique = !hasTechniqueFilter || Array.from(row.querySelectorAll('.effectiveness-technique')).some(function (technique) {
+            return (activePrompting && technique.dataset.techniqueKind === 'Prompting technique' && technique.dataset.techniqueId === activePrompting)
+              || (activeOther && technique.dataset.techniqueKind === 'Other technique' && technique.dataset.techniqueId === activeOther);
+          });
+          const matchesPolarity = !activePolarity || row.dataset.effectPolarity === activePolarity;
+          const matchesRigor = !activeRigor || row.dataset.evidenceRigor === activeRigor;
+          const isVisible = matchesApproach && matchesTechnique && matchesPolarity && matchesRigor;
+          row.classList.toggle('d-none', !isVisible);
+          if (isVisible) {
+            visibleRowCount += 1;
+            visibleRowKeys.add(row.dataset.rowKey);
+            if (row.dataset.effectId) {
+              visibleEffects.set(row.dataset.effectId, {
+                unlinked: row.dataset.unlinked === 'true',
+                polarity: row.dataset.effectPolarity,
+              });
+            }
+          }
+        });
+
+        effectivenessAnswerRecords.forEach(function (record) {
+          record.classList.toggle('d-none', !visibleRowKeys.has(record.dataset.rowKey));
+        });
+        effectivenessAnswerGroups.forEach(function (group) {
+          const hasVisibleRecord = Boolean(group.querySelector('.effectiveness-answer-record:not(.d-none)'));
+          const matchesTechnique = !hasTechniqueFilter
+            || (activePrompting && group.dataset.techniqueKind === 'Prompting technique' && group.dataset.techniqueId === activePrompting)
+            || (activeOther && group.dataset.techniqueKind === 'Other technique' && group.dataset.techniqueId === activeOther);
+          group.classList.toggle('d-none', !hasVisibleRecord || !matchesTechnique);
+        });
+        if (effectivenessUnlinkedGroup) {
+          const hasVisibleUnlinkedRecord = Boolean(effectivenessUnlinkedGroup.querySelector('.effectiveness-answer-record:not(.d-none)'));
+          effectivenessUnlinkedGroup.classList.toggle('d-none', !hasVisibleUnlinkedRecord);
+        }
+
+        if (effectivenessSummary) {
+          const linkedCount = Array.from(visibleEffects.values()).filter(function (effect) { return !effect.unlinked; }).length;
+          const unlinkedCount = visibleEffects.size - linkedCount;
+          const positiveCount = Array.from(visibleEffects.values()).filter(function (effect) { return effect.polarity === 'positive'; }).length;
+          const negativeCount = Array.from(visibleEffects.values()).filter(function (effect) { return effect.polarity === 'negative'; }).length;
+          const neutralCount = Array.from(visibleEffects.values()).filter(function (effect) { return effect.polarity === 'neutral'; }).length;
+          effectivenessSummary.textContent = visibleEffects.size + ' effect records shown: ' + linkedCount + ' linked through technique-using approaches and ' + unlinkedCount + ' not linkable to those techniques. Polarity: ' + positiveCount + ' positive, ' + negativeCount + ' negative, ' + neutralCount + ' neutral.';
+        }
+        if (effectivenessTraceEmpty) {
+          effectivenessTraceEmpty.classList.toggle('d-none', visibleRowCount > 0);
+        }
+      }
+
+      [effectivenessApproachFilter, effectivenessPromptingFilter, effectivenessOtherFilter, effectivenessPolarityFilter, effectivenessRigorFilter].forEach(function (filter) {
+        if (filter) filter.addEventListener('change', applyEffectivenessFilters);
+      });
+      if (effectivenessTracePanel && effectivenessTraceToggle) {
+        effectivenessTracePanel.addEventListener('shown.bs.collapse', function () {
+          effectivenessTraceToggle.textContent = 'Hide trace';
+        });
+        effectivenessTracePanel.addEventListener('hidden.bs.collapse', function () {
+          effectivenessTraceToggle.textContent = 'Show trace';
+        });
+      }
+      if (effectivenessAnswerPanel && effectivenessAnswerToggle) {
+        effectivenessAnswerPanel.addEventListener('shown.bs.collapse', function () {
+          effectivenessAnswerToggle.textContent = 'Hide answer';
+        });
+        effectivenessAnswerPanel.addEventListener('hidden.bs.collapse', function () {
+          effectivenessAnswerToggle.textContent = 'Show answer';
+        });
+      }
+      applyEffectivenessFilters();
 
       solutionLinks.forEach(function (link) {
         link.addEventListener('click', function (event) {

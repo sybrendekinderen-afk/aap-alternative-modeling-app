@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<diagram program="umlet" version="14.3.0">
+<diagram program="umlet" version="15.1">
   <zoom_level>10</zoom_level>
   <element>
     <id>UMLClass</id>
@@ -106,7 +106,7 @@ format [0..1]
     <panel_attributes>lt=-
 m1=1..n
 
-m2=0..1
+m2=1..1
 
 </panel_attributes>
     <additional_attributes>10.0;90.0;10.0;10.0</additional_attributes>
@@ -137,7 +137,7 @@ version
       <h>100</h>
     </coordinates>
     <panel_attributes>lt=-
-m1=0..n
+m1=1..n
 
 m2=1..n
 
@@ -216,12 +216,12 @@ m2=1..n
       <x>960</x>
       <y>140</y>
       <w>180</w>
-      <h>140</h>
+      <h>150</h>
     </coordinates>
     <panel_attributes>lt=-
 m1=1..n
 
-m2=0..1
+m2=1..1
 
 </panel_attributes>
     <additional_attributes>140.0;10.0;140.0;110.0;10.0;110.0</additional_attributes>
@@ -237,7 +237,7 @@ m2=0..1
     <panel_attributes>lt=-
 m1=1..n
 
-m2=0..n
+m2=1..n
 
 </panel_attributes>
     <additional_attributes>10.0;20.0;200.0;20.0</additional_attributes>
@@ -312,7 +312,7 @@ name
     <panel_attributes>lt=-
 m1=1..n
 
-m2=1..1
+m2=1..n
 
 </panel_attributes>
     <additional_attributes>200.0;20.0;10.0;20.0</additional_attributes>
@@ -328,7 +328,7 @@ m2=1..1
     <panel_attributes>lt=-
 m1=1..n
 
-m2=1..n
+m2=0..n
 
 </panel_attributes>
     <additional_attributes>10.0;10.0;10.0;170.0</additional_attributes>
@@ -393,9 +393,9 @@ polarEnum
       <h>190</h>
     </coordinates>
     <panel_attributes>lt=-
-m1=1..n
+m1=0..n
 
-m2=1..1
+m2=1..n
 
 </panel_attributes>
     <additional_attributes>10.0;170.0;10.0;10.0</additional_attributes>

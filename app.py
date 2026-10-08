@@ -1040,6 +1040,178 @@ def get_modeling_approach_other_technique_lookup(modeling_approaches, solutions)
     return lookup
 
 
+def get_technique_task_competency_question(modeling_tasks, modeling_approaches, model_types, prompting_techniques, other_techniques, solutions, sources):
+    task_lookup = {task.get("id"): task for task in modeling_tasks}
+    model_type_lookup = {model_type.get("id"): model_type for model_type in model_types}
+    prompting_lookup = {technique.get("id"): technique for technique in prompting_techniques}
+    other_lookup = {technique.get("id"): technique for technique in other_techniques}
+    solution_lookup = {solution.get("id"): solution for solution in solutions}
+    source_lookup = {source.get("id"): source for source in sources}
+    answer_by_task = {}
+    trace_rows = []
+
+    for approach in modeling_approaches:
+        source = source_lookup.get(approach.get("source_id"))
+        technique_paths = []
+        for technique_id in approach.get("prompting_technique_ids", []):
+            technique_paths.append(("Prompting technique", prompting_lookup.get(technique_id), "Modeling approach", None))
+        for technique_id in approach.get("other_technique_ids", []):
+            technique_paths.append(("Other technique", other_lookup.get(technique_id), "Modeling approach", None))
+
+        for solution_id in approach.get("solution_ids", []):
+            solution = solution_lookup.get(solution_id)
+            if not solution:
+                continue
+            for technique_id in solution.get("prompting_technique_ids", []):
+                technique_paths.append(("Prompting technique", prompting_lookup.get(technique_id), "Solution", solution))
+            for technique_id in solution.get("other_technique_ids", []):
+                technique_paths.append(("Other technique", other_lookup.get(technique_id), "Solution", solution))
+
+        for task_id in approach.get("modeling_task_ids", []):
+            task = task_lookup.get(task_id)
+            if not task:
+                continue
+            model_type = model_type_lookup.get(task.get("model_type_id"))
+            for technique_kind, technique, recorded_via, solution in technique_paths:
+                if not technique:
+                    continue
+                answer = answer_by_task.setdefault(task_id, {"task": task, "techniques": []})
+                answer_key = (technique_kind, technique.get("id"))
+                if not any((item["kind"], item["technique"].get("id")) == answer_key for item in answer["techniques"]):
+                    answer["techniques"].append({"kind": technique_kind, "technique": technique})
+                trace_rows.append({
+                    "task": task,
+                    "model_type": model_type,
+                    "approach": approach,
+                    "technique_kind": technique_kind,
+                    "technique": technique,
+                    "recorded_via": recorded_via,
+                    "solution": solution,
+                    "source": source,
+                })
+
+    answers = sorted(answer_by_task.values(), key=lambda item: item["task"].get("name", "").lower())
+    trace_rows.sort(key=lambda row: (
+        row["task"].get("name", "").lower(),
+        row["technique"].get("name", "").lower(),
+        row["approach"].get("name", "").lower(),
+        row["recorded_via"],
+    ))
+    return answers, trace_rows
+
+
+def get_technique_effectiveness_competency_question(modeling_approaches, effects, prompting_techniques, other_techniques, solutions, sources, underlying_llms):
+    approach_effect_lookup = get_modeling_approach_effect_lookup(effects)
+    prompting_lookup = {technique.get("id"): technique for technique in prompting_techniques}
+    other_lookup = {technique.get("id"): technique for technique in other_techniques}
+    solution_lookup = {solution.get("id"): solution for solution in solutions}
+    source_lookup = {source.get("id"): source for source in sources}
+    llm_lookup = {llm.get("id"): llm for llm in underlying_llms}
+    trace_rows = []
+    linked_effect_ids = set()
+
+    for approach in modeling_approaches:
+        technique_paths = []
+        for technique_id in approach.get("prompting_technique_ids", []):
+            technique = prompting_lookup.get(technique_id)
+            if technique:
+                technique_paths.append({"kind": "Prompting technique", "technique": technique, "recorded_via": "Modeling approach", "solution": None})
+        for technique_id in approach.get("other_technique_ids", []):
+            technique = other_lookup.get(technique_id)
+            if technique:
+                technique_paths.append({"kind": "Other technique", "technique": technique, "recorded_via": "Modeling approach", "solution": None})
+
+        for solution_id in approach.get("solution_ids", []):
+            solution = solution_lookup.get(solution_id)
+            if not solution:
+                continue
+            for technique_id in solution.get("prompting_technique_ids", []):
+                technique = prompting_lookup.get(technique_id)
+                if technique:
+                    technique_paths.append({"kind": "Prompting technique", "technique": technique, "recorded_via": "Solution", "solution": solution})
+            for technique_id in solution.get("other_technique_ids", []):
+                technique = other_lookup.get(technique_id)
+                if technique:
+                    technique_paths.append({"kind": "Other technique", "technique": technique, "recorded_via": "Solution", "solution": solution})
+
+        if not technique_paths:
+            continue
+
+        approach_effects = approach_effect_lookup.get(approach.get("id"), [])
+        for effect in approach_effects or [None]:
+            if effect:
+                linked_effect_ids.add(effect.get("id"))
+            trace_rows.append({
+                "approach": approach,
+                "technique_paths": technique_paths,
+                "effect": effect,
+                "row_key": "approach-{}-effect-{}".format(approach.get("id"), effect.get("id")) if effect else "approach-{}-no-effect".format(approach.get("id")),
+                "source": source_lookup.get(approach.get("source_id")),
+                "underlying_llms": [
+                    llm_lookup[llm_id]
+                    for llm_id in (effect or {}).get("underlying_llm_ids", [])
+                    if llm_id in llm_lookup
+                ],
+                "is_unlinked": False,
+            })
+
+    for effect in effects:
+        if effect.get("id") in linked_effect_ids:
+            continue
+        trace_rows.append({
+            "approach": None,
+            "technique_paths": [],
+            "effect": effect,
+            "row_key": "unlinked-effect-{}".format(effect.get("id")),
+            "source": None,
+            "underlying_llms": [
+                llm_lookup[llm_id]
+                for llm_id in effect.get("underlying_llm_ids", [])
+                if llm_id in llm_lookup
+            ],
+            "is_unlinked": True,
+        })
+
+    trace_rows.sort(key=lambda row: (
+        row["is_unlinked"],
+        (row["approach"] or {}).get("name", "").lower(),
+        (row["effect"] or {}).get("id", 0),
+    ))
+    summary = {
+        "effect_count": len(effects),
+        "linked_effect_count": len(linked_effect_ids),
+        "unlinked_effect_count": len(effects) - len(linked_effect_ids),
+    }
+    groups_by_key = {}
+    grouped_records = {}
+    for row in trace_rows:
+        if row["is_unlinked"]:
+            continue
+        for path in row["technique_paths"]:
+            technique_key = (path["kind"], path["technique"].get("id"))
+            group = groups_by_key.setdefault(technique_key, {
+                "kind": path["kind"],
+                "technique": path["technique"],
+                "records": [],
+            })
+            record_lookup = grouped_records.setdefault(technique_key, {})
+            record = record_lookup.get(row["row_key"])
+            if not record:
+                record = {"row": row, "paths": []}
+                record_lookup[row["row_key"]] = record
+                group["records"].append(record)
+            path_key = (path["recorded_via"], (path.get("solution") or {}).get("id"))
+            if not any((item["recorded_via"], (item.get("solution") or {}).get("id")) == path_key for item in record["paths"]):
+                record["paths"].append(path)
+
+    technique_groups = sorted(groups_by_key.values(), key=lambda group: (
+        group["kind"].lower(),
+        group["technique"].get("name", "").lower(),
+    ))
+    unlinked_effects = [row for row in trace_rows if row["is_unlinked"]]
+    return trace_rows, summary, technique_groups, unlinked_effects
+
+
 def get_modeling_approach_underlying_llm_lookup(modeling_approaches, effects):
     approach_effect_lookup = get_modeling_approach_effect_lookup(effects)
     lookup = {}
@@ -1198,6 +1370,24 @@ def home():
     modeling_tasks = store.get("modeling_tasks", [])
     modeling_problems = store.get("modeling_problems", [])
     modeling_approaches = store.get("modeling_approaches", [])
+    competency_question_answers, competency_question_trace = get_technique_task_competency_question(
+        modeling_tasks,
+        modeling_approaches,
+        model_types,
+        prompting_techniques,
+        other_techniques,
+        solutions,
+        sources,
+    )
+    effectiveness_competency_trace, effectiveness_competency_summary, effectiveness_technique_groups, effectiveness_unlinked_effects = get_technique_effectiveness_competency_question(
+        modeling_approaches,
+        effects,
+        prompting_techniques,
+        other_techniques,
+        solutions,
+        sources,
+        underlying_llms,
+    )
     technique_usage_counts = get_llm_technique_usage_counts(
         solutions,
         modeling_approaches,
@@ -1247,6 +1437,12 @@ def home():
         modeling_problem_lookup=get_modeling_problem_lookup(modeling_problems),
         modeling_approaches=modeling_approaches,
         modeling_approach_lookup=get_modeling_approach_lookup(modeling_approaches),
+        competency_question_answers=competency_question_answers,
+        competency_question_trace=competency_question_trace,
+        effectiveness_competency_trace=effectiveness_competency_trace,
+        effectiveness_competency_summary=effectiveness_competency_summary,
+        effectiveness_technique_groups=effectiveness_technique_groups,
+        effectiveness_unlinked_effects=effectiveness_unlinked_effects,
         modeling_problem_tree=build_modeling_problem_tree(modeling_problems),
         modeling_problem_solution_lookup=get_modeling_problem_solution_lookup(solutions, modeling_problems),
         evidence_rigor_values=store.get("evidence_rigor_values", DEFAULT_EVIDENCE_RIGOR_VALUES),
