@@ -707,6 +707,80 @@ def get_modeling_approach_problem_lookup(modeling_approaches, modeling_tasks):
     return lookup
 
 
+def get_intermediate_modeling_problem_competency_question(modeling_problems, modeling_tasks, modeling_approaches, solutions, sources):
+    problem_lookup = {problem.get("id"): problem for problem in modeling_problems}
+    task_lookup = {task.get("id"): task for task in modeling_tasks}
+    solution_lookup = {solution.get("id"): solution for solution in solutions}
+    approach_lookup = {approach.get("id"): approach for approach in modeling_approaches}
+    source_lookup = {source.get("id"): source for source in sources}
+    answers_by_problem = {}
+    relations_by_problem = {}
+
+    def get_relation(problem_id, approach):
+        if problem_id not in problem_lookup or not approach:
+            return None
+        problem = problem_lookup[problem_id]
+        answer = answers_by_problem.setdefault(problem_id, {
+            "problem": problem,
+            "parent_problem": problem_lookup.get(problem.get("parent_id")),
+            "approaches": [],
+        })
+        relation_lookup = relations_by_problem.setdefault(problem_id, {})
+        approach_id = approach.get("id")
+        relation = relation_lookup.get(approach_id)
+        if relation is None:
+            relation = {
+                "approach": approach,
+                "tasks": [],
+                "solutions": [],
+                "paths": [],
+                "source": source_lookup.get(approach.get("source_id")),
+            }
+            relation_lookup[approach_id] = relation
+            answer["approaches"].append(relation)
+        return relation
+
+    for approach in modeling_approaches:
+        for task_id in approach.get("modeling_task_ids", []):
+            task = task_lookup.get(task_id)
+            if not task:
+                continue
+            for problem_id in task.get("modeling_problem_ids", []):
+                relation = get_relation(problem_id, approach)
+                if relation:
+                    if task_id not in [linked_task.get("id") for linked_task in relation["tasks"]]:
+                        relation["tasks"].append(task)
+                    task_path = "Approach -> Modeling task -> Problem"
+                    if task_path not in relation["paths"]:
+                        relation["paths"].append(task_path)
+
+    for problem in modeling_problems:
+        problem_id = problem.get("id")
+        for solution_id in problem.get("solution_ids", []):
+            solution = solution_lookup.get(solution_id)
+            if not solution:
+                continue
+            for approach_id in solution.get("modeling_approach_ids", []):
+                approach = approach_lookup.get(approach_id)
+                relation = get_relation(problem_id, approach)
+                if not relation:
+                    continue
+                if solution_id not in [linked_solution.get("id") for linked_solution in relation["solutions"]]:
+                    relation["solutions"].append(solution)
+                solution_path = "Problem -> Solution -> Approach"
+                if solution_path not in relation["paths"]:
+                    relation["paths"].append(solution_path)
+
+    answers = list(answers_by_problem.values())
+    answers.sort(key=lambda answer: answer["problem"].get("name", "").lower())
+    for answer in answers:
+        answer["approaches"].sort(key=lambda item: item["approach"].get("name", "").lower())
+        for relation in answer["approaches"]:
+            relation["tasks"].sort(key=lambda task: task.get("name", "").lower())
+            relation["solutions"].sort(key=lambda solution: solution.get("name", "").lower())
+    return answers
+
+
 def get_modeling_problem_solution_lookup(solutions, modeling_problems):
     solution_lookup = {solution.get("id"): solution for solution in solutions}
     lookup = {}
@@ -1454,6 +1528,13 @@ def home():
         solutions,
         sources,
     )
+    intermediate_problem_competency_answers = get_intermediate_modeling_problem_competency_question(
+        modeling_problems,
+        modeling_tasks,
+        modeling_approaches,
+        solutions,
+        sources,
+    )
     technique_usage_counts = get_llm_technique_usage_counts(
         solutions,
         modeling_approaches,
@@ -1506,6 +1587,7 @@ def home():
         competency_question_answers=competency_question_answers,
         competency_question_trace=competency_question_trace,
         approach_technique_combination_answers=approach_technique_combination_answers,
+        intermediate_problem_competency_answers=intermediate_problem_competency_answers,
         effectiveness_competency_trace=effectiveness_competency_trace,
         effectiveness_competency_summary=effectiveness_competency_summary,
         effectiveness_technique_groups=effectiveness_technique_groups,

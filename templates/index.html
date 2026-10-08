@@ -971,6 +971,94 @@
             </div>
           </div>
         </section>
+        <section class="mt-4 pt-4 border-top" aria-labelledby="intermediate-problems-question">
+        <h3 class="h5 mb-2" id="intermediate-problems-question">Which intermediate modeling problems are addressed by different approaches?</h3>
+        <div class="alert alert-info small" role="note">
+          Problem/approach links are inferred through approach-linked tasks or problem-linked solutions. A pair reached through both paths appears once, with both paths shown.
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label form-label-sm mb-1" for="problem-approach-filter">Modeling approach</label>
+            <select id="problem-approach-filter" class="form-select form-select-sm">
+              <option value="">All approaches</option>
+              {% for approach in modeling_approaches %}
+                <option value="{{ approach.id }}">{{ approach.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label form-label-sm mb-1" for="problem-filter">Modeling problem</label>
+            <select id="problem-filter" class="form-select form-select-sm">
+              <option value="">All linked problems</option>
+              {% for answer in intermediate_problem_competency_answers %}
+                <option value="{{ answer.problem.id }}">{{ answer.problem.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <h4 class="h6 mb-0">Answer</h4>
+          <button class="btn btn-sm btn-outline-secondary" id="problem-answer-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#problem-answer-panel" aria-expanded="false" aria-controls="problem-answer-panel">Show answer</button>
+        </div>
+        <p class="text-muted small" id="problem-answer-summary" aria-live="polite"></p>
+        <div class="collapse" id="problem-answer-panel">
+          <div id="problem-answer-list">
+            {% for answer in intermediate_problem_competency_answers %}
+              <div class="border-bottom py-2 intermediate-problem-answer" data-problem-id="{{ answer.problem.id }}">
+                <div class="fw-semibold">{{ answer.problem.name }}{% if answer.parent_problem %}<span class="small text-muted fw-normal"> (under {{ answer.parent_problem.name }})</span>{% endif %}</div>
+                {% for relation in answer.approaches %}
+                  <div class="small ps-2 intermediate-problem-answer-approach" data-row-key="problem-{{ answer.problem.id }}-approach-{{ relation.approach.id }}">
+                    <span class="fw-semibold">{{ relation.approach.name }}</span>
+                    {% if relation.tasks %}
+                      <span class="text-muted">via linked task{% if relation.tasks|length != 1 %}s{% endif %}: {{ relation.tasks|map(attribute='name')|join(', ') }}</span>
+                    {% endif %}
+                    {% if relation.solutions %}
+                      <span class="text-muted">{% if relation.tasks %}; {% else %}via {% endif %}problem-linked solution{% if relation.solutions|length != 1 %}s{% endif %}: {{ relation.solutions|map(attribute='name')|join(', ') }}</span>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="alert alert-light border">No modeling problems are linked to approaches through tasks or solutions.</div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-3 mb-2">
+          <h4 class="h6 mb-0">Trace</h4>
+          <button class="btn btn-sm btn-outline-secondary" id="problem-trace-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#problem-trace-panel" aria-expanded="false" aria-controls="problem-trace-panel">Show trace</button>
+        </div>
+        <div class="collapse" id="problem-trace-panel">
+          <div class="alert alert-light border d-none" id="problem-trace-empty">No problem/approach links match these filters.</div>
+          <div class="table-responsive">
+            <table class="table table-sm table-striped table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col">Modeling problem</th>
+                  <th scope="col">Modeling approach</th>
+                  <th scope="col">Relationship path</th>
+                  <th scope="col">Linked modeling task</th>
+                  <th scope="col">Linked solution</th>
+                  <th scope="col">Source</th>
+                </tr>
+              </thead>
+              <tbody id="problem-trace-rows">
+                {% for answer in intermediate_problem_competency_answers %}
+                  {% for relation in answer.approaches %}
+                    <tr data-row-key="problem-{{ answer.problem.id }}-approach-{{ relation.approach.id }}" data-problem-id="{{ answer.problem.id }}" data-approach-id="{{ relation.approach.id }}">
+                      <td>{{ answer.problem.name }}</td>
+                      <td>{{ relation.approach.name }}</td>
+                      <td>{{ relation.paths|join('; ') }}</td>
+                      <td>{{ relation.tasks|map(attribute='name')|join(', ') if relation.tasks else 'Not linked through a task' }}</td>
+                      <td>{{ relation.solutions|map(attribute='name')|join(', ') if relation.solutions else 'Not linked through a solution' }}</td>
+                      <td>{{ relation.source.title if relation.source else 'Unknown source' }}</td>
+                    </tr>
+                  {% endfor %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        </section>
       </div>
 
       <div class="tab-pane fade" id="kb-visualization-pane" role="tabpanel" aria-labelledby="kb-visualization-tab" tabindex="0">
@@ -2839,6 +2927,75 @@
         });
       }
       applyCombinationFilters();
+
+      const problemApproachFilter = document.getElementById('problem-approach-filter');
+      const problemFilter = document.getElementById('problem-filter');
+      const problemTraceRows = document.querySelectorAll('#problem-trace-rows tr');
+      const problemAnswerGroups = document.querySelectorAll('.intermediate-problem-answer');
+      const problemAnswerRows = document.querySelectorAll('.intermediate-problem-answer-approach');
+      const problemAnswerSummary = document.getElementById('problem-answer-summary');
+      const problemTraceEmpty = document.getElementById('problem-trace-empty');
+      const problemAnswerPanel = document.getElementById('problem-answer-panel');
+      const problemAnswerToggle = document.getElementById('problem-answer-toggle');
+      const problemTracePanel = document.getElementById('problem-trace-panel');
+      const problemTraceToggle = document.getElementById('problem-trace-toggle');
+
+      function applyIntermediateProblemFilters() {
+        const activeApproach = problemApproachFilter ? problemApproachFilter.value : '';
+        const activeProblem = problemFilter ? problemFilter.value : '';
+        const visibleApproaches = new Set();
+        const visibleProblems = new Set();
+        const visibleRowKeys = new Set();
+
+        problemTraceRows.forEach(function (row) {
+          const matchesApproach = !activeApproach || row.dataset.approachId === activeApproach;
+          const matchesProblem = !activeProblem || row.dataset.problemId === activeProblem;
+          const isVisible = matchesApproach && matchesProblem;
+          row.classList.toggle('d-none', !isVisible);
+          if (isVisible) {
+            visibleApproaches.add(row.dataset.approachId);
+            visibleProblems.add(row.dataset.problemId);
+            visibleRowKeys.add(row.dataset.rowKey);
+          }
+        });
+
+        problemAnswerRows.forEach(function (row) {
+          row.classList.toggle('d-none', !visibleRowKeys.has(row.dataset.rowKey));
+        });
+        problemAnswerGroups.forEach(function (group) {
+          const hasVisibleApproach = Boolean(group.querySelector('.intermediate-problem-answer-approach:not(.d-none)'));
+          group.classList.toggle('d-none', !hasVisibleApproach);
+        });
+        if (problemAnswerSummary) {
+          const problemWord = visibleProblems.size === 1 ? 'problem' : 'problems';
+          const approachWord = visibleApproaches.size === 1 ? 'approach' : 'approaches';
+          problemAnswerSummary.textContent = visibleProblems.size + ' modeling ' + problemWord + ' addressed by ' + visibleApproaches.size + ' ' + approachWord + ' through linked tasks or solutions.';
+        }
+        if (problemTraceEmpty) {
+          problemTraceEmpty.classList.toggle('d-none', visibleApproaches.size > 0);
+        }
+      }
+
+      [problemApproachFilter, problemFilter].forEach(function (filter) {
+        if (filter) filter.addEventListener('change', applyIntermediateProblemFilters);
+      });
+      if (problemAnswerPanel && problemAnswerToggle) {
+        problemAnswerPanel.addEventListener('shown.bs.collapse', function () {
+          problemAnswerToggle.textContent = 'Hide answer';
+        });
+        problemAnswerPanel.addEventListener('hidden.bs.collapse', function () {
+          problemAnswerToggle.textContent = 'Show answer';
+        });
+      }
+      if (problemTracePanel && problemTraceToggle) {
+        problemTracePanel.addEventListener('shown.bs.collapse', function () {
+          problemTraceToggle.textContent = 'Hide trace';
+        });
+        problemTracePanel.addEventListener('hidden.bs.collapse', function () {
+          problemTraceToggle.textContent = 'Show trace';
+        });
+      }
+      applyIntermediateProblemFilters();
 
       solutionLinks.forEach(function (link) {
         link.addEventListener('click', function (event) {

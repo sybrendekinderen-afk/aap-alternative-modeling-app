@@ -3,6 +3,9 @@ erDiagram
         int id
         string name
         string justification
+        int_list prompting_technique_ids
+        int_list other_technique_ids
+        int_list modeling_approach_ids
     }
     SOURCE {
         int id
@@ -16,6 +19,11 @@ erDiagram
         string description
         string evidence_rigor
         string effect_polarity
+        int solution_id
+        int modeling_approach_id
+        int prompting_technique_id
+        int other_technique_id
+        int_list underlying_llm_ids
     }
     UNDERLYING_LLM {
         int id
@@ -40,35 +48,52 @@ erDiagram
     MODELING_TASK {
         int id
         string name
+        int model_type_id
+        int_list modeling_problem_ids
     }
     MODELING_PROBLEM {
         int id
         string name
+        int parent_id
+        int_list prompting_technique_ids
+        int_list other_technique_ids
+        int_list solution_ids
     }
     MODELING_APPROACH {
         int id
         string name
+        int source_id
+        int_list modeling_task_ids
+        int_list solution_ids
+        int_list prompting_technique_ids
+        int_list other_technique_ids
+    }
+    APP_SETTINGS {
+        string_list evidence_rigor_values
     }
 
-    SOLUTION }o--o{ MODELING_APPROACH : implements
-    SOLUTION }o--o{ PROMPTING_TECHNIQUE : uses
-    SOLUTION }o--o{ OTHER_TECHNIQUE : uses
+    MODELING_APPROACH }o--o{ SOLUTION : solution_ids
+    SOLUTION }o--o{ PROMPTING_TECHNIQUE : prompting_technique_ids
+    SOLUTION }o--o{ OTHER_TECHNIQUE : other_technique_ids
 
-    MODELING_PROBLEM }o--o{ SOLUTION : solved_by
-    MODELING_PROBLEM }o--o{ PROMPTING_TECHNIQUE : relates_to
-    MODELING_PROBLEM }o--o{ OTHER_TECHNIQUE : relates_to
-    MODELING_PROBLEM |o--o{ MODELING_PROBLEM : sub_problem_of
+    MODELING_PROBLEM }o--o{ SOLUTION : solution_ids
+    MODELING_PROBLEM }o--o{ PROMPTING_TECHNIQUE : prompting_technique_ids
+    MODELING_PROBLEM }o--o{ OTHER_TECHNIQUE : other_technique_ids
+    MODELING_PROBLEM o|--o{ MODELING_PROBLEM : parent_id
 
-    MODELING_TASK }o--o{ MODELING_PROBLEM : addresses
-    MODELING_TASK }o--|| MODEL_TYPE : produces
+    MODELING_TASK }o--o{ MODELING_PROBLEM : modeling_problem_ids
+    MODEL_TYPE ||--o{ MODELING_TASK : model_type_id
 
-    MODELING_APPROACH }o--o| SOURCE : cited_in
-    MODELING_APPROACH }o--o{ MODELING_TASK : applied_to
-    MODELING_APPROACH }o--o{ PROMPTING_TECHNIQUE : uses
-    MODELING_APPROACH }o--o{ OTHER_TECHNIQUE : uses
+    SOURCE o|--o{ MODELING_APPROACH : source_id
+    MODELING_APPROACH }o--o{ MODELING_TASK : modeling_task_ids
+    MODELING_APPROACH }o--o{ PROMPTING_TECHNIQUE : prompting_technique_ids
+    MODELING_APPROACH }o--o{ OTHER_TECHNIQUE : other_technique_ids
 
-    EFFECT }o--o| SOLUTION : observed_for
-    EFFECT }o--o| MODELING_APPROACH : observed_for
-    EFFECT }o--o| PROMPTING_TECHNIQUE : observed_for
-    EFFECT }o--o| OTHER_TECHNIQUE : observed_for
-    EFFECT }o--|{ UNDERLYING_LLM : produced_by
+    SOLUTION o|--o{ EFFECT : solution_id
+    MODELING_APPROACH o|--o{ EFFECT : modeling_approach_id
+    PROMPTING_TECHNIQUE o|--o{ EFFECT : prompting_technique_id
+    OTHER_TECHNIQUE o|--o{ EFFECT : other_technique_id
+    UNDERLYING_LLM |{--o{ EFFECT : underlying_llm_ids
+
+%% The four optional effect bindings are mutually exclusive: an effect is bound to at most one of solution, approach, prompting technique, or other technique.
+%% The ID-list relationships above are stored as arrays in data.json; they are not separate join-record collections.
