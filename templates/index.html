@@ -119,6 +119,15 @@
                       </select>
                     </div>
                     <div class="col-12">
+                      <label for="approach-filter-format" class="form-label form-label-sm mb-1">Format (via Model Type)</label>
+                      <select id="approach-filter-format" class="form-select form-select-sm">
+                        <option value="">All Formats</option>
+                        {% for format_value in model_types|map(attribute='format')|select|unique|list %}
+                          <option value="{{ format_value }}">{{ format_value }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
                       <label for="approach-filter-underlying-llm" class="form-label form-label-sm mb-1">Underlying LLM (via Effect)</label>
                       <select id="approach-filter-underlying-llm" class="form-select form-select-sm">
                         <option value="">All Underlying LLMs</option>
@@ -142,7 +151,7 @@
                 </div>
                 <ul class="list-group" id="kb-approach-list" style="display: none;">
                   {% for approach in modeling_approaches %}
-                    <li class="list-group-item kb-approach-list-item" data-approach-id="{{ approach.id }}" data-prompting-technique-ids="{{ modeling_approach_prompting_technique_lookup.get(approach.id, [])|join(',') }}" data-other-technique-ids="{{ modeling_approach_other_technique_lookup.get(approach.id, [])|join(',') }}" data-model-type-ids="{{ modeling_approach_model_type_lookup.get(approach.id, [])|join(',') }}" data-underlying-llm-ids="{{ modeling_approach_underlying_llm_lookup.get(approach.id, [])|join(',') }}" data-effect-polarities="{{ modeling_approach_effect_lookup.get(approach.id, [])|map(attribute='effect_polarity')|unique|join(',') }}" style="display: none;">
+                    <li class="list-group-item kb-approach-list-item" data-approach-id="{{ approach.id }}" data-prompting-technique-ids="{{ modeling_approach_prompting_technique_lookup.get(approach.id, [])|join(',') }}" data-other-technique-ids="{{ modeling_approach_other_technique_lookup.get(approach.id, [])|join(',') }}" data-model-type-ids="{{ modeling_approach_model_type_lookup.get(approach.id, [])|join(',') }}" data-underlying-llm-ids="{{ modeling_approach_underlying_llm_lookup.get(approach.id, [])|join(',') }}" data-effect-polarities="{{ modeling_approach_effect_lookup.get(approach.id, [])|map(attribute='effect_polarity')|unique|join(',') }}" data-formats="{{ modeling_approach_format_lookup.get(approach.id, [])|join(',') }}" style="display: none;">
                       <div>
                         <a href="#" class="fw-semibold text-decoration-none approach-select-link" data-approach-id="{{ approach.id }}">{{ approach.name }}</a>
                       </div>
@@ -686,7 +695,7 @@
                   <thead class="table-light">
                     <tr>
                       <th scope="col">Modeling task</th>
-                      <th scope="col">Model type / notation</th>
+                      <th scope="col">Model type / notation / format</th>
                       <th scope="col">Technique category</th>
                       <th scope="col">LLM technique</th>
                       <th scope="col">Modeling approach</th>
@@ -701,7 +710,7 @@
                         <td>{{ row.task.name }}</td>
                         <td>
                           {% if row.model_type %}
-                            {{ row.model_type.name }}{% if row.model_type.notation %} ({{ row.model_type.notation }}){% endif %}
+                            {{ row.model_type.name }}{% if row.model_type.notation %} ({{ row.model_type.notation }}){% endif %}{% if row.model_type.format %} [{{ row.model_type.format }}]{% endif %}
                           {% else %}Not specified{% endif %}
                         </td>
                         <td>{{ row.technique_kind }}</td>
@@ -1329,11 +1338,14 @@
           <div class="collapse" id="model-types-panel">
             <div class="card-body">
               <form method="post" action="/add_model_type" class="row g-2 mb-3">
-                <div class="col-md-5">
-                  <input class="form-control" name="model_type_name" placeholder="Model Type Name">
+                <div class="col-md-4">
+                  <input class="form-control" name="model_type_name" placeholder="Model Type Name" required>
                 </div>
-                <div class="col-md-5">
-                  <input class="form-control" name="model_type_notation" placeholder="Model Type Notation">
+                <div class="col-md-3">
+                  <input class="form-control" name="model_type_notation" placeholder="Notation (optional)">
+                </div>
+                <div class="col-md-3">
+                  <input class="form-control" name="model_type_format" placeholder="Format (optional)">
                 </div>
                 <div class="col-md-2">
                   <button class="btn btn-outline-secondary w-100" id="add-effect-button" type="submit">Add</button>
@@ -1343,12 +1355,13 @@
                 {% for model_type in model_types %}
                   <li class="list-group-item d-flex justify-content-between align-items-center">
                     <div>
-                      <b>{{ model_type.name }}</b> — {{ model_type.notation }}
+                      <b>{{ model_type.name }}</b>{% if model_type.notation %} — {{ model_type.notation }}{% endif %}{% if model_type.format %} <span class="text-muted">({{ model_type.format }})</span>{% endif %}
                     </div>
                     <div class="d-flex gap-2">
                       <form method="post" action="/update_model_type/{{ model_type.id }}" class="d-flex gap-2">
-                        <input class="form-control form-control-sm" name="model_type_name" value="{{ model_type.name }}">
-                        <input class="form-control form-control-sm" name="model_type_notation" value="{{ model_type.notation }}">
+                        <input class="form-control form-control-sm" name="model_type_name" value="{{ model_type.name }}" required>
+                        <input class="form-control form-control-sm" name="model_type_notation" value="{{ model_type.notation }}" placeholder="Notation (optional)">
+                        <input class="form-control form-control-sm" name="model_type_format" value="{{ model_type.format }}" placeholder="Format (optional)">
                         <button class="btn btn-sm btn-outline-primary">Update</button>
                       </form>
                       <a href="/delete_model_type/{{ model_type.id }}" class="btn btn-sm btn-outline-danger">Delete</a>
@@ -1382,7 +1395,7 @@
                       <select class="form-select" name="model_type_id" required>
                         <option value="" disabled selected>-- Select model type --</option>
                         {% for model_type in model_types %}
-                          <option value="{{ model_type.id }}">{{ model_type.name }}{% if model_type.notation %} ({{ model_type.notation }}){% endif %}</option>
+                          <option value="{{ model_type.id }}">{{ model_type.name }}{% if model_type.notation %} ({{ model_type.notation }}){% endif %}{% if model_type.format %} [{{ model_type.format }}]{% endif %}</option>
                         {% endfor %}
                       </select>
                     </div>
@@ -2135,7 +2148,71 @@
       return rawValue.split(',').map(function (value) { return value.trim(); }).filter(Boolean);
     }
 
+    const UI_RESTORE_STORAGE_KEY = 'kbUiRestoreState';
+
+    // Remembers which tab/collapsible panel an add/update/delete action was triggered from, so a full-page
+    // redirect after the request can reopen that same view instead of landing back on the default tab.
+    function saveUiRestoreState(originElement) {
+      if (!originElement) {
+        return;
+      }
+      const pane = originElement.closest('.tab-pane');
+      const collapsePanel = originElement.closest('.collapse');
+      try {
+        sessionStorage.setItem(UI_RESTORE_STORAGE_KEY, JSON.stringify({
+          paneId: pane ? pane.id : '',
+          collapseId: collapsePanel ? collapsePanel.id : ''
+        }));
+      } catch (e) {
+        // sessionStorage unavailable (e.g. private browsing); fall back to default tab silently.
+      }
+    }
+
+    function restoreUiState() {
+      let state = null;
+      try {
+        const raw = sessionStorage.getItem(UI_RESTORE_STORAGE_KEY);
+        sessionStorage.removeItem(UI_RESTORE_STORAGE_KEY);
+        state = raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        state = null;
+      }
+      if (!state || !window.bootstrap) {
+        return;
+      }
+
+      if (state.paneId) {
+        const tabButton = document.getElementById(state.paneId.replace(/-pane$/, '-tab'));
+        if (tabButton) {
+          new bootstrap.Tab(tabButton).show();
+        }
+      }
+
+      if (state.collapseId) {
+        const collapseEl = document.getElementById(state.collapseId);
+        if (collapseEl) {
+          new bootstrap.Collapse(collapseEl, { toggle: false }).show();
+        }
+      }
+
+      const scrollTarget = document.getElementById(state.collapseId || state.paneId || '');
+      if (scrollTarget) {
+        requestAnimationFrame(function () {
+          scrollTarget.scrollIntoView({ behavior: 'auto', block: 'start' });
+        });
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+      restoreUiState();
+
+      // Any Knowledge Base form submission should return to its own tab/panel rather than the default tab.
+      document.addEventListener('submit', function (event) {
+        if (event.target instanceof HTMLFormElement) {
+          saveUiRestoreState(event.target);
+        }
+      });
+
       const techniqueUsageDataElement = document.getElementById('technique-usage-data');
       const notationApproachDataElement = document.getElementById('notation-approach-data');
       const otherTechniqueYearDataElement = document.getElementById('other-technique-year-data');
@@ -2376,6 +2453,7 @@
       const deleteConfirmYesButton = document.getElementById('confirm-delete-yes');
       const deleteConfirmModal = deleteConfirmModalElement ? new bootstrap.Modal(deleteConfirmModalElement) : null;
       let pendingDeleteHref = null;
+      let pendingDeleteLink = null;
 
       document.addEventListener('click', function (event) {
         const deleteLink = event.target.closest('a[href*="/delete_"]');
@@ -2384,6 +2462,7 @@
         }
         event.preventDefault();
         pendingDeleteHref = deleteLink.getAttribute('href');
+        pendingDeleteLink = deleteLink;
         if (deleteConfirmModal) {
           deleteConfirmModal.show();
         }
@@ -2392,6 +2471,7 @@
       if (deleteConfirmYesButton) {
         deleteConfirmYesButton.addEventListener('click', function () {
           if (pendingDeleteHref) {
+            saveUiRestoreState(pendingDeleteLink);
             window.location.href = pendingDeleteHref;
           }
         });
@@ -2445,6 +2525,7 @@
       const approachOtherTechniqueFilter = document.getElementById('approach-filter-other-technique');
       const approachUnderlyingLlmFilter = document.getElementById('approach-filter-underlying-llm');
       const approachEffectPolarityFilter = document.getElementById('approach-filter-effect-polarity');
+      const approachFormatFilter = document.getElementById('approach-filter-format');
       const techniqueSourceFallbackText = 'No description provided for this technique.';
       let activeProblemId = null;
       let activeTaskId = null;
@@ -2505,7 +2586,8 @@
         const activeApproachOtherTechnique = approachOtherTechniqueFilter ? approachOtherTechniqueFilter.value : '';
         const activeApproachUnderlyingLlm = approachUnderlyingLlmFilter ? approachUnderlyingLlmFilter.value : '';
         const activeApproachEffectPolarity = approachEffectPolarityFilter ? approachEffectPolarityFilter.value : '';
-        const hasActiveApproachFilters = !!activeApproachModelType || !!activeApproachPromptingTechnique || !!activeApproachOtherTechnique || !!activeApproachUnderlyingLlm || !!activeApproachEffectPolarity;
+        const activeApproachFormat = approachFormatFilter ? approachFormatFilter.value : '';
+        const hasActiveApproachFilters = !!activeApproachModelType || !!activeApproachPromptingTechnique || !!activeApproachOtherTechnique || !!activeApproachUnderlyingLlm || !!activeApproachEffectPolarity || !!activeApproachFormat;
         const hasActiveSolutionFilters = !!activeModelType || !!activePromptingTechnique || !!activeOtherTechnique || !!activeUnderlyingLlm;
         const hasActiveSelection = !!activeProblemId || !!activeApproachId || hasActiveSolutionFilters;
         let shown = false;
@@ -2545,13 +2627,15 @@
           const modelTypeIds = parseCsvIds(item.dataset.modelTypeIds);
           const underlyingLlmIds = parseCsvIds(item.dataset.underlyingLlmIds);
           const effectPolarities = parseCsvIds(item.dataset.effectPolarities);
+          const formats = parseCsvIds(item.dataset.formats);
           const matchesTask = !activeTaskId || activeTaskApproachIds.includes(item.dataset.approachId);
           const matchesPromptingTechnique = !activeApproachPromptingTechnique || promptingTechniqueIds.includes(activeApproachPromptingTechnique);
           const matchesOtherTechnique = !activeApproachOtherTechnique || otherTechniqueIds.includes(activeApproachOtherTechnique);
           const matchesModelType = !activeApproachModelType || modelTypeIds.includes(activeApproachModelType);
           const matchesUnderlyingLlm = !activeApproachUnderlyingLlm || underlyingLlmIds.includes(activeApproachUnderlyingLlm);
           const matchesEffectPolarity = !activeApproachEffectPolarity || effectPolarities.includes(activeApproachEffectPolarity);
-          const passesApproachFilters = matchesPromptingTechnique && matchesOtherTechnique && matchesModelType && matchesUnderlyingLlm && matchesEffectPolarity;
+          const matchesFormat = !activeApproachFormat || formats.includes(activeApproachFormat);
+          const passesApproachFilters = matchesPromptingTechnique && matchesOtherTechnique && matchesModelType && matchesUnderlyingLlm && matchesEffectPolarity && matchesFormat;
           const shouldShowApproach = (activeTaskId ? matchesTask : true) && (activeTaskId || hasActiveApproachFilters) && passesApproachFilters;
           item.style.display = shouldShowApproach ? '' : 'none';
         });
@@ -2753,6 +2837,9 @@
 
       if (approachEffectPolarityFilter) {
         approachEffectPolarityFilter.addEventListener('change', applyHighlight);
+      }
+      if (approachFormatFilter) {
+        approachFormatFilter.addEventListener('change', applyHighlight);
       }
 
       const competencyTaskFilter = document.getElementById('competency-filter-task');

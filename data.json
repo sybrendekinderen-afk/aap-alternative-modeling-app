@@ -53,7 +53,9 @@
       "modeling_approach_id": 1,
       "prompting_technique_id": null,
       "other_technique_id": null,
-      "underlying_llm_id": 1,
+      "underlying_llm_ids": [
+        1
+      ],
       "effect_polarity": "positive"
     },
     {
@@ -64,7 +66,9 @@
       "modeling_approach_id": null,
       "prompting_technique_id": null,
       "other_technique_id": null,
-      "underlying_llm_id": 1,
+      "underlying_llm_ids": [
+        1
+      ],
       "effect_polarity": "neutral"
     }
   ],
@@ -79,12 +83,14 @@
     {
       "id": 1,
       "name": "business process modeling",
-      "notation": "BPMN"
+      "notation": "BPMN",
+      "format": "bla"
     },
     {
       "id": 2,
       "name": "UML Class Diagrams",
-      "notation": "Domain Data Model"
+      "notation": "Domain Data Model",
+      "format": "bla2"
     }
   ],
   "prompting_techniques": [

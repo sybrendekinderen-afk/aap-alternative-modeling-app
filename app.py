@@ -279,6 +279,12 @@ def load_data():
             normalized_sources.append(normalize_source_record(source))
         store["sources"] = normalized_sources
 
+        for model_type in store.get("model_types", []):
+            if isinstance(model_type, dict):
+                # notation and format are optional attributes; back-fill older records missing them.
+                model_type.setdefault("notation", "")
+                model_type.setdefault("format", "")
+
         for solution in store.get("solutions", []):
             solution.pop("source_id", None)
             solution.pop("source_ids", None)
@@ -1384,6 +1390,21 @@ def get_modeling_approach_model_type_lookup(modeling_approaches, modeling_tasks)
     return lookup
 
 
+def get_modeling_approach_format_lookup(modeling_approaches, modeling_tasks, model_types):
+    task_lookup = {task.get("id"): task for task in modeling_tasks}
+    model_type_lookup = {model_type.get("id"): model_type for model_type in model_types}
+    lookup = {}
+    for approach in modeling_approaches:
+        formats = []
+        for task_id in approach.get("modeling_task_ids", []):
+            task = task_lookup.get(task_id)
+            model_type = model_type_lookup.get(task.get("model_type_id")) if task else None
+            if model_type and model_type.get("format"):
+                formats.append(model_type["format"])
+        lookup[approach.get("id")] = list(dict.fromkeys(formats))
+    return lookup
+
+
 def get_solution_underlying_llm_lookup(solutions, effects):
     return {solution.get("id"): [] for solution in solutions}
 
@@ -1584,6 +1605,7 @@ def home():
         modeling_approach_other_technique_lookup=get_modeling_approach_other_technique_lookup(modeling_approaches, solutions),
         modeling_approach_underlying_llm_lookup=get_modeling_approach_underlying_llm_lookup(modeling_approaches, effects),
         modeling_approach_model_type_lookup=get_modeling_approach_model_type_lookup(modeling_approaches, modeling_tasks),
+        modeling_approach_format_lookup=get_modeling_approach_format_lookup(modeling_approaches, modeling_tasks, model_types),
         solution_underlying_llm_lookup=get_solution_underlying_llm_lookup(solutions, effects),
         source_modeling_approach_lookup=get_source_modeling_approach_lookup(modeling_approaches, sources),
         solution_model_type_lookup=get_solution_model_type_lookup(solutions, modeling_approaches, modeling_tasks),
@@ -2001,16 +2023,22 @@ def delete_modeling_problem(modeling_problem_id):
 def add_model_type():
     store = load_data()
     name = request.form.get("model_type_name", "").strip()
+    # notation and format are optional; only name is required to add a model type.
     notation = request.form.get("model_type_notation", "").strip()
+    format_ = request.form.get("model_type_format", "").strip()
 
-    if name or notation:
+    if name:
         model_types = store.get("model_types", [])
-        existing = next((mt for mt in model_types if mt.get("name") == name and mt.get("notation") == notation), None)
+        existing = next(
+            (mt for mt in model_types if mt.get("name") == name and mt.get("notation") == notation and mt.get("format") == format_),
+            None
+        )
         if not existing:
             model_types.append({
                 "id": max([mt["id"] for mt in model_types], default=0) + 1,
                 "name": name,
-                "notation": notation
+                "notation": notation,
+                "format": format_
             })
             store["model_types"] = model_types
             save_data(store)
@@ -2025,7 +2053,8 @@ def update_model_type(model_type_id):
     for model_type in model_types:
         if model_type["id"] == model_type_id:
             model_type["name"] = request.form.get("model_type_name", model_type["name"]).strip()
-            model_type["notation"] = request.form.get("model_type_notation", model_type["notation"]).strip()
+            model_type["notation"] = request.form.get("model_type_notation", model_type.get("notation", "")).strip()
+            model_type["format"] = request.form.get("model_type_format", model_type.get("format", "")).strip()
             break
     store["model_types"] = model_types
     save_data(store)
