@@ -1,4 +1,4 @@
-# Alternative Modeling Knowledge Base
+# LLM-supported Modeling Knowledge Base
 
 This application is a small Flask web application for maintaining and exploring
 a structured knowledge base about modeling approaches, modeling tasks, problems,
