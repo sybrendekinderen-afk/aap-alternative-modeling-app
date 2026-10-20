@@ -3219,6 +3219,8 @@
         if (!maxRowHeight) return;
         const theadHeight = thead.getBoundingClientRect().height;
         container.style.maxHeight = Math.ceil(theadHeight + maxRowHeight * 3) + 'px';
+        // Without this, scroll-snap aligns row tops to their natural (pre-sticky) position, pulling the sticky header over the first row.
+        container.style.scrollPaddingTop = Math.ceil(theadHeight) + 'px';
       }
 
       document.querySelectorAll('.competency-trace-scroll').forEach(function (container) {
