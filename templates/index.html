@@ -37,6 +37,8 @@
     .task-pane-highlight { border-color: #9fb6e7 !important; background-color: #f8fbff; }
     .task-list-scroll { max-height: 320px; overflow-y: auto; }
     .task-problems-toggle { width: 1.25rem; height: 1.25rem; padding: 0; line-height: 1; }
+    .competency-trace-scroll { max-height: 302px; overflow-y: auto; }
+    .competency-trace-scroll thead th { position: sticky; top: 0; z-index: 1; background-color: #f8f9fa; }
     .chart-scroll-vertical { height: 320px; overflow-y: auto; overflow-x: auto; }
     .chart-scroll-horizontal { height: 320px; overflow-x: auto; overflow-y: hidden; }
     .technique-select-chip { border: 0; cursor: pointer; }
@@ -690,7 +692,7 @@
             </div>
             <div class="collapse" id="competency-trace-panel">
               <div class="alert alert-light border d-none" id="competency-trace-empty">No matching links for these filters.</div>
-              <div class="table-responsive">
+              <div class="table-responsive competency-trace-scroll">
                 <table class="table table-sm table-striped table-bordered align-middle">
                   <thead class="table-light">
                     <tr>
@@ -803,7 +805,7 @@
           </div>
           <div class="collapse" id="effectiveness-trace-panel">
             <div class="alert alert-light border d-none" id="effectiveness-trace-empty">No approach or effect records match these filters.</div>
-            <div class="table-responsive">
+            <div class="table-responsive competency-trace-scroll">
               <table class="table table-sm table-striped table-bordered align-middle">
                 <thead class="table-light">
                   <tr>
@@ -910,7 +912,7 @@
           </div>
           <div class="collapse" id="combination-trace-panel">
             <div class="alert alert-light border d-none" id="combination-trace-empty">No approaches match these filters.</div>
-            <div class="table-responsive">
+            <div class="table-responsive competency-trace-scroll">
               <table class="table table-sm table-striped table-bordered align-middle">
                 <thead class="table-light">
                   <tr>
@@ -1004,7 +1006,7 @@
         </div>
         <div class="collapse" id="problem-trace-panel">
           <div class="alert alert-light border d-none" id="problem-trace-empty">No problem/approach links match these filters.</div>
-          <div class="table-responsive">
+          <div class="table-responsive competency-trace-scroll">
             <table class="table table-sm table-striped table-bordered align-middle">
               <thead class="table-light">
                 <tr>
@@ -1098,7 +1100,7 @@
         </div>
         <div class="collapse" id="approach-llm-trace-panel">
           <div class="alert alert-light border d-none" id="approach-llm-trace-empty">No approach/LLM records match these filters.</div>
-          <div class="table-responsive">
+          <div class="table-responsive competency-trace-scroll">
             <table class="table table-sm table-striped table-bordered align-middle">
               <thead class="table-light">
                 <tr>
