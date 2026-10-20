@@ -37,8 +37,9 @@
     .task-pane-highlight { border-color: #9fb6e7 !important; background-color: #f8fbff; }
     .task-list-scroll { max-height: 320px; overflow-y: auto; }
     .task-problems-toggle { width: 1.25rem; height: 1.25rem; padding: 0; line-height: 1; }
-    .competency-trace-scroll { max-height: 302px; overflow-y: auto; }
+    .competency-trace-scroll { overflow-y: auto; scroll-snap-type: y mandatory; }
     .competency-trace-scroll thead th { position: sticky; top: 0; z-index: 1; background-color: #f8f9fa; }
+    .competency-trace-scroll tbody tr { scroll-snap-align: start; }
     .chart-scroll-vertical { height: 320px; overflow-y: auto; overflow-x: auto; }
     .chart-scroll-horizontal { height: 320px; overflow-x: auto; overflow-y: hidden; }
     .technique-select-chip { border: 0; cursor: pointer; }
@@ -666,7 +667,6 @@
                 </select>
               </div>
             </div>
-            <h4 class="h6">Answer</h4>
             <div class="d-flex align-items-center gap-2 mb-2">
               <h4 class="h6 mb-0">Answer</h4>
               <button class="btn btn-sm btn-outline-secondary" id="competency-answer-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#competency-answer-panel" aria-expanded="false" aria-controls="competency-answer-panel">Show answer</button>
@@ -3205,6 +3205,35 @@
           showSolutionDetails(this.dataset.solutionId, { shouldScroll: true });
           applyHighlight({ scrollSelection: true });
         });
+      });
+
+      // Sizes each competency trace window to fit exactly 3 of its tallest visible row, so rows are never clipped.
+      function sizeCompetencyTraceWindow(container) {
+        const thead = container.querySelector('thead');
+        const visibleRows = container.querySelectorAll('tbody tr:not(.d-none)');
+        if (!thead || !visibleRows.length) return;
+        let maxRowHeight = 0;
+        visibleRows.forEach(function (row) {
+          maxRowHeight = Math.max(maxRowHeight, row.getBoundingClientRect().height);
+        });
+        if (!maxRowHeight) return;
+        const theadHeight = thead.getBoundingClientRect().height;
+        container.style.maxHeight = Math.ceil(theadHeight + maxRowHeight * 3) + 'px';
+      }
+
+      document.querySelectorAll('.competency-trace-scroll').forEach(function (container) {
+        const panel = container.closest('[id$="-trace-panel"]');
+        const tbody = container.querySelector('tbody');
+        if (panel) {
+          panel.addEventListener('shown.bs.collapse', function () {
+            sizeCompetencyTraceWindow(container);
+          });
+        }
+        if (tbody) {
+          new MutationObserver(function () {
+            sizeCompetencyTraceWindow(container);
+          }).observe(tbody, { attributes: true, attributeFilter: ['class'], subtree: true });
+        }
       });
 
       applyHighlight();
