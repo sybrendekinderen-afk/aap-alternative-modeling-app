@@ -116,20 +116,11 @@
                       </select>
                     </div>
                     <div class="col-12">
-                      <label for="approach-filter-model-type" class="form-label form-label-sm mb-1">Model Type (via Task)</label>
-                      <select id="approach-filter-model-type" class="form-select form-select-sm">
-                        <option value="">All Model Types</option>
-                        {% for model_type in model_types %}
-                          <option value="{{ model_type.id }}">{{ model_type.name }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    <div class="col-12">
-                      <label for="approach-filter-format" class="form-label form-label-sm mb-1">Format (via Model Type)</label>
-                      <select id="approach-filter-format" class="form-select form-select-sm">
-                        <option value="">All Formats</option>
-                        {% for format_value in model_types|map(attribute='format')|select|unique|list %}
-                          <option value="{{ format_value }}">{{ format_value }}</option>
+                      <label for="approach-filter-notation" class="form-label form-label-sm mb-1">Model Notation (via Model Type)</label>
+                      <select id="approach-filter-notation" class="form-select form-select-sm">
+                        <option value="">All Model Notations</option>
+                        {% for notation_value in model_types|map(attribute='notation')|select|unique|sort %}
+                          <option value="{{ notation_value }}">{{ notation_value }}</option>
                         {% endfor %}
                       </select>
                     </div>
@@ -157,7 +148,7 @@
                 </div>
                 <ul class="list-group" id="kb-approach-list" style="display: none;">
                   {% for approach in modeling_approaches %}
-                    <li class="list-group-item kb-approach-list-item" data-approach-id="{{ approach.id }}" data-prompting-technique-ids="{{ modeling_approach_prompting_technique_lookup.get(approach.id, [])|join(',') }}" data-other-technique-ids="{{ modeling_approach_other_technique_lookup.get(approach.id, [])|join(',') }}" data-model-type-ids="{{ modeling_approach_model_type_lookup.get(approach.id, [])|join(',') }}" data-underlying-llm-ids="{{ modeling_approach_underlying_llm_lookup.get(approach.id, [])|join(',') }}" data-effect-polarities="{{ modeling_approach_effect_lookup.get(approach.id, [])|map(attribute='effect_polarity')|unique|join(',') }}" data-formats="{{ modeling_approach_format_lookup.get(approach.id, [])|join(',') }}" style="display: none;">
+                    <li class="list-group-item kb-approach-list-item" data-approach-id="{{ approach.id }}" data-prompting-technique-ids="{{ modeling_approach_prompting_technique_lookup.get(approach.id, [])|join(',') }}" data-other-technique-ids="{{ modeling_approach_other_technique_lookup.get(approach.id, [])|join(',') }}" data-notations="{{ modeling_approach_notation_lookup.get(approach.id, [])|join(',') }}" data-underlying-llm-ids="{{ modeling_approach_underlying_llm_lookup.get(approach.id, [])|join(',') }}" data-effect-polarities="{{ modeling_approach_effect_lookup.get(approach.id, [])|map(attribute='effect_polarity')|unique|join(',') }}" data-formats="{{ modeling_approach_format_lookup.get(approach.id, [])|join(',') }}" style="display: none;">
                       <div>
                         <a href="#" class="fw-semibold text-decoration-none approach-select-link" data-approach-id="{{ approach.id }}">{{ approach.name }}</a>
                       </div>
@@ -2128,7 +2119,7 @@
           <div class="card-header"><h3 class="h5 mb-0">Natural Language Search <span class="badge text-bg-warning align-middle">beta</span></h3></div>
           <div class="card-body">
             <div class="alert alert-info small">
-              This experimental search translates a question written in natural language into the existing filters for Modeling Approaches. It is a first demonstration of dynamic querying capabilities. Your query text is sent to an external language model (OpenAI) for translation; the knowledge base content itself is not sent, only the names of the filter options.
+              This experimental search translates a question written in natural language into the existing filters for Modeling Approaches. It is a first demonstration of dynamic querying capabilities. Your query text is sent to an external language model (Mistral) for translation; the knowledge base content itself is not sent, only the names of the filter options.
             </div>
             <form id="nl-search-form" class="mb-3">
               <label for="nl-search-input" class="form-label">Describe the approaches you are looking for</label>
@@ -2553,7 +2544,7 @@
       const promptingTechniqueFilter = document.getElementById('nav-filter-technique');
       const otherTechniqueFilter = document.getElementById('nav-filter-other-technique');
       const underlyingLlmFilter = document.getElementById('nav-filter-underlying-llm');
-      const approachModelTypeFilter = document.getElementById('approach-filter-model-type');
+      const approachNotationFilter = document.getElementById('approach-filter-notation');
       const approachPromptingTechniqueFilter = document.getElementById('approach-filter-technique');
       const approachOtherTechniqueFilter = document.getElementById('approach-filter-other-technique');
       const approachUnderlyingLlmFilter = document.getElementById('approach-filter-underlying-llm');
@@ -2614,13 +2605,13 @@
         const activePromptingTechnique = promptingTechniqueFilter ? promptingTechniqueFilter.value : '';
         const activeOtherTechnique = otherTechniqueFilter ? otherTechniqueFilter.value : '';
         const activeUnderlyingLlm = underlyingLlmFilter ? underlyingLlmFilter.value : '';
-        const activeApproachModelType = approachModelTypeFilter ? approachModelTypeFilter.value : '';
+        const activeApproachNotation = approachNotationFilter ? approachNotationFilter.value : '';
         const activeApproachPromptingTechnique = approachPromptingTechniqueFilter ? approachPromptingTechniqueFilter.value : '';
         const activeApproachOtherTechnique = approachOtherTechniqueFilter ? approachOtherTechniqueFilter.value : '';
         const activeApproachUnderlyingLlm = approachUnderlyingLlmFilter ? approachUnderlyingLlmFilter.value : '';
         const activeApproachEffectPolarity = approachEffectPolarityFilter ? approachEffectPolarityFilter.value : '';
         const activeApproachFormat = approachFormatFilter ? approachFormatFilter.value : '';
-        const hasActiveApproachFilters = !!activeApproachModelType || !!activeApproachPromptingTechnique || !!activeApproachOtherTechnique || !!activeApproachUnderlyingLlm || !!activeApproachEffectPolarity || !!activeApproachFormat;
+        const hasActiveApproachFilters = !!activeApproachNotation || !!activeApproachPromptingTechnique || !!activeApproachOtherTechnique || !!activeApproachUnderlyingLlm || !!activeApproachEffectPolarity || !!activeApproachFormat;
         const hasActiveSolutionFilters = !!activeModelType || !!activePromptingTechnique || !!activeOtherTechnique || !!activeUnderlyingLlm;
         const hasActiveSelection = !!activeProblemId || !!activeApproachId || hasActiveSolutionFilters;
         let shown = false;
@@ -2657,18 +2648,18 @@
         approachListItems.forEach(function (item) {
           const promptingTechniqueIds = parseCsvIds(item.dataset.promptingTechniqueIds);
           const otherTechniqueIds = parseCsvIds(item.dataset.otherTechniqueIds);
-          const modelTypeIds = parseCsvIds(item.dataset.modelTypeIds);
+          const notations = parseCsvIds(item.dataset.notations);
           const underlyingLlmIds = parseCsvIds(item.dataset.underlyingLlmIds);
           const effectPolarities = parseCsvIds(item.dataset.effectPolarities);
           const formats = parseCsvIds(item.dataset.formats);
           const matchesTask = !activeTaskId || activeTaskApproachIds.includes(item.dataset.approachId);
           const matchesPromptingTechnique = !activeApproachPromptingTechnique || promptingTechniqueIds.includes(activeApproachPromptingTechnique);
           const matchesOtherTechnique = !activeApproachOtherTechnique || otherTechniqueIds.includes(activeApproachOtherTechnique);
-          const matchesModelType = !activeApproachModelType || modelTypeIds.includes(activeApproachModelType);
+          const matchesNotation = !activeApproachNotation || notations.includes(activeApproachNotation);
           const matchesUnderlyingLlm = !activeApproachUnderlyingLlm || underlyingLlmIds.includes(activeApproachUnderlyingLlm);
           const matchesEffectPolarity = !activeApproachEffectPolarity || effectPolarities.includes(activeApproachEffectPolarity);
           const matchesFormat = !activeApproachFormat || formats.includes(activeApproachFormat);
-          const passesApproachFilters = matchesPromptingTechnique && matchesOtherTechnique && matchesModelType && matchesUnderlyingLlm && matchesEffectPolarity && matchesFormat;
+          const passesApproachFilters = matchesPromptingTechnique &&           matchesOtherTechnique && matchesNotation && matchesUnderlyingLlm && matchesEffectPolarity && matchesFormat;
           const shouldShowApproach = (activeTaskId ? matchesTask : true) && (activeTaskId || hasActiveApproachFilters) && passesApproachFilters;
           item.style.display = shouldShowApproach ? '' : 'none';
         });
@@ -2852,8 +2843,8 @@
         underlyingLlmFilter.addEventListener('change', applyHighlight);
       }
 
-      if (approachModelTypeFilter) {
-        approachModelTypeFilter.addEventListener('change', applyHighlight);
+      if (approachNotationFilter) {
+        approachNotationFilter.addEventListener('change', applyHighlight);
       }
 
       if (approachPromptingTechniqueFilter) {
@@ -3297,9 +3288,8 @@
       const filterDefs = [
         { key: 'prompting_technique_id', selectId: 'approach-filter-technique', attr: 'promptingTechniqueIds', csv: true },
         { key: 'other_technique_id', selectId: 'approach-filter-other-technique', attr: 'otherTechniqueIds', csv: true },
-        { key: 'model_type_id', selectId: 'approach-filter-model-type', attr: 'modelTypeIds', csv: true },
+        { key: 'notation', selectId: 'approach-filter-notation', attr: 'notations', csv: true },
         { key: 'underlying_llm_id', selectId: 'approach-filter-underlying-llm', attr: 'underlyingLlmIds', csv: true },
-        { key: 'format', selectId: 'approach-filter-format', attr: 'formats', csv: true },
         { key: 'effect_polarity', selectId: 'approach-filter-effect-polarity', attr: 'effectPolarities', csv: true }
       ];
       let currentFilters = null;

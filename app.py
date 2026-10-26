@@ -1,8 +1,9 @@
-from flask import Flask, jsonify, render_template, request, redirect, g
+﻿from flask import Flask, jsonify, render_template, request, redirect, g
 import importlib
 import hmac
 import json
 import os
+import urllib.error
 import urllib.request
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -201,7 +202,6 @@ def _save_data_to_postgres(data):
 NL_SEARCH_FILTER_KEYS = {
     "prompting_technique_id": "prompting_techniques",
     "other_technique_id": "other_techniques",
-    "model_type_id": "model_types",
     "underlying_llm_id": "underlying_llms",
 }
 NL_SEARCH_MAX_QUERY_LENGTH = 500
@@ -214,8 +214,8 @@ def build_nl_search_catalog(store):
             {"id": item.get("id"), "name": item.get("name", "")}
             for item in store.get(collection, [])
         ]
-    catalog["format"] = sorted({
-        item.get("format") for item in store.get("model_types", []) if item.get("format")
+    catalog["notation"] = sorted({
+        item.get("notation") for item in store.get("model_types", []) if item.get("notation")
     })
     catalog["effect_polarity"] = ["neutral", "negative"]
     return catalog
@@ -232,8 +232,9 @@ def translate_query_to_filters(query, catalog):
         "You translate a user's natural-language query into filters for a knowledge base of "
         "LLM-based modeling approaches. Use ONLY the options in the catalog below. "
         "Respond with a JSON object with exactly these keys: "
-        "prompting_technique_id, other_technique_id, model_type_id, underlying_llm_id "
-        "(an id from the catalog or null), format (a catalog string or null), "
+        "prompting_technique_id, other_technique_id, underlying_llm_id "
+        "(an id from the catalog or null), notation (a model notation such as BPMN or UML, "
+        "a catalog string or null), "
         "effect_polarity ('neutral', 'negative' or null), and explanation "
         "(one short sentence describing how the query was interpreted, including any part "
         "that could not be mapped to a filter). Never invent ids. "
@@ -253,7 +254,7 @@ def translate_query_to_filters(query, catalog):
     api_request = urllib.request.Request(
         f"{base_url}/chat/completions",
         data=payload,
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        headers={"Content-Type": "application/json", "Authorization": "Bearer " + api_key, "User-Agent": "kb-app/1.0"},
         method="POST",
     )
     with urllib.request.urlopen(api_request, timeout=30) as response:
@@ -268,8 +269,8 @@ def sanitize_nl_filters(raw_filters, catalog):
         valid_ids = {item["id"] for item in catalog[key]}
         value = parse_optional_int(raw_filters.get(key))
         result[key] = value if value in valid_ids else None
-    format_value = raw_filters.get("format")
-    result["format"] = format_value if format_value in catalog["format"] else None
+    notation_value = raw_filters.get("notation")
+    result["notation"] = notation_value if notation_value in catalog["notation"] else None
     polarity = raw_filters.get("effect_polarity")
     result["effect_polarity"] = polarity if polarity in catalog["effect_polarity"] else None
     result["explanation"] = str(raw_filters.get("explanation") or "")[:500]
@@ -291,7 +292,8 @@ def nl_search():
     except RuntimeError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 503
     except Exception as exc:
-        print(f"NL search failed: {type(exc).__name__}: {exc}")
+        detail = exc.read().decode("utf-8", "replace")[:500] if isinstance(exc, urllib.error.HTTPError) else ""
+        print(f"NL search failed: {type(exc).__name__}: {exc} {detail}")
         return jsonify({"ok": False, "error": "The language model could not be reached or returned an invalid answer."}), 502
     return jsonify({"ok": True, "filters": sanitize_nl_filters(raw_filters, catalog)})
 
@@ -1521,6 +1523,21 @@ def get_modeling_approach_format_lookup(modeling_approaches, modeling_tasks, mod
     return lookup
 
 
+def get_modeling_approach_notation_lookup(modeling_approaches, modeling_tasks, model_types):
+    task_lookup = {task.get("id"): task for task in modeling_tasks}
+    model_type_lookup = {model_type.get("id"): model_type for model_type in model_types}
+    lookup = {}
+    for approach in modeling_approaches:
+        notations = []
+        for task_id in approach.get("modeling_task_ids", []):
+            task = task_lookup.get(task_id)
+            model_type = model_type_lookup.get(task.get("model_type_id")) if task else None
+            if model_type and model_type.get("notation"):
+                notations.append(model_type["notation"])
+        lookup[approach.get("id")] = list(dict.fromkeys(notations))
+    return lookup
+
+
 def get_solution_underlying_llm_lookup(solutions, effects):
     return {solution.get("id"): [] for solution in solutions}
 
@@ -1722,6 +1739,7 @@ def home():
         modeling_approach_underlying_llm_lookup=get_modeling_approach_underlying_llm_lookup(modeling_approaches, effects),
         modeling_approach_model_type_lookup=get_modeling_approach_model_type_lookup(modeling_approaches, modeling_tasks),
         modeling_approach_format_lookup=get_modeling_approach_format_lookup(modeling_approaches, modeling_tasks, model_types),
+        modeling_approach_notation_lookup=get_modeling_approach_notation_lookup(modeling_approaches, modeling_tasks, model_types),
         solution_underlying_llm_lookup=get_solution_underlying_llm_lookup(solutions, effects),
         source_modeling_approach_lookup=get_source_modeling_approach_lookup(modeling_approaches, sources),
         solution_model_type_lookup=get_solution_model_type_lookup(solutions, modeling_approaches, modeling_tasks),
