@@ -75,7 +75,10 @@
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="kb-population-tab" data-bs-toggle="tab" data-bs-target="#kb-population-pane" type="button" role="tab" aria-controls="kb-population-pane" aria-selected="false">Knowledge Base Population</button>
       </li>
-    </ul>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="kb-nl-search-tab" data-bs-toggle="tab" data-bs-target="#kb-nl-search-pane" type="button" role="tab" aria-controls="kb-nl-search-pane" aria-selected="false">Natural Language Search (beta)</button>
+              </li>
+            </ul>
 
     <div class="tab-content" id="knowledge-base-tabs-content">
       <div class="tab-pane fade show active" id="kb-navigation-pane" role="tabpanel" aria-labelledby="kb-navigation-tab" tabindex="0">
@@ -2119,10 +2122,37 @@
     </div>
 
       </div>
+
+      <div class="tab-pane fade" id="kb-nl-search-pane" role="tabpanel" aria-labelledby="kb-nl-search-tab" tabindex="0">
+        <div class="card mb-4">
+          <div class="card-header"><h3 class="h5 mb-0">Natural Language Search <span class="badge text-bg-warning align-middle">beta</span></h3></div>
+          <div class="card-body">
+            <div class="alert alert-info small">
+              This experimental search translates a question written in natural language into the existing filters for Modeling Approaches. It is a first demonstration of dynamic querying capabilities. Your query text is sent to an external language model (OpenAI) for translation; the knowledge base content itself is not sent, only the names of the filter options.
+            </div>
+            <form id="nl-search-form" class="mb-3">
+              <label for="nl-search-input" class="form-label">Describe the approaches you are looking for</label>
+              <textarea id="nl-search-input" class="form-control mb-2" rows="2" maxlength="500" placeholder="e.g. approaches using chain-of-thought prompting that generate BPMN models"></textarea>
+              <button type="submit" class="btn btn-primary btn-sm" id="nl-search-submit">Translate to filters</button>
+            </form>
+            <div id="nl-search-error" class="alert alert-danger d-none"></div>
+            <div id="nl-search-result" class="d-none">
+              <p class="small text-muted mb-2" id="nl-search-explanation"></p>
+              <h4 class="h6">Interpreted filters</h4>
+              <ul class="list-unstyled small" id="nl-search-filter-list"></ul>
+              <h4 class="h6">Matching Modeling Approaches (<span id="nl-search-match-count">0</span>)</h4>
+              <ul class="list-group mb-3" id="nl-search-matches"></ul>
+              <button type="button" class="btn btn-outline-primary btn-sm" id="nl-search-apply">Apply these filters in Knowledge Base Navigation</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
 
+  <script type="application/json" id="nl-search-approach-names">{{ modeling_approaches|map(attribute='name')|list|tojson }}</script>
+  <script type="application/json" id="nl-search-approach-ids">{{ modeling_approaches|map(attribute='id')|list|tojson }}</script>
   <script type="application/json" id="technique-usage-data">{{ technique_usage_counts|tojson }}</script>
   <script type="application/json" id="notation-approach-data">{{ approach_count_by_notation|tojson }}</script>
   <script type="application/json" id="other-technique-year-data">{{ approach_other_technique_count_by_year|tojson }}</script>
@@ -3242,6 +3272,116 @@
       showSolutionDetails('');
       showApproachDetails('');
       applyTaskNotationFilter();
+    });
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const form = document.getElementById('nl-search-form');
+      if (!form) return;
+      const input = document.getElementById('nl-search-input');
+      const submitButton = document.getElementById('nl-search-submit');
+      const errorBox = document.getElementById('nl-search-error');
+      const resultBox = document.getElementById('nl-search-result');
+      const explanation = document.getElementById('nl-search-explanation');
+      const filterList = document.getElementById('nl-search-filter-list');
+      const matchList = document.getElementById('nl-search-matches');
+      const matchCount = document.getElementById('nl-search-match-count');
+      const applyButton = document.getElementById('nl-search-apply');
+      const ids = JSON.parse(document.getElementById('nl-search-approach-ids').textContent);
+      const names = JSON.parse(document.getElementById('nl-search-approach-names').textContent);
+      const nameById = {};
+      ids.forEach(function (id, index) { nameById[String(id)] = names[index]; });
+
+      // Maps each interpreted filter to the existing select and approach data attribute.
+      const filterDefs = [
+        { key: 'prompting_technique_id', selectId: 'approach-filter-technique', attr: 'promptingTechniqueIds', csv: true },
+        { key: 'other_technique_id', selectId: 'approach-filter-other-technique', attr: 'otherTechniqueIds', csv: true },
+        { key: 'model_type_id', selectId: 'approach-filter-model-type', attr: 'modelTypeIds', csv: true },
+        { key: 'underlying_llm_id', selectId: 'approach-filter-underlying-llm', attr: 'underlyingLlmIds', csv: true },
+        { key: 'format', selectId: 'approach-filter-format', attr: 'formats', csv: true },
+        { key: 'effect_polarity', selectId: 'approach-filter-effect-polarity', attr: 'effectPolarities', csv: true }
+      ];
+      let currentFilters = null;
+
+      function selectedLabel(select, value) {
+        const option = Array.from(select.options).find(function (o) { return o.value === String(value); });
+        return option ? option.textContent.trim() : String(value);
+      }
+
+      function render(filters) {
+        currentFilters = filters;
+        explanation.textContent = filters.explanation || '';
+        filterList.innerHTML = '';
+        const active = filterDefs.filter(function (def) { return filters[def.key] !== null && filters[def.key] !== undefined; });
+        if (!active.length) {
+          const li = document.createElement('li');
+          li.textContent = 'No matching filters were found for this query.';
+          filterList.appendChild(li);
+        }
+        active.forEach(function (def) {
+          const select = document.getElementById(def.selectId);
+          const label = select.closest('.col-12').querySelector('label').textContent.trim();
+          const li = document.createElement('li');
+          li.textContent = label + ': ' + selectedLabel(select, filters[def.key]);
+          filterList.appendChild(li);
+        });
+
+        matchList.innerHTML = '';
+        let count = 0;
+        document.querySelectorAll('.kb-approach-list-item').forEach(function (item) {
+          const matches = active.every(function (def) {
+            return (item.dataset[def.attr] || '').split(',').indexOf(String(filters[def.key])) !== -1;
+          });
+          if (!matches || !active.length) return;
+          count += 1;
+          const li = document.createElement('li');
+          li.className = 'list-group-item';
+          li.textContent = nameById[item.dataset.approachId] || ('Approach ' + item.dataset.approachId);
+          matchList.appendChild(li);
+        });
+        matchCount.textContent = String(count);
+        applyButton.disabled = !active.length;
+        resultBox.classList.remove('d-none');
+      }
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const query = input.value.trim();
+        if (!query) return;
+        errorBox.classList.add('d-none');
+        resultBox.classList.add('d-none');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Translating...';
+        fetch('/api/nl_search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query })
+        }).then(function (response) {
+          return response.json().catch(function () { return { ok: false, error: 'Unexpected server response.' }; });
+        }).then(function (data) {
+          if (!data.ok) throw new Error(data.error || 'Search failed.');
+          render(data.filters);
+        }).catch(function (error) {
+          errorBox.textContent = error.message;
+          errorBox.classList.remove('d-none');
+        }).finally(function () {
+          submitButton.disabled = false;
+          submitButton.textContent = 'Translate to filters';
+        });
+      });
+
+      applyButton.addEventListener('click', function () {
+        if (!currentFilters) return;
+        filterDefs.forEach(function (def) {
+          const select = document.getElementById(def.selectId);
+          const value = currentFilters[def.key];
+          select.value = value === null || value === undefined ? '' : String(value);
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        const panel = document.getElementById('approach-filters-panel');
+        if (panel) panel.classList.add('show');
+        document.getElementById('kb-navigation-tab').click();
+      });
     });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
