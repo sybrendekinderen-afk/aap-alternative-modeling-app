@@ -2240,7 +2240,8 @@
 
       // Any Knowledge Base form submission should return to its own tab/panel rather than the default tab.
       document.addEventListener('submit', function (event) {
-        if (event.target instanceof HTMLFormElement) {
+        // The NL search form is handled via fetch and must not make the NL tab the restored view on reload.
+        if (event.target instanceof HTMLFormElement && !event.target.closest('#kb-nl-search-pane')) {
           saveUiRestoreState(event.target);
         }
       });
