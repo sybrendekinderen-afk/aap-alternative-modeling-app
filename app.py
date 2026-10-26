@@ -241,7 +241,7 @@ def translate_query_to_filters(query, catalog):
         + json.dumps(catalog)
     )
     payload = json.dumps({
-        "model": os.environ.get("OPENAI_MODEL", "DeepSeek-V41-Flash-1017-FP8"),
+        "model": os.environ.get("OPENAI_MODEL", "mistral/mistral-small"),
         "temperature": 0,
         "response_format": {"type": "json_object"},
         "messages": [
@@ -249,7 +249,7 @@ def translate_query_to_filters(query, catalog):
             {"role": "user", "content": query},
         ],
     }).encode("utf-8")
-    base_url = os.environ.get("OPENAI_BASE_URL", "https://spike-gateway-runai-aiteam.inference.spike.tue.nl/v1").rstrip("/")
+    base_url = os.environ.get("OPENAI_BASE_URL", "https://ai-gateway.vercel.sh/v1").rstrip("/")
     api_request = urllib.request.Request(
         f"{base_url}/chat/completions",
         data=payload,
