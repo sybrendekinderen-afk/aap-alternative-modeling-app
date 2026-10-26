@@ -202,9 +202,23 @@ def _save_data_to_postgres(data):
 NL_SEARCH_FILTER_KEYS = {
     "prompting_technique_id": "prompting_techniques",
     "other_technique_id": "other_techniques",
-    "underlying_llm_id": "underlying_llms",
 }
 NL_SEARCH_MAX_QUERY_LENGTH = 500
+
+
+def _normalize_label(value):
+    return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
+
+
+def _match_catalog_label(value, options):
+    # Tolerates case, spacing and punctuation differences, e.g. "gpt 4o" vs "GPT-4o".
+    normalized = _normalize_label(value)
+    if not normalized:
+        return None
+    for option in options:
+        if _normalize_label(option) == normalized:
+            return option
+    return None
 
 
 def build_nl_search_catalog(store):
@@ -214,6 +228,12 @@ def build_nl_search_catalog(store):
             {"id": item.get("id"), "name": item.get("name", "")}
             for item in store.get(collection, [])
         ]
+    llms = store.get("underlying_llms", [])
+    catalog["underlying_llms"] = [
+        {"name": llm.get("name", ""), "version": llm.get("version", "")} for llm in llms
+    ]
+    catalog["llm_name"] = sorted({llm.get("name") for llm in llms if llm.get("name")})
+    catalog["llm_version"] = sorted({llm.get("version") for llm in llms if llm.get("version")})
     catalog["notation"] = sorted({
         item.get("notation") for item in store.get("model_types", []) if item.get("notation")
     })
@@ -232,8 +252,11 @@ def translate_query_to_filters(query, catalog):
         "You translate a user's natural-language query into filters for a knowledge base of "
         "LLM-based modeling approaches. Use ONLY the options in the catalog below. "
         "Respond with a JSON object with exactly these keys: "
-        "prompting_technique_id, other_technique_id, underlying_llm_id "
-        "(an id from the catalog or null), notation (a model notation such as BPMN or UML, "
+        "prompting_technique_id, other_technique_id (an id from the catalog or null), "
+        "llm_name and llm_version (the LLM family and its specific version, each a string "
+        "from the catalog lists llm_name / llm_version or null; split a mention such as "
+        "'GPT-4o' into its name and version using the underlying_llms pairs, and set only the "
+        "part that was actually mentioned), notation (a model notation such as BPMN or UML, "
         "a catalog string or null), "
         "effect_polarity ('neutral', 'negative' or null), and explanation "
         "(one short sentence describing how the query was interpreted, including any part "
@@ -269,8 +292,9 @@ def sanitize_nl_filters(raw_filters, catalog):
         valid_ids = {item["id"] for item in catalog[key]}
         value = parse_optional_int(raw_filters.get(key))
         result[key] = value if value in valid_ids else None
-    notation_value = raw_filters.get("notation")
-    result["notation"] = notation_value if notation_value in catalog["notation"] else None
+    result["notation"] = _match_catalog_label(raw_filters.get("notation"), catalog["notation"])
+    result["llm_name"] = _match_catalog_label(raw_filters.get("llm_name"), catalog["llm_name"])
+    result["llm_version"] = _match_catalog_label(raw_filters.get("llm_version"), catalog["llm_version"])
     polarity = raw_filters.get("effect_polarity")
     result["effect_polarity"] = polarity if polarity in catalog["effect_polarity"] else None
     result["explanation"] = str(raw_filters.get("explanation") or "")[:500]

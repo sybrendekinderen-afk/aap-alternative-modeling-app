@@ -125,11 +125,20 @@
                       </select>
                     </div>
                     <div class="col-12">
-                      <label for="approach-filter-underlying-llm" class="form-label form-label-sm mb-1">Underlying LLM (via Effect)</label>
-                      <select id="approach-filter-underlying-llm" class="form-select form-select-sm">
-                        <option value="">All Underlying LLMs</option>
-                        {% for llm in underlying_llms %}
-                          <option value="{{ llm.id }}">{{ llm.name }}{% if llm.version %} — {{ llm.version }}{% endif %}</option>
+                      <label for="approach-filter-llm-name" class="form-label form-label-sm mb-1">Underlying LLM Name (via Effect)</label>
+                      <select id="approach-filter-llm-name" class="form-select form-select-sm">
+                        <option value="">All LLM Names</option>
+                        {% for llm_name in underlying_llms|map(attribute='name')|select|unique|sort %}
+                          <option value="{{ llm_name }}">{{ llm_name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <label for="approach-filter-llm-version" class="form-label form-label-sm mb-1">Underlying LLM Version (via Effect)</label>
+                      <select id="approach-filter-llm-version" class="form-select form-select-sm">
+                        <option value="">All LLM Versions</option>
+                        {% for llm_version in underlying_llms|map(attribute='version')|select|unique|sort %}
+                          <option value="{{ llm_version }}">{{ llm_version }}</option>
                         {% endfor %}
                       </select>
                     </div>
@@ -2143,6 +2152,7 @@
   </div>
 
   <script type="application/json" id="nl-search-approach-names">{{ modeling_approaches|map(attribute='name')|list|tojson }}</script>
+  <script type="application/json" id="underlying-llm-data">{{ underlying_llms|tojson }}</script>
   <script type="application/json" id="nl-search-approach-ids">{{ modeling_approaches|map(attribute='id')|list|tojson }}</script>
   <script type="application/json" id="technique-usage-data">{{ technique_usage_counts|tojson }}</script>
   <script type="application/json" id="notation-approach-data">{{ approach_count_by_notation|tojson }}</script>
@@ -2547,7 +2557,20 @@
       const approachNotationFilter = document.getElementById('approach-filter-notation');
       const approachPromptingTechniqueFilter = document.getElementById('approach-filter-technique');
       const approachOtherTechniqueFilter = document.getElementById('approach-filter-other-technique');
-      const approachUnderlyingLlmFilter = document.getElementById('approach-filter-underlying-llm');
+      const approachLlmNameFilter = document.getElementById('approach-filter-llm-name');
+      const approachLlmVersionFilter = document.getElementById('approach-filter-llm-version');
+      const llmById = {};
+      JSON.parse(document.getElementById('underlying-llm-data').textContent).forEach(function (llm) {
+        llmById[String(llm.id)] = llm;
+      });
+      // Name and version must be satisfied by the same LLM entry of an approach.
+      function approachMatchesLlm(llmIds, name, version) {
+        if (!name && !version) return true;
+        return llmIds.some(function (id) {
+          const llm = llmById[id];
+          return !!llm && (!name || llm.name === name) && (!version || llm.version === version);
+        });
+      }
       const approachEffectPolarityFilter = document.getElementById('approach-filter-effect-polarity');
       const approachFormatFilter = document.getElementById('approach-filter-format');
       const techniqueSourceFallbackText = 'No description provided for this technique.';
@@ -2608,10 +2631,11 @@
         const activeApproachNotation = approachNotationFilter ? approachNotationFilter.value : '';
         const activeApproachPromptingTechnique = approachPromptingTechniqueFilter ? approachPromptingTechniqueFilter.value : '';
         const activeApproachOtherTechnique = approachOtherTechniqueFilter ? approachOtherTechniqueFilter.value : '';
-        const activeApproachUnderlyingLlm = approachUnderlyingLlmFilter ? approachUnderlyingLlmFilter.value : '';
+        const activeApproachLlmName = approachLlmNameFilter ? approachLlmNameFilter.value : '';
+        const activeApproachLlmVersion = approachLlmVersionFilter ? approachLlmVersionFilter.value : '';
         const activeApproachEffectPolarity = approachEffectPolarityFilter ? approachEffectPolarityFilter.value : '';
         const activeApproachFormat = approachFormatFilter ? approachFormatFilter.value : '';
-        const hasActiveApproachFilters = !!activeApproachNotation || !!activeApproachPromptingTechnique || !!activeApproachOtherTechnique || !!activeApproachUnderlyingLlm || !!activeApproachEffectPolarity || !!activeApproachFormat;
+        const hasActiveApproachFilters = !!activeApproachNotation || !!activeApproachPromptingTechnique || !!activeApproachOtherTechnique || !!activeApproachLlmName || !!activeApproachLlmVersion || !!activeApproachEffectPolarity || !!activeApproachFormat;
         const hasActiveSolutionFilters = !!activeModelType || !!activePromptingTechnique || !!activeOtherTechnique || !!activeUnderlyingLlm;
         const hasActiveSelection = !!activeProblemId || !!activeApproachId || hasActiveSolutionFilters;
         let shown = false;
@@ -2656,7 +2680,7 @@
           const matchesPromptingTechnique = !activeApproachPromptingTechnique || promptingTechniqueIds.includes(activeApproachPromptingTechnique);
           const matchesOtherTechnique = !activeApproachOtherTechnique || otherTechniqueIds.includes(activeApproachOtherTechnique);
           const matchesNotation = !activeApproachNotation || notations.includes(activeApproachNotation);
-          const matchesUnderlyingLlm = !activeApproachUnderlyingLlm || underlyingLlmIds.includes(activeApproachUnderlyingLlm);
+          const matchesUnderlyingLlm = approachMatchesLlm(underlyingLlmIds, activeApproachLlmName, activeApproachLlmVersion);
           const matchesEffectPolarity = !activeApproachEffectPolarity || effectPolarities.includes(activeApproachEffectPolarity);
           const matchesFormat = !activeApproachFormat || formats.includes(activeApproachFormat);
           const passesApproachFilters = matchesPromptingTechnique &&           matchesOtherTechnique && matchesNotation && matchesUnderlyingLlm && matchesEffectPolarity && matchesFormat;
@@ -2855,8 +2879,11 @@
         approachOtherTechniqueFilter.addEventListener('change', applyHighlight);
       }
 
-      if (approachUnderlyingLlmFilter) {
-        approachUnderlyingLlmFilter.addEventListener('change', applyHighlight);
+      if (approachLlmNameFilter) {
+        approachLlmNameFilter.addEventListener('change', applyHighlight);
+      }
+      if (approachLlmVersionFilter) {
+        approachLlmVersionFilter.addEventListener('change', applyHighlight);
       }
 
       if (approachEffectPolarityFilter) {
@@ -3284,12 +3311,18 @@
       const nameById = {};
       ids.forEach(function (id, index) { nameById[String(id)] = names[index]; });
 
+      const nlLlmById = {};
+      JSON.parse(document.getElementById('underlying-llm-data').textContent).forEach(function (llm) {
+        nlLlmById[String(llm.id)] = llm;
+      });
+
       // Maps each interpreted filter to the existing select and approach data attribute.
       const filterDefs = [
         { key: 'prompting_technique_id', selectId: 'approach-filter-technique', attr: 'promptingTechniqueIds', csv: true },
         { key: 'other_technique_id', selectId: 'approach-filter-other-technique', attr: 'otherTechniqueIds', csv: true },
         { key: 'notation', selectId: 'approach-filter-notation', attr: 'notations', csv: true },
-        { key: 'underlying_llm_id', selectId: 'approach-filter-underlying-llm', attr: 'underlyingLlmIds', csv: true },
+        { key: 'llm_name', selectId: 'approach-filter-llm-name', llm: 'name' },
+        { key: 'llm_version', selectId: 'approach-filter-llm-version', llm: 'version' },
         { key: 'effect_polarity', selectId: 'approach-filter-effect-polarity', attr: 'effectPolarities', csv: true }
       ];
       let currentFilters = null;
@@ -3321,6 +3354,15 @@
         let count = 0;
         document.querySelectorAll('.kb-approach-list-item').forEach(function (item) {
           const matches = active.every(function (def) {
+            if (def.llm) {
+              // Name and version must both be satisfied by the same LLM of the approach.
+              return (item.dataset.underlyingLlmIds || '').split(',').some(function (id) {
+                const llm = nlLlmById[id];
+                return !!llm && active.filter(function (d) { return d.llm; }).every(function (d) {
+                  return llm[d.llm] === filters[d.key];
+                });
+              });
+            }
             return (item.dataset[def.attr] || '').split(',').indexOf(String(filters[def.key])) !== -1;
           });
           if (!matches || !active.length) return;
