@@ -547,14 +547,17 @@
                   {% endif %}
                 </p>
                 <p class="mb-2"><b>Task:</b>
-                  {% if linked_task %}
-                    {{ linked_task.name }}
-                    {% if linked_task.model_type_id %}
-                      {% set linked_task_model_type = model_type_lookup.get(linked_task.model_type_id) %}
-                      {% if linked_task_model_type %}
-                        <span class="badge bg-light text-dark border ms-1">{{ linked_task_model_type.notation or linked_task_model_type.name }}</span>
+                  {% if linked_tasks %}
+                    {% for linked_task in linked_tasks %}
+                      {{ linked_task.name }}
+                      {% if linked_task.model_type_id %}
+                        {% set linked_task_model_type = model_type_lookup.get(linked_task.model_type_id) %}
+                        {% if linked_task_model_type %}
+                          <span class="badge bg-light text-dark border ms-1">{{ linked_task_model_type.notation or linked_task_model_type.name }}</span>
+                        {% endif %}
                       {% endif %}
-                    {% endif %}
+                      {% if not loop.last %}<br>{% endif %}
+                    {% endfor %}
                   {% else %}
                     <span class="text-muted">None</span>
                   {% endif %}
