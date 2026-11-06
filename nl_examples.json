@@ -29,6 +29,13 @@
   },
   {
     "category": "negative_or_comparative",
+    "query": "Which techniques actually improve BPMN generation?",
+    "filters": {"prompting_technique": null, "other_technique": null, "llm_name": null, "llm_version": null, "notation": "BPMN", "effect_polarity": "positive"},
+    "unmapped_terms": [],
+    "explanation": "Interpreted 'improve' as approaches with at least one positive effect for BPMN."
+  },
+  {
+    "category": "negative_or_comparative",
     "query": "What doesn't help when generating BPMN?",
     "filters": {"prompting_technique": null, "other_technique": null, "llm_name": null, "llm_version": null, "notation": "BPMN", "effect_polarity": "neutral"},
     "unmapped_terms": [],
