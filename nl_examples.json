@@ -1,0 +1,58 @@
+[
+  {
+    "category": "question",
+    "query": "What works best for generating BPMN models with GPT 5.6?",
+    "filters": {"prompting_technique": null, "other_technique": null, "llm_name": "GPT", "llm_version": "5.6", "notation": "BPMN", "effect_polarity": null},
+    "unmapped_terms": [],
+    "explanation": "Looking for approaches using GPT 5.6 to generate BPMN models; no specific technique was named, so all techniques are shown."
+  },
+  {
+    "category": "question",
+    "query": "Which prompting techniques have been tried for domain data models?",
+    "filters": {"prompting_technique": null, "other_technique": null, "llm_name": null, "llm_version": null, "notation": "Domain Data Model", "effect_polarity": null},
+    "unmapped_terms": [],
+    "explanation": "Showing approaches for the Domain Data Model notation; the individual techniques can be compared in the results."
+  },
+  {
+    "category": "vague_intent",
+    "query": "Is chain of thought worth it for process models?",
+    "filters": {"prompting_technique": "Chain-of-Thought", "other_technique": null, "llm_name": null, "llm_version": null, "notation": "BPMN", "effect_polarity": null},
+    "unmapped_terms": [],
+    "explanation": "Interpreted 'process models' as BPMN and filtered on Chain-of-Thought; the results show whether it helped."
+  },
+  {
+    "category": "vague_intent",
+    "query": "I want to let an AI agent build a data model, any tips?",
+    "filters": {"prompting_technique": null, "other_technique": "agentic", "llm_name": null, "llm_version": null, "notation": "Domain Data Model", "effect_polarity": null},
+    "unmapped_terms": [],
+    "explanation": "Interpreted 'AI agent' as the agentic technique and 'data model' as the Domain Data Model notation."
+  },
+  {
+    "category": "negative_or_comparative",
+    "query": "What doesn't help when generating BPMN?",
+    "filters": {"prompting_technique": null, "other_technique": null, "llm_name": null, "llm_version": null, "notation": "BPMN", "effect_polarity": "neutral"},
+    "unmapped_terms": [],
+    "explanation": "Interpreted 'doesn't help' as approaches with a neutral effect for BPMN; use 'made it worse' to look for negative effects."
+  },
+  {
+    "category": "negative_or_comparative",
+    "query": "Which techniques made the results worse with GPT?",
+    "filters": {"prompting_technique": null, "other_technique": null, "llm_name": "GPT", "llm_version": null, "notation": null, "effect_polarity": "negative"},
+    "unmapped_terms": [],
+    "explanation": "Interpreted 'made the results worse' as a negative effect, restricted to the GPT family."
+  },
+  {
+    "category": "partial_or_unmappable",
+    "query": "Anything about hallucinations when using few-shot prompts?",
+    "filters": {"prompting_technique": "Few-Shot", "other_technique": null, "llm_name": null, "llm_version": null, "notation": null, "effect_polarity": null},
+    "unmapped_terms": ["hallucinations"],
+    "explanation": "Filtered on Few-Shot; 'hallucinations' cannot be mapped to a filter and was ignored."
+  },
+  {
+    "category": "partial_or_unmappable",
+    "query": "How fast is Claude at creating ER diagrams?",
+    "filters": {"prompting_technique": null, "other_technique": null, "llm_name": null, "llm_version": null, "notation": null, "effect_polarity": null},
+    "unmapped_terms": ["Claude", "ER diagrams", "speed"],
+    "explanation": "None of Claude, ER diagrams or speed exist in the catalog, so no filter was set."
+  }
+]
