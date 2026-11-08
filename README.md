@@ -8,8 +8,10 @@ The application provides a browser-based interface for:
 
 - browsing the knowledge base;
 - answering built-in competency questions and displaying derived summaries;
-- adding, editing, and deleting knowledge-base records; and
-- maintaining relationships between related records.
+- adding, editing, and deleting knowledge-base records;
+- maintaining relationships between related records; and
+- translating a natural-language question into Modeling Approach filters
+  (beta).
 
 ## Technology
 
@@ -18,6 +20,7 @@ The application provides a browser-based interface for:
 - `psycopg` for PostgreSQL-compatible database access
 - Vercel Python runtime for the hosted deployment
 - Supabase PostgreSQL for hosted persistence
+- An OpenAI-compatible chat-completions API for natural language search
 - JSON and HTML templates for the local fallback and user interface
 
 The Python dependencies are listed in [requirements.txt](./requirements.txt).
@@ -29,6 +32,7 @@ The Python dependencies are listed in [requirements.txt](./requirements.txt).
 | `app.py` | Flask application, routes, validation, normalization, persistence, and derived queries |
 | `templates/` | Jinja2 HTML templates |
 | `data.json` | Local JSON persistence and fallback seed data |
+| `nl_examples.json` | Few-shot examples used to prompt the natural language search translation |
 | `vercel.json` | Vercel build, routing, and scheduled keep-alive configuration |
 | `requirements.txt` | Python runtime dependencies |
 
@@ -86,6 +90,23 @@ The Vercel runtime enables remote persistence automatically. Configure the
 database connection in the hosting provider's environment-variable settings,
 not in Git.
 
+Natural language search requires an OpenAI-compatible chat-completions API key:
+
+```text
+OPENAI_API_KEY
+```
+
+Two further variables are optional and default to a Mistral model served
+through the Vercel AI Gateway:
+
+```text
+OPENAI_MODEL        # defaults to "mistral/mistral-small"
+OPENAI_BASE_URL     # defaults to "https://ai-gateway.vercel.sh/v1"
+```
+
+Without `OPENAI_API_KEY`, the rest of the application keeps working, but the
+natural language search tab returns an error instead of translating queries.
+
 ## Local development
 
 From the application directory:
@@ -135,6 +156,28 @@ The main collections in the data store are:
 Records use integer identifiers and relationships are represented by identifier
 fields or lists of related identifiers. `app.py` normalizes loaded records so
 older data shapes can continue to be read safely.
+
+## Natural language search (beta)
+
+The "Natural Language Search" tab lets a user describe the Modeling Approaches
+they are looking for in plain text instead of using the filter controls
+directly. Submitting the form sends the query to the `POST /api/nl_search`
+endpoint, which:
+
+1. builds a catalog of the current prompting techniques, other techniques,
+   underlying LLM names/versions, and notations;
+2. sends the query, the catalog, and a system prompt, together with few-shot
+   examples derived from `nl_examples.json`, to an OpenAI-compatible
+   chat-completions API; and
+3. validates the model's JSON response against the catalog, discarding any
+   value that does not correspond to an existing record, before returning the
+   resulting filters to the browser.
+
+The browser then applies the returned filters client-side to list matching
+Modeling Approaches, and optionally copies them into the main Knowledge Base
+Navigation filters. Only the names of filter options are sent to the external
+language model; the underlying knowledge-base content (solutions, sources,
+effects, etc.) is not transmitted.
 
 ## Operational notes
 
