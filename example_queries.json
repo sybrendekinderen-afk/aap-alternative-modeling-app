@@ -1,0 +1,68 @@
+[
+  {
+    "category": "question",
+    "query": "What works well for generating UML models with Claude?",
+    "filters": {"prompting_technique": null, "other_technique": null, "llm_name": "Claude", "llm_version": null, "notation": "UML class diagrams", "effect_polarity": "Having at least one positive effect"},
+    "unmapped_terms": [],
+    "results": {"true positive": 3, "false negative": 0, "false positive": 0, "mismatch": 0}
+  },
+  {
+    "category": "question",
+    "query": "Which techniques have a negative impact on creating BPMN models and use ontologies?",
+    "filters": {"prompting_technique": null, "other_technique": "Ontology-guided modeling", "llm_name": null, "llm_version": null, "notation": "BPMN", "effect_polarity": "Having at least one negative effect"},
+    "unmapped_terms": [],
+    "results": {"true positive": 3, "false negative": 0, "false positive": 0, "mismatch": 0}
+  },
+  {
+    "category": "vague_intent",
+    "query": "do you think that data models can be generated well with the use of few shot learning?",
+    "filters": {"prompting_technique": "Few-Shot", "other_technique": null, "llm_name": null, "llm_version": null, "notation": "Domain Data Model", "effect_polarity": null},
+    "unmapped_terms": ["data models"],
+    "results": {"true positive": 3, "false negative": 0, "false positive": 0, "mismatch": 0},
+    "note": "model types, like data model, are not yet part of the approach filters, hence will not be mapped"
+  },
+  {
+    "category": "vague_intent",
+    "query": "I want to experiment with an agent and ontologies for designing UML class diagrams",
+    "filters": {"prompting_technique": null, "other_technique": "agentic", "llm_name": null, "llm_version": null, "notation": "Domain Data Model", "effect_polarity": null},
+    "unmapped_terms": ["agent-based coordination", "ontology-guided modeling"],
+    "results": {"true positive": 2, "false negative": 0, "false positive": 0, "mismatch": 0},
+    "note": "the matching of ontologies and agent works quite well. Just, as expected no mapping to a filter is provided since, at the moment, we do not support boolean queries."
+  },
+  {
+    "category": "negative_or_comparative",
+    "query": "Which techniques genuinely improve the quality of UML models?",
+    "filters": {"prompting_technique": null, "other_technique": null, "llm_name": null, "llm_version": null, "notation": "UML class diagrams", "effect_polarity": "Having at least one positive effect"},
+    "unmapped_terms": ["quality"],
+    "results": {"true positive": 2, "false negative": 0, "false positive": 0, "mismatch": 0}
+  },
+  {
+    "category": "negative_or_comparative",
+    "query": "Is there anything that makes no real difference for UML Model generation?",
+    "filters": {"prompting_technique": null, "other_technique": null, "llm_name": null, "llm_version": null, "notation": "UML class diagrams", "effect_polarity": "Having at least one neutral effect"},
+    "unmapped_terms": [],
+    "results": {"true positive": 2, "false negative": 0, "false positive": 0, "mismatch": 0}
+  },
+  {
+    "category": "negative_or_comparative",
+    "query": "What backfires when modeling with Claude?",
+    "filters": {"prompting_technique": null, "other_technique": null, "llm_name": "Claude", "llm_version": null, "notation": null, "effect_polarity": "Having at least one negative effect"},
+    "unmapped_terms": [],
+    "results": {"true positive": 2, "false negative": 0, "false positive": 0, "mismatch": 0}
+  },
+  {
+    "category": "partial_or_unmappable",
+    "query": "Does agentic prompting cause scope creep in UML diagrams?",
+    "filters": {"prompting_technique": null, "other_technique": "Agent based coordination", "llm_name": null, "llm_version": null, "notation": "UML class diagrams", "effect_polarity": null},
+    "unmapped_terms": ["scope creep","cause"],
+    "results": {"true positive": 3, "false negative": 0, "false positive": 1, "mismatch": 0},
+    "note": "The term 'cause' is considered unmappable in this context."
+  },
+  {
+    "category": "partial_or_unmappable",
+    "query": "How does Mistral compare to GPT for sequence diagrams?",
+    "filters": {"prompting_technique": null, "other_technique": null, "llm_name": null, "llm_version": null, "notation": "UML sequence diagrams", "effect_polarity": null},
+    "unmapped_terms": ["Mistral", "GPT"],
+    "results": {"true positive": 3, "false negative": 0, "false positive": 0, "mismatch": 0}
+  }
+]
