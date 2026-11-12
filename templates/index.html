@@ -108,15 +108,6 @@
                       </select>
                     </div>
                     <div class="col-12">
-                      <label for="approach-filter-solution" class="form-label form-label-sm mb-1">Filter by Modeling Solution</label>
-                      <select id="approach-filter-solution" class="form-select form-select-sm">
-                        <option value="">All Modeling Solutions</option>
-                        {% for solution in solutions|sort(attribute='name') %}
-                          <option value="{{ solution.id }}">{{ solution.name }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    <div class="col-12">
                       <label for="approach-filter-technique" class="form-label form-label-sm mb-1">Filter by Prompting Technique (direct or via Solution)</label>
                       <select id="approach-filter-technique" class="form-select form-select-sm">
                         <option value="">All Prompting Techniques</option>
@@ -2579,7 +2570,6 @@
       const underlyingLlmFilter = document.getElementById('nav-filter-underlying-llm');
       const approachTaskFilter = document.getElementById('approach-filter-task');
       const approachNotationFilter = document.getElementById('approach-filter-notation');
-      const approachSolutionFilter = document.getElementById('approach-filter-solution');
       const approachPromptingTechniqueFilter = document.getElementById('approach-filter-technique');
       const approachOtherTechniqueFilter = document.getElementById('approach-filter-other-technique');
       const approachLlmNameFilter = document.getElementById('approach-filter-llm-name');
@@ -2654,7 +2644,6 @@
         const activeOtherTechnique = otherTechniqueFilter ? otherTechniqueFilter.value : '';
         const activeUnderlyingLlm = underlyingLlmFilter ? underlyingLlmFilter.value : '';
         const activeApproachTask = approachTaskFilter ? approachTaskFilter.value : '';
-        const activeApproachSolution = approachSolutionFilter ? approachSolutionFilter.value : '';
         const activeApproachNotation = approachNotationFilter ? approachNotationFilter.value : '';
         const activeApproachPromptingTechnique = approachPromptingTechniqueFilter ? approachPromptingTechniqueFilter.value : '';
         const activeApproachOtherTechnique = approachOtherTechniqueFilter ? approachOtherTechniqueFilter.value : '';
@@ -2662,7 +2651,7 @@
         const activeApproachLlmVersion = approachLlmVersionFilter ? approachLlmVersionFilter.value : '';
         const activeApproachEffectPolarity = approachEffectPolarityFilter ? approachEffectPolarityFilter.value : '';
         const activeApproachFormat = approachFormatFilter ? approachFormatFilter.value : '';
-        const hasActiveApproachFilters = !!activeApproachTask || !!activeApproachSolution || !!activeApproachNotation || !!activeApproachPromptingTechnique || !!activeApproachOtherTechnique || !!activeApproachLlmName || !!activeApproachLlmVersion || !!activeApproachEffectPolarity || !!activeApproachFormat;
+        const hasActiveApproachFilters = !!activeApproachTask || !!activeApproachNotation || !!activeApproachPromptingTechnique || !!activeApproachOtherTechnique || !!activeApproachLlmName || !!activeApproachLlmVersion || !!activeApproachEffectPolarity || !!activeApproachFormat;
         const hasActiveSolutionFilters = !!activeModelType || !!activePromptingTechnique || !!activeOtherTechnique || !!activeUnderlyingLlm;
         const hasActiveSelection = !!activeProblemId || !!activeApproachId || hasActiveSolutionFilters;
         let shown = false;
@@ -2698,7 +2687,6 @@
         }
         approachListItems.forEach(function (item) {
           const taskIds = parseCsvIds(item.dataset.taskIds);
-          const solutionIds = parseCsvIds(item.dataset.solutionIds);
           const promptingTechniqueIds = parseCsvIds(item.dataset.promptingTechniqueIds);
           const otherTechniqueIds = parseCsvIds(item.dataset.otherTechniqueIds);
           const notations = parseCsvIds(item.dataset.notations);
@@ -2707,14 +2695,13 @@
           const formats = parseCsvIds(item.dataset.formats);
           const matchesSelectedTask = !activeTaskId || activeTaskApproachIds.includes(item.dataset.approachId);
           const matchesTaskFilter = !activeApproachTask || taskIds.includes(activeApproachTask);
-          const matchesSolution = !activeApproachSolution || solutionIds.includes(activeApproachSolution);
           const matchesPromptingTechnique = !activeApproachPromptingTechnique || promptingTechniqueIds.includes(activeApproachPromptingTechnique);
           const matchesOtherTechnique = !activeApproachOtherTechnique || otherTechniqueIds.includes(activeApproachOtherTechnique);
           const matchesNotation = !activeApproachNotation || notations.includes(activeApproachNotation);
           const matchesUnderlyingLlm = approachMatchesLlm(underlyingLlmIds, activeApproachLlmName, activeApproachLlmVersion);
           const matchesEffectPolarity = !activeApproachEffectPolarity || effectPolarities.includes(activeApproachEffectPolarity);
           const matchesFormat = !activeApproachFormat || formats.includes(activeApproachFormat);
-          const passesApproachFilters = matchesSolution && matchesPromptingTechnique && matchesOtherTechnique && matchesNotation && matchesUnderlyingLlm && matchesEffectPolarity && matchesFormat;
+          const passesApproachFilters = matchesPromptingTechnique && matchesOtherTechnique && matchesNotation && matchesUnderlyingLlm && matchesEffectPolarity && matchesFormat;
           const shouldShowApproach = matchesSelectedTask && matchesTaskFilter && (activeTaskId || hasActiveApproachFilters) && passesApproachFilters;
           item.style.display = shouldShowApproach ? '' : 'none';
         });
@@ -2904,10 +2891,6 @@
 
       if (approachTaskFilter) {
         approachTaskFilter.addEventListener('change', applyHighlight);
-      }
-
-      if (approachSolutionFilter) {
-        approachSolutionFilter.addEventListener('change', applyHighlight);
       }
 
       if (approachPromptingTechniqueFilter) {
